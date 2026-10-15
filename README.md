@@ -51,7 +51,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * Configure "Issue Linking" - Converts issue numbers in commit messages into hyperlinks, that open the issue in your issue tracking system.
         * Configure "Pull Request Creation" - Automates the opening and pre-filling of a Pull Request form, directly from a branches context menu.
             * Support for the publicly hosted Bitbucket, GitHub and GitLab Pull Request providers is built-in.
-            * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
+            * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#custom-pull-request-providers).
         * Export your Git Map Repository Configuration to a file that can be committed in the repository. It allows others working in the same repository to automatically use the same Git Map configuration.
     * Keyboard Shortcuts (available in the Git Map View):
         * `CTRL/CMD + F`: Open the Find Widget.
@@ -73,7 +73,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
 
 ## Extension Settings
 
-Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md).
+Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md).
 
 A summary of the Git Map extension settings are:
 * **Commit Details View**:
@@ -83,10 +83,10 @@ A summary of the Git Map extension settings are:
             * **Compact Folders**: Render the File Tree in the Commit Details View in a compacted form, such that folders with a single child folder are compressed into a single combined folder element.
         * **Type**: Sets the default type of File View used in the Commit Details View.
     * **Location**: Specifies where the Commit Details View is rendered in the Git Map View: Inline (below the commit), Docked to Bottom, or Docked to Right (default).
-* **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#context-menu-actions-visibility).
+* **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#context-menu-actions-visibility).
 * **Custom Branch Glob Patterns**: An array of Custom Glob Patterns to be shown in the "Branches" dropdown. Example: `[{"name":"Feature Requests", "glob":"heads/feature/*"}]`
 * **Custom Emoji Shortcode Mappings**: An array of custom Emoji Shortcode mappings. Example: `[{"shortcode": ":sparkles:", "emoji":"✨"}]`
-* **Custom Pull Request Providers**: An array of custom Pull Request providers that can be used in the "Pull Request Creation" Integration. For information on how to configure this setting, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
+* **Custom Pull Request Providers**: An array of custom Pull Request providers that can be used in the "Pull Request Creation" Integration. For information on how to configure this setting, see the documentation [here](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#custom-pull-request-providers).
 * **Date**:
     * **Format**: Specifies the date format to be used in the "Date" column on the Git Map View.
     * **Type**: Specifies the date type to be displayed in the "Date" column on the Git Map View, either the author or commit date.
@@ -172,7 +172,7 @@ Detailed Release Notes are available [here](CHANGELOG.md).
 ## Installation
 
 This fork isn't published on the Visual Studio Marketplace. Get the VSIX (offline installation package) in one of the following ways:
-* Download `git-map-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository: the `dev` pre-release is the latest build of the main branch (updated on every push), and each tagged version has its own release. Every [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run also has the VSIX as its `git-graph-vsix` artifact.
+* Download `git-map-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-map/releases) of the repository: the `dev` pre-release is the latest build of the main branch (updated on every push), and each tagged version has its own release. Every [Build & Test](https://github.com/aimuch/vscode-git-map/actions/workflows/build-and-test.yml) workflow run also has the VSIX as its `git-graph-vsix` artifact.
 * Build it: run `npm install`, then `npm run package` to create `git-map-<version>.vsix`.
 
 Install the VSIX, either with `code --install-extension git-map-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).

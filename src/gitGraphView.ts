@@ -758,7 +758,7 @@ export class GitGraphView extends Disposable {
 			body = `<body class="unableToLoad">
 			<h2>${t('Unable to load Git Map')}</h2>
 			<p class="unableToLoadMessage">${t('No Git repositories were found in the current workspace when it was last scanned by Git Map.')}</p>
-			<p>${t('If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting "git-graph.maxDepthOfRepoSearch" appropriately (read the {0} for more information).', '<a href="https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#max-depth-of-repo-search" target="_blank">' + t('documentation') + '</a>')}</p>
+			<p>${t('If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting "git-graph.maxDepthOfRepoSearch" appropriately (read the {0} for more information).', '<a href="https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#max-depth-of-repo-search" target="_blank">' + t('documentation') + '</a>')}</p>
 			<p><div id="rescanForReposBtn" class="roundedBtn">${t('Re-scan the current workspace for repositories')}</div></p>
 			<script nonce="${nonce}">(function(){ var api = acquireVsCodeApi(); document.getElementById('rescanForReposBtn').addEventListener('click', function(){ api.postMessage({command: 'rescanForRepos'}); }); })();</script>
 			</body>`;

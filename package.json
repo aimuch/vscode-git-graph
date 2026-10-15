@@ -24,13 +24,13 @@
 	"categories": [
 		"Other"
 	],
-	"homepage": "https://github.com/aimuch/vscode-git-graph",
+	"homepage": "https://github.com/aimuch/vscode-git-map",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/aimuch/vscode-git-graph.git"
+		"url": "https://github.com/aimuch/vscode-git-map.git"
 	},
 	"bugs": {
-		"url": "https://github.com/aimuch/vscode-git-graph/issues"
+		"url": "https://github.com/aimuch/vscode-git-map/issues"
 	},
 	"license": "SEE LICENSE IN LICENSE",
 	"icon": "resources/icon.png",
