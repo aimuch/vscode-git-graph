@@ -10,7 +10,7 @@ const L10N_DIRECTORY = path.join(__dirname, '..', 'l10n');
 const loadedBundles: { [language: string]: L10nBundle | null } = {};
 
 /**
- * Get the language that Git Graph displays messages in, according to the `git-graph.language` Extension Setting, and the display language of Visual Studio Code.
+ * Get the language that Git Map displays messages in, according to the `git-graph.language` Extension Setting, and the display language of Visual Studio Code.
  * @returns The language.
  */
 export function getLanguage(): Language {
@@ -21,7 +21,7 @@ export function getLanguage(): Language {
 }
 
 /**
- * Get the translations of the messages displayed by Git Graph, for the language it displays messages in.
+ * Get the translations of the messages displayed by Git Map, for the language it displays messages in.
  * @returns The translations, or NULL if messages are displayed in English.
  */
 export function getL10nBundle(): L10nBundle | null {
@@ -38,7 +38,7 @@ export function getL10nBundle(): L10nBundle | null {
 }
 
 /**
- * Translate a message into the language that Git Graph displays messages in.
+ * Translate a message into the language that Git Map displays messages in.
  * @param message The message (in English), which is also the key of its translations. It can contain placeholders ({0}, {1}, etc.) for the arguments.
  * @param args The arguments substituted into the message's placeholders.
  * @returns The translated message.

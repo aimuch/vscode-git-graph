@@ -1,5 +1,5 @@
 /**
- * Webview UI Harness - Injected (by ./suite.js) into a copy of the Git Graph View's HTML, and run in a real Visual
+ * Webview UI Harness - Injected (by ./suite.js) into a copy of the Git Map View's HTML, and run in a real Visual
  * Studio Code Webview. It replaces the Webview's messaging API with a fake back-end serving fixture data, drives the
  * UI with DOM events (as a user would), and posts the result of each check back to the Extension Host.
  */
@@ -138,7 +138,7 @@
 
 	/* Checks */
 
-	// Run when the Git Graph View is displayed in Simplified Chinese (git-graph.language)
+	// Run when the Git Map View is displayed in Simplified Chinese (git-graph.language)
 	const runL10n = async () => {
 		await waitFor('the commits to be rendered', () => document.querySelectorAll('#commitTable tr.commit').length === 10, 10000);
 
@@ -230,10 +230,10 @@
 		await check('#892', 'The second keypress of a keybinding chord (e.g. Ctrl+K Ctrl+H) is left to Visual Studio Code', async () => {
 			key(document.body, 'k', ctrl);
 			const chordEvent = key(document.body, keybindings.find, ctrl);
-			assert(!chordEvent.defaultPrevented, 'Git Graph handled the second keypress of the chord');
+			assert(!chordEvent.defaultPrevented, 'Git Map handled the second keypress of the chord');
 			assert(!document.querySelector('.findWidget').classList.contains('active'), 'The Find Widget was opened by the second keypress of the chord');
 			const event = key(document.body, keybindings.find, ctrl);
-			assert(event.defaultPrevented, 'Git Graph didn\'t handle its own keybinding outside of a chord');
+			assert(event.defaultPrevented, 'Git Map didn\'t handle its own keybinding outside of a chord');
 			await waitFor('the Find Widget to open', () => document.querySelector('.findWidget').classList.contains('active'));
 			key(document.getElementById('findInput'), 'Escape');
 			await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
@@ -274,7 +274,7 @@
 
 		await check('#792', 'Issue links using a custom URL scheme are opened (via the extension)', async () => {
 			const link = await waitFor('the issue link', () => Array.from(document.querySelectorAll('#cdv a.externalUrl')).find((elem) => elem.getAttribute('href').startsWith('gitgraph-e2e:')));
-			// If Git Graph doesn't handle the click, prevent the Webview from navigating to the link (which would unload this harness)
+			// If Git Map doesn't handle the click, prevent the Webview from navigating to the link (which would unload this harness)
 			let reachedSafetyNet = false, preventedBeforeSafetyNet = false;
 			const safetyNet = (e) => {
 				reachedSafetyNet = true;

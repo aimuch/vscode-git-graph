@@ -13,7 +13,7 @@
 			"url": "https://github.com/mhutchie"
 		}
 	],
-	"description": "View a Git Graph of your repository, and perform Git actions from the graph.",
+	"description": "View a graph of your repository's Git history, and perform Git actions from the graph.",
 	"keywords": [
 		"git",
 		"graph",
@@ -56,7 +56,7 @@
 		},
 		"commands": [
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.view",
 				"title": "%command.view.title%",
 				"icon": {
@@ -65,52 +65,52 @@
 				}
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.addGitRepository",
 				"title": "%command.addGitRepository.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.clearAvatarCache",
 				"title": "%command.clearAvatarCache.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.endAllWorkspaceCodeReviews",
 				"title": "%command.endAllWorkspaceCodeReviews.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.endSpecificWorkspaceCodeReview",
 				"title": "%command.endSpecificWorkspaceCodeReview.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.fetch",
 				"title": "%command.fetch.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.removeGitRepository",
 				"title": "%command.removeGitRepository.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.resumeWorkspaceCodeReview",
 				"title": "%command.resumeWorkspaceCodeReview.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.version",
 				"title": "%command.version.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.selectGraphColourPreset",
 				"title": "%command.selectGraphColourPreset.title%"
 			},
 			{
-				"category": "Git Graph",
+				"category": "Git Map",
 				"command": "git-graph.openFile",
 				"title": "%command.openFile.title%",
 				"icon": "$(go-to-file)",
@@ -119,7 +119,7 @@
 		],
 		"configuration": {
 			"type": "object",
-			"title": "Git Graph",
+			"title": "Git Map",
 			"properties": {
 				"git-graph.commitDetailsView.autoCenter": {
 					"type": "boolean",

@@ -64,7 +64,7 @@ export class AskpassManager extends Disposable {
 		req.on('data', (d) => reqData += d);
 		req.on('end', () => {
 			let data = JSON.parse(reqData) as AskpassRequest;
-			vscode.window.showInputBox({ placeHolder: data.request, prompt: 'Git Graph: ' + data.host, password: /password/i.test(data.request), ignoreFocusOut: true }).then(result => {
+			vscode.window.showInputBox({ placeHolder: data.request, prompt: 'Git Map: ' + data.host, password: /password/i.test(data.request), ignoreFocusOut: true }).then(result => {
 				res.writeHead(200);
 				res.end(JSON.stringify(result || ''));
 			}, () => {
@@ -76,7 +76,7 @@ export class AskpassManager extends Disposable {
 
 	public getEnv(): AskpassEnvironment {
 		if (isExternalAskpassConfigured()) {
-			// Respect the Askpass program that the environment Git Graph is running in has been configured to use (e.g. by a remote development environment), instead of replacing it with Git Graph's integrated Askpass
+			// Respect the Askpass program that the environment Git Map is running in has been configured to use (e.g. by a remote development environment), instead of replacing it with Git Map's integrated Askpass
 			return {};
 		}
 
@@ -95,7 +95,7 @@ export class AskpassManager extends Disposable {
 }
 
 /**
- * Check whether the environment Git Graph is running in has been configured with an external Askpass program (i.e. GIT_ASKPASS is set, and doesn't refer to the Askpass of Visual Studio Code or Git Graph, which can be inherited from an Integrated Terminal).
+ * Check whether the environment Git Map is running in has been configured with an external Askpass program (i.e. GIT_ASKPASS is set, and doesn't refer to the Askpass of Visual Studio Code or Git Map, which can be inherited from an Integrated Terminal).
  * @returns TRUE => An external Askpass program is configured, FALSE => No external Askpass program is configured.
  */
 function isExternalAskpassConfigured() {

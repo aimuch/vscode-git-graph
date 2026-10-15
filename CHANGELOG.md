@@ -2,6 +2,7 @@
 
 ## 2.0.0 - Unreleased
 This release continues development from the last upstream release (1.30.0), adapting Git Graph to the latest versions of Visual Studio Code, and fixing reported issues. All fixes are covered by the new end-to-end test suite (`npm run test-e2e`), which runs Git Graph in a real instance of Visual Studio Code (verified with Visual Studio Code 1.141.2 & 1.142.0). The major version is incremented to distinguish this fork's releases from the upstream 1.x releases.
+* The extension is named Git Map: the Status Bar Item, the title of the view's tab, the commands ("Git Map: ..."), the category of its settings, and its messages use the new name. The identifiers of its commands & settings (`git-graph.*`) are unchanged, so existing settings keep working.
 * Redesigned Git Graph View:
     * The control bar stays at the top of the view while scrolling. The Repo / Branches / Authors dropdowns show their label inside the dropdown, and are highlighted while they filter the commits. New "Jump to HEAD" button.
     * Taller rows, rounded branch & tag labels tinted with the colour of their branch (dashed for remote branches), author initials (when avatars aren't fetched), and the commit hash in a monospace font. Colours follow the Visual Studio Code theme (list, button, input & widget colours).

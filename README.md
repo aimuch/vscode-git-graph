@@ -1,14 +1,14 @@
 # Git Map
 
-View a Git Graph of your repository, and easily perform Git actions from the graph. Configurable to look the way you want!
+View a graph of your repository's Git history, and easily perform Git actions from the graph. Configurable to look the way you want!
 
 > This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-map`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
 
-![Recording of Git Graph](resources/demo.gif)
+![Recording of Git Map](resources/demo.gif)
 
 ## Features
 
-* Git Graph View:
+* Git Map View:
     * A minimap of the activity of the loaded commits, markers alongside the scrollbar (HEAD, branches, tags & find matches), and highlighting of the branch of the commit under the mouse.
     * Find commits by text, or with the search operators `author:` (`@:`), `message:` (`=:`) and `commit:` (`#:`).
     * Display:
@@ -40,7 +40,7 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
     * Hover over any commit vertex on the graph to see a tooltip indicating:
         * Whether the commit is included in the HEAD.
         * Which branches, tags and stashes include the commit. 
-    * Filter the branches shown in Git Graph using the 'Branches' dropdown menu. The options for filtering the branches are:
+    * Filter the branches shown in Git Map using the 'Branches' dropdown menu. The options for filtering the branches are:
         * Show All branches
         * Select one or more branches to be viewed
         * Select from a user predefined array of custom glob patterns (by setting `git-graph.customBranchGlobPatterns`)
@@ -52,15 +52,15 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
         * Configure "Pull Request Creation" - Automates the opening and pre-filling of a Pull Request form, directly from a branches context menu.
             * Support for the publicly hosted Bitbucket, GitHub and GitLab Pull Request providers is built-in.
             * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
-        * Export your Git Graph Repository Configuration to a file that can be committed in the repository. It allows others working in the same repository to automatically use the same Git Graph configuration.
-    * Keyboard Shortcuts (available in the Git Graph View):
+        * Export your Git Map Repository Configuration to a file that can be committed in the repository. It allows others working in the same repository to automatically use the same Git Map configuration.
+    * Keyboard Shortcuts (available in the Git Map View):
         * `CTRL/CMD + F`: Open the Find Widget.
-        * `CTRL/CMD + H`: Scrolls the Git Graph View to be centered on the commit referenced by HEAD.
-        * `CTRL/CMD + R`: Refresh the Git Graph View.
-        * `CTRL/CMD + S`: Scrolls the Git Graph View to the first (or next) stash in the loaded commits.
-        * `CTRL/CMD + SHIFT + S`: Scrolls the Git Graph View to the last (or previous) stash in the loaded commits.
+        * `CTRL/CMD + H`: Scrolls the Git Map View to be centered on the commit referenced by HEAD.
+        * `CTRL/CMD + R`: Refresh the Git Map View.
+        * `CTRL/CMD + S`: Scrolls the Git Map View to the first (or next) stash in the loaded commits.
+        * `CTRL/CMD + SHIFT + S`: Scrolls the Git Map View to the last (or previous) stash in the loaded commits.
         * When the Commit Details View is open on a commit:
-            * `Up` / `Down`: The Commit Details View will be opened on the commit directly above or below it on the Git Graph View.
+            * `Up` / `Down`: The Commit Details View will be opened on the commit directly above or below it on the Git Map View.
             * `CTRL/CMD + Up` / `CTRL/CMD + Down`: The Commit Details View will be opened on its child or parent commit on the same branch.
                 * If the Shift Key is also pressed (i.e. `CTRL/CMD + SHIFT + Up` / `CTRL/CMD + SHIFT + Down`), when branches or merges are encountered the alternative branch is followed.
         * `Enter`: If a dialog is open, pressing enter submits the dialog, taking the primary (left) action.
@@ -68,45 +68,45 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
     * Resize the width of each column, and show/hide the Date, Author & Commit columns.
     * Common Emoji Shortcodes are automatically replaced with the corresponding emoji in commit messages (including all [gitmoji](https://gitmoji.carloscuesta.me/)). Custom Emoji Shortcode mappings can be defined in `git-graph.customEmojiShortcodeMappings`.
 * A broad range of configurable settings (e.g. graph style, branch colours, and more...). See the 'Extension Settings' section below for more information.
-* "Git Graph" launch button in the Status Bar
-* "Git Graph: View Git Graph" launch command in the Command Palette
+* "Git Map" launch button in the Status Bar
+* "Git Map: View Git Map" launch command in the Command Palette
 
 ## Extension Settings
 
 Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md).
 
-A summary of the Git Graph extension settings are:
+A summary of the Git Map extension settings are:
 * **Commit Details View**:
     * **Auto Center**: Automatically center the Commit Details View when it is opened.
     * **File View**:
         * **File Tree**:
             * **Compact Folders**: Render the File Tree in the Commit Details View in a compacted form, such that folders with a single child folder are compressed into a single combined folder element.
         * **Type**: Sets the default type of File View used in the Commit Details View.
-    * **Location**: Specifies where the Commit Details View is rendered in the Git Graph View: Inline (below the commit), Docked to Bottom, or Docked to Right (default).
+    * **Location**: Specifies where the Commit Details View is rendered in the Git Map View: Inline (below the commit), Docked to Bottom, or Docked to Right (default).
 * **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#context-menu-actions-visibility).
 * **Custom Branch Glob Patterns**: An array of Custom Glob Patterns to be shown in the "Branches" dropdown. Example: `[{"name":"Feature Requests", "glob":"heads/feature/*"}]`
 * **Custom Emoji Shortcode Mappings**: An array of custom Emoji Shortcode mappings. Example: `[{"shortcode": ":sparkles:", "emoji":"✨"}]`
 * **Custom Pull Request Providers**: An array of custom Pull Request providers that can be used in the "Pull Request Creation" Integration. For information on how to configure this setting, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
 * **Date**:
-    * **Format**: Specifies the date format to be used in the "Date" column on the Git Graph View.
-    * **Type**: Specifies the date type to be displayed in the "Date" column on the Git Graph View, either the author or commit date.
+    * **Format**: Specifies the date format to be used in the "Date" column on the Git Map View.
+    * **Type**: Specifies the date type to be displayed in the "Date" column on the Git Map View, either the author or commit date.
 * **Default Column Visibility**: An object specifying the default visibility of the Date, Author & Commit columns. Example: `{"Date": true, "Author": true, "Commit": true}`
 * **Dialog > \***: Set the default options on the following dialogs: Add Tag, Apply Stash, Cherry Pick, Create Branch, Delete Branch, Fetch into Local Branch, Fetch Remote, Merge, Pop Stash, Pull Branch, Rebase, Reset, and Stash Uncommitted Changes
-* **Enhanced Accessibility**: Visual file change A|M|D|R|U indicators in the Commit Details View for users with colour blindness. In the future, this setting will enable any additional accessibility related features of Git Graph that aren't enabled by default.
+* **Enhanced Accessibility**: Visual file change A|M|D|R|U indicators in the Commit Details View for users with colour blindness. In the future, this setting will enable any additional accessibility related features of Git Map that aren't enabled by default.
 * **File Encoding**: The character set encoding used when retrieving a specific version of repository files (e.g. in the Diff View). A list of all supported encodings can be found [here](https://github.com/ashtuchkin/iconv-lite/wiki/Supported-Encodings).
 * **Graph**:
-    * **Minimap**: Show a minimap of the activity of the loaded commits at the top of the Git Graph View (default: enabled).
-    * **Colour Preset**: Specifies the colour preset used on the graph: Default (the colours of the "Colours" setting), Pastel, Vivid, High Contrast, Colour Blind Safe or Tokyo Subway. It can also be selected with the "Git Graph: Select Graph Colour Preset..." command.
+    * **Minimap**: Show a minimap of the activity of the loaded commits at the top of the Git Map View (default: enabled).
+    * **Colour Preset**: Specifies the colour preset used on the graph: Default (the colours of the "Colours" setting), Pastel, Vivid, High Contrast, Colour Blind Safe or Tokyo Subway. It can also be selected with the "Git Map: Select Graph Colour Preset..." command.
     * **Colours**: Specifies the colours used on the graph.
     * **Style**: Specifies the style of the graph.
     * **Uncommitted Changes**: Specifies how the Uncommitted Changes are displayed on the graph.
-* **Integrated Terminal Shell**: Specifies the path and filename of the Shell executable to be used by the Visual Studio Code Integrated Terminal, when it is opened by Git Graph.
-* **Keyboard Shortcut > \***: Configures the keybindings used for all keyboard shortcuts in the Git Graph View.
-* **Language**: Specifies the language that Git Graph is displayed in: Auto (the display language of Visual Studio Code, default), English or Simplified Chinese. The descriptions of Git Graph's commands and settings always follow the display language of Visual Studio Code.
+* **Integrated Terminal Shell**: Specifies the path and filename of the Shell executable to be used by the Visual Studio Code Integrated Terminal, when it is opened by Git Map.
+* **Keyboard Shortcut > \***: Configures the keybindings used for all keyboard shortcuts in the Git Map View.
+* **Language**: Specifies the language that Git Map is displayed in: Auto (the display language of Visual Studio Code, default), English or Simplified Chinese. The descriptions of Git Map's commands and settings always follow the display language of Visual Studio Code.
 * **Markdown**: Parse and render a frequently used subset of inline Markdown formatting rules in commit messages and tag details (bold, italics, bold & italics, and inline code blocks).
 * **Max Depth Of Repo Search**: Specifies the maximum depth of subfolders to search when discovering repositories in the workspace.
-* **Open New Tab Editor Group**: Specifies the Editor Group where Git Graph should open new tabs, when performing the following actions from the Git Graph View: Viewing the Visual Studio Code Diff View, Opening a File, Viewing a File at a Specific Revision.
-* **Open to the Repo of the Active Text Editor Document**: Open the Git Graph View to the repository containing the active Text Editor document.
+* **Open New Tab Editor Group**: Specifies the Editor Group where Git Map should open new tabs, when performing the following actions from the Git Map View: Viewing the Visual Studio Code Diff View, Opening a File, Viewing a File at a Specific Revision.
+* **Open to the Repo of the Active Text Editor Document**: Open the Git Map View to the repository containing the active Text Editor document.
 * **Reference Labels**:
     * **Alignment**: Specifies how branch and tag reference labels are aligned for each commit.
     * **Combine Local and Remote Branch Labels**: Combine local and remote branch labels if they refer to the same branch, and are on the same commit.
@@ -119,33 +119,33 @@ A summary of the Git Graph extension settings are:
         * **Mute**:
             * **Commits that are not ancestors of HEAD**: Display commits that aren't ancestors of the checked-out branch / commit with a muted text color.
             * **Merge Commits**: Display merge commits with a muted text color.
-        * **Order**: Specifies the order of commits on the Git Graph View. See [git log](https://git-scm.com/docs/git-log#_commit_ordering) for more information on each order option.
+        * **Order**: Specifies the order of commits on the Git Map View. See [git log](https://git-scm.com/docs/git-log#_commit_ordering) for more information on each order option.
         * **Show Signature Status**: Show the commit's signature status to the right of the Committer in the Commit Details View (only for signed commits). Hovering over the signature icon displays a tooltip with the signature details.
-    * **Fetch and Prune**: Before fetching from remote(s) using the Fetch button on the Git Graph View Control Bar, remove any remote-tracking references that no longer exist on the remote(s).
-    * **Fetch And Prune Tags**: Before fetching from remote(s) using the Fetch button on the Git Graph View Control Bar, remove any local tags that no longer exist on the remote(s).
-    * **Include Commits Mentioned By Reflogs**: Include commits only mentioned by reflogs in the Git Graph View (only applies when showing all branches).
+    * **Fetch and Prune**: Before fetching from remote(s) using the Fetch button on the Git Map View Control Bar, remove any remote-tracking references that no longer exist on the remote(s).
+    * **Fetch And Prune Tags**: Before fetching from remote(s) using the Fetch button on the Git Map View Control Bar, remove any local tags that no longer exist on the remote(s).
+    * **Include Commits Mentioned By Reflogs**: Include commits only mentioned by reflogs in the Git Map View (only applies when showing all branches).
     * **On Load**:
-        * **Scroll To Head**: Automatically scroll the Git Graph View to be centered on the commit referenced by HEAD.
-        * **Show Checked Out Branch**: Show the checked out branch when a repository is loaded in the Git Graph View.
-        * **Show Specific Branches**: Show specific branches when a repository is loaded in the Git Graph View.
-    * **Only Follow First Parent**: Only follow the first parent of commits when discovering the commits to load in the Git Graph View. See [--first-parent](https://git-scm.com/docs/git-log#Documentation/git-log.txt---first-parent) to find out more about this setting.
-    * **Show Commits Only Referenced By Tags**: Show Commits that are only referenced by tags in Git Graph.
-    * **Show Remote Branches**: Show Remote Branches in Git Graph by default.
-    * **Show Remote Heads**: Show Remote HEAD Symbolic References in Git Graph.
-    * **Show Stashes**: Show Stashes in Git Graph by default.
-    * **Show Tags**: Show Tags in Git Graph by default.
-    * **Show Uncommitted Changes**: Show uncommitted changes. If you work on large repositories, disabling this setting can reduce the load time of the Git Graph View.
-    * **Show Untracked Files**: Show untracked files when viewing the uncommitted changes. If you work on large repositories, disabling this setting can reduce the load time of the Git Graph View.
+        * **Scroll To Head**: Automatically scroll the Git Map View to be centered on the commit referenced by HEAD.
+        * **Show Checked Out Branch**: Show the checked out branch when a repository is loaded in the Git Map View.
+        * **Show Specific Branches**: Show specific branches when a repository is loaded in the Git Map View.
+    * **Only Follow First Parent**: Only follow the first parent of commits when discovering the commits to load in the Git Map View. See [--first-parent](https://git-scm.com/docs/git-log#Documentation/git-log.txt---first-parent) to find out more about this setting.
+    * **Show Commits Only Referenced By Tags**: Show Commits that are only referenced by tags in Git Map.
+    * **Show Remote Branches**: Show Remote Branches in Git Map by default.
+    * **Show Remote Heads**: Show Remote HEAD Symbolic References in Git Map.
+    * **Show Stashes**: Show Stashes in Git Map by default.
+    * **Show Tags**: Show Tags in Git Map by default.
+    * **Show Uncommitted Changes**: Show uncommitted changes. If you work on large repositories, disabling this setting can reduce the load time of the Git Map View.
+    * **Show Untracked Files**: Show untracked files when viewing the uncommitted changes. If you work on large repositories, disabling this setting can reduce the load time of the Git Map View.
     * **Sign**:
         * **Commits**: Enables commit signing with GPG or X.509.
         * **Tags**: Enables tag signing with GPG or X.509.
     * **Use Mailmap**: Respect [.mailmap](https://git-scm.com/docs/git-check-mailmap#_mapping_authors) files when displaying author & committer names and email addresses.
-* **Repository Dropdown Order**: Specifies the order that repositories are sorted in the repository dropdown on the Git Graph View (only visible when more than one repository exists in the current Visual Studio Code Workspace).
-* **Retain Context When Hidden**: Specifies if the Git Graph view Visual Studio Code context is kept when the panel is no longer visible (e.g. moved to background tab). Enabling this setting will make Git Graph load significantly faster when switching back to the Git Graph tab, however has a higher memory overhead.
-* **Show Status Bar Item**: Show a Status Bar Item that opens the Git Graph View when clicked.
-* **Status Bar Item Display**: Specifies what the Status Bar Item displays: the Git Graph icon and text (default), only the icon, or only the text.
-* **Source Code Provider Integration Location**: Specifies where the "View Git Graph" action appears on the title of SCM Providers.
-* **Tab Icon Colour Theme**: Specifies the colour theme of the icon displayed on the Git Graph tab.
+* **Repository Dropdown Order**: Specifies the order that repositories are sorted in the repository dropdown on the Git Map View (only visible when more than one repository exists in the current Visual Studio Code Workspace).
+* **Retain Context When Hidden**: Specifies if the Git Map view Visual Studio Code context is kept when the panel is no longer visible (e.g. moved to background tab). Enabling this setting will make Git Map load significantly faster when switching back to the Git Map tab, however has a higher memory overhead.
+* **Show Status Bar Item**: Show a Status Bar Item that opens the Git Map View when clicked.
+* **Status Bar Item Display**: Specifies what the Status Bar Item displays: the Git Map icon and text (default), only the icon, or only the text.
+* **Source Code Provider Integration Location**: Specifies where the "View Git Map" action appears on the title of SCM Providers.
+* **Tab Icon Colour Theme**: Specifies the colour theme of the icon displayed on the Git Map tab.
 
 This extension consumes the following settings:
 
@@ -155,15 +155,15 @@ This extension consumes the following settings:
 
 This extension contributes the following commands:
 
-* `git-graph.view`: Git Graph: View Git Graph
-* `git-graph.addGitRepository`: Git Graph: Add Git Repository... _(used to add sub-repos to Git Graph)_
-* `git-graph.clearAvatarCache`: Git Graph: Clear Avatar Cache
-* `git-graph.endAllWorkspaceCodeReviews`: Git Graph: End All Code Reviews in Workspace
-* `git-graph.endSpecificWorkspaceCodeReview`: Git Graph: End a specific Code Review in Workspace... _(used to end a specific Code Review without having to first open it in the Git Graph View)_
-* `git-graph.fetch`: Git Graph: Fetch from Remote(s) _(used to open the Git Graph View and immediately run "Fetch from Remote(s)")_
-* `git-graph.removeGitRepository`: Git Graph: Remove Git Repository... _(used to remove repositories from Git Graph)_
-* `git-graph.resumeWorkspaceCodeReview`: Git Graph: Resume a specific Code Review in Workspace... _(used to open the Git Graph View to a Code Review that is already in progress)_
-* `git-graph.version`: Git Graph: Get Version Information
+* `git-graph.view`: Git Map: View Git Map
+* `git-graph.addGitRepository`: Git Map: Add Git Repository... _(used to add sub-repos to Git Map)_
+* `git-graph.clearAvatarCache`: Git Map: Clear Avatar Cache
+* `git-graph.endAllWorkspaceCodeReviews`: Git Map: End All Code Reviews in Workspace
+* `git-graph.endSpecificWorkspaceCodeReview`: Git Map: End a specific Code Review in Workspace... _(used to end a specific Code Review without having to first open it in the Git Map View)_
+* `git-graph.fetch`: Git Map: Fetch from Remote(s) _(used to open the Git Map View and immediately run "Fetch from Remote(s)")_
+* `git-graph.removeGitRepository`: Git Map: Remove Git Repository... _(used to remove repositories from Git Map)_
+* `git-graph.resumeWorkspaceCodeReview`: Git Map: Resume a specific Code Review in Workspace... _(used to open the Git Map View to a Code Review that is already in progress)_
+* `git-graph.version`: Git Map: Get Version Information
 
 ## Release Notes
 
@@ -185,7 +185,7 @@ This extension is based on, includes, or takes ideas from the following projects
 
 * [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)): The original extension. This fork is based on its 1.30.0 release, and is subject to the terms of its [LICENSE](LICENSE).
 * [GitLens](https://github.com/gitkraken/vscode-gitlens) by GitKraken (created by Eric Amodio): Ideas for features & the design of the user interface. No GitLens code is included.
-* [Visual Studio Code](https://github.com/microsoft/vscode) by Microsoft: Its Git extension is the base of Git Graph's integrated Askpass ([License](licenses/LICENSE_MICROSOFT)).
+* [Visual Studio Code](https://github.com/microsoft/vscode) by Microsoft: Its Git extension is the base of Git Map's integrated Askpass ([License](licenses/LICENSE_MICROSOFT)).
 * [GitHub Octicons](https://github.com/primer/octicons): Icons ([License](licenses/LICENSE_OCTICONS)).
 * [Icons8](https://icons8.com/icon/pack/free-icons/ios11): Icons ([License](https://icons8.com/license)).
 * [iconv-lite](https://github.com/pillarjs/iconv-lite): Decoding of files in character set encodings other than UTF-8 ([License](https://github.com/pillarjs/iconv-lite/blob/master/LICENSE)).

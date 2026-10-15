@@ -4,7 +4,7 @@ interface SettingsWidgetState {
 }
 
 /**
- * Implements the Git Graph View's Settings Widget.
+ * Implements the Git Map View's Settings Widget.
  */
 class SettingsWidget {
 	private readonly view: GitGraphView;
@@ -21,7 +21,7 @@ class SettingsWidget {
 
 	/**
 	 * Construct a new SettingsWidget instance.
-	 * @param view The Git Graph View that the SettingsWidget is for.
+	 * @param view The Git Map View that the SettingsWidget is for.
 	 * @returns The SettingsWidget instance.
 	 */
 	constructor(view: GitGraphView) {
@@ -239,8 +239,8 @@ class SettingsWidget {
 				html += '</div>';
 			}
 
-			html += '<div class="settingsSection"><h3>' + t('Git Graph Configuration') + '</h3><div class="settingsSectionButtons">' +
-				'<div id="openExtensionSettings">' + SVG_ICONS.gear + t('Open Git Graph Extension Settings') + '</div><br/>' +
+			html += '<div class="settingsSection"><h3>' + t('Git Map Configuration') + '</h3><div class="settingsSectionButtons">' +
+				'<div id="openExtensionSettings">' + SVG_ICONS.gear + t('Open Git Map Extension Settings') + '</div><br/>' +
 				'<div id="exportRepositoryConfig">' + SVG_ICONS.package + t('Export Repository Configuration') + '</div>' +
 				'</div></div>';
 
@@ -274,7 +274,7 @@ class SettingsWidget {
 				if (this.repo === null) return;
 				const showCheckedOutBranch = getOnRepoLoadShowCheckedOutBranch(this.repo.onRepoLoadShowCheckedOutBranch);
 				const showSpecificBranches = getOnRepoLoadShowSpecificBranches(this.repo.onRepoLoadShowSpecificBranches);
-				dialog.showForm('<b>' + t('Configure Initial Branches') + '</b><p style="margin:6px 0;">' + t('Configure the branches that are initially shown when this repository is loaded in the Git Graph View.') + '</p><p style="font-size:12px; margin:6px 0 0 0;">' + t('Note: When "Checked Out Branch" is Disabled, and no "Specific Branches" are selected, all branches will be shown.') + '</p>', [
+				dialog.showForm('<b>' + t('Configure Initial Branches') + '</b><p style="margin:6px 0;">' + t('Configure the branches that are initially shown when this repository is loaded in the Git Map View.') + '</p><p style="font-size:12px; margin:6px 0 0 0;">' + t('Note: When "Checked Out Branch" is Disabled, and no "Specific Branches" are selected, all branches will be shown.') + '</p>', [
 					{ type: DialogInputType.Checkbox, name: t('Checked Out Branch'), value: showCheckedOutBranch },
 					{ type: DialogInputType.Select, name: t('Specific Branches'), options: this.view.getBranchOptions(), defaults: showSpecificBranches, multiple: true }
 				], t('Save Configuration'), (values) => {
@@ -289,7 +289,7 @@ class SettingsWidget {
 
 			if (initialBranchesLocallyConfigured) {
 				document.getElementById('clearInitialBranches')!.addEventListener('click', () => {
-					dialog.showConfirmation(t('Are you sure you want to clear the branches that are initially shown when this repository is loaded in the Git Graph View?'), t('Yes, clear'), () => {
+					dialog.showConfirmation(t('Are you sure you want to clear the branches that are initially shown when this repository is loaded in the Git Map View?'), t('Yes, clear'), () => {
 						if (this.currentRepo === null) return;
 						this.view.saveRepoStateValue(this.currentRepo, 'onRepoLoadShowCheckedOutBranch', GG.BooleanOverride.Default);
 						this.view.saveRepoStateValue(this.currentRepo, 'onRepoLoadShowSpecificBranches', null);
@@ -466,7 +466,7 @@ class SettingsWidget {
 				document.getElementById('removeIssueLinking')!.addEventListener('click', () => {
 					if (this.repo === null) return;
 					const locallyConfigured = this.repo.issueLinkingConfig !== null;
-					dialog.showConfirmation(t('Are you sure you want to remove {0}?', (locallyConfigured ? (globalState.issueLinkingConfig !== null ? t('the <b>locally configured</b> ') : '') + t('Issue Linking from this repository') : t('the <b>globally configured</b> Issue Linking in Git Graph'))), t('Yes, remove'), () => {
+					dialog.showConfirmation(t('Are you sure you want to remove {0}?', (locallyConfigured ? (globalState.issueLinkingConfig !== null ? t('the <b>locally configured</b> ') : '') + t('Issue Linking from this repository') : t('the <b>globally configured</b> Issue Linking in Git Map'))), t('Yes, remove'), () => {
 						this.setIssueLinkingConfig(null, !locallyConfigured);
 					}, null);
 				});
@@ -523,7 +523,7 @@ class SettingsWidget {
 			});
 
 			document.getElementById('exportRepositoryConfig')!.addEventListener('click', () => {
-				dialog.showConfirmation(t('Exporting the Git Graph Repository Configuration will generate a file that can be committed in this repository. It allows others working in this repository to use the same configuration.'), t('Yes, export'), () => {
+				dialog.showConfirmation(t('Exporting the Git Map Repository Configuration will generate a file that can be committed in this repository. It allows others working in this repository to use the same configuration.'), t('Yes, export'), () => {
 					if (this.currentRepo === null) return;
 					runAction({ command: 'exportRepoConfig', repo: this.currentRepo }, t('Exporting Repository Configuration'));
 				}, null);

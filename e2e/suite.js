@@ -1,8 +1,8 @@
 /**
  * End-to-End Test Suite - Runs inside the Extension Host of a real instance of Visual Studio Code (see ./run.js).
  *
- * The checks drive Git Graph the way a user does (running its commands, and the messages exchanged between the
- * Git Graph View's Webview and the extension), against real Git repositories. Each check writes its result to the
+ * The checks drive Git Map the way a user does (running its commands, and the messages exchanged between the
+ * Git Map View's Webview and the extension), against real Git repositories. Each check writes its result to the
  * report, so that the run can be verified & repeated.
  */
 const cp = require('child_process');
@@ -59,7 +59,7 @@ function realpath(p) {
 }
 
 /**
- * Instrument the Git Graph View, recording the messages exchanged between its Webview and the extension.
+ * Instrument the Git Map View, recording the messages exchanged between its Webview and the extension.
  */
 function instrumentGitGraphView(extensionPath) {
 	const { GitGraphView } = require(path.join(extensionPath, 'out', 'gitGraphView.js'));
@@ -86,7 +86,7 @@ function instrumentGitGraphView(extensionPath) {
 }
 
 function getGitGraphTabs() {
-	return vscode.window.tabGroups.all.flatMap((group) => group.tabs).filter((tab) => tab.input instanceof vscode.TabInputWebview && tab.label === 'Git Graph');
+	return vscode.window.tabGroups.all.flatMap((group) => group.tabs).filter((tab) => tab.input instanceof vscode.TabInputWebview && tab.label === 'Git Map');
 }
 
 /**
@@ -106,33 +106,33 @@ function marker(record) {
 
 async function run() {
 	const extension = vscode.extensions.getExtension('aimdev.git-map');
-	assert(extension, 'The Git Graph extension is not loaded');
+	assert(extension, 'The Git Map extension is not loaded');
 	const { GitGraphView, record } = instrumentGitGraphView(extension.extensionPath);
 	await extension.activate();
 
 	const main = realpath(fixtures.main), sub = realpath(fixtures.sub), wt = realpath(fixtures.wt);
 
-	// Get the open Git Graph View (opening it if a previous check failed to), so that each check is independent of the others
+	// Get the open Git Map View (opening it if a previous check failed to), so that each check is independent of the others
 	const getView = async () => {
 		if (!GitGraphView.currentPanel) await vscode.commands.executeCommand('git-graph.view');
-		return waitFor('the Git Graph View to open', () => GitGraphView.currentPanel);
+		return waitFor('the Git Map View to open', () => GitGraphView.currentPanel);
 	};
 
-	await check('activation', 'Git Graph activates in this version of Visual Studio Code (onStartupFinished)', async () => {
+	await check('activation', 'Git Map activates in this version of Visual Studio Code (onStartupFinished)', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
 		assert(extension.isActive, 'The extension is not active');
 		assert(JSON.stringify(packageJson.activationEvents) === '["onStartupFinished"]', 'Unexpected activation events: ' + JSON.stringify(packageJson.activationEvents));
 		return 'Visual Studio Code ' + vscode.version + ', engines.vscode ' + packageJson.engines.vscode;
 	});
 
-	await check('#903', '"View Git Graph" is contributed to the scm/repository menu (Source Control Repositories view)', async () => {
+	await check('#903', '"View Git Map" is contributed to the scm/repository menu (Source Control Repositories view)', async () => {
 		const menus = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8')).contributes.menus;
 		const repositoryMenu = menus['scm/repository'] || [];
 		assert(repositoryMenu.some((item) => item.command === 'git-graph.view' && item.group === 'inline' && item.when.includes('\'Inline\'')), 'No inline scm/repository menu item');
 		assert(repositoryMenu.some((item) => item.command === 'git-graph.view' && item.group !== 'inline' && item.when.includes('\'More Actions\'')), 'No "More Actions" scm/repository menu item');
 	});
 
-	await check('status-bar', 'The Status Bar Item displays the Git Graph icon and / or text, as configured by git-graph.statusBarItemDisplay', async () => {
+	await check('status-bar', 'The Status Bar Item displays the Git Map icon and / or text, as configured by git-graph.statusBarItemDisplay', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
 		const icon = packageJson.contributes.icons['git-graph-logo'];
 		assert(icon && fs.statSync(path.join(extension.extensionPath, icon.default.fontPath)).size > 0, 'The git-graph-logo icon font is missing');
@@ -154,14 +154,14 @@ async function run() {
 			statusBarItem.dispose();
 			logger.dispose();
 		}
-		assert(texts['Icon'] === '$(git-graph-logo)' && texts['Text'] === 'Git Graph' && texts['Icon & Text'] === '$(git-graph-logo) Git Graph', 'Unexpected texts: ' + JSON.stringify(texts));
+		assert(texts['Icon'] === '$(git-graph-logo)' && texts['Text'] === 'Git Map' && texts['Icon & Text'] === '$(git-graph-logo) Git Map', 'Unexpected texts: ' + JSON.stringify(texts));
 		return JSON.stringify(texts);
 	});
 
-	await check('#794', 'The "View Git Graph" command opens the view when invoked with a null argument', async () => {
+	await check('#794', 'The "View Git Map" command opens the view when invoked with a null argument', async () => {
 		const since = marker(record);
 		await vscode.commands.executeCommand('git-graph.view', null);
-		await waitFor('the Git Graph View to open', () => GitGraphView.currentPanel && getGitGraphTabs().length === 1, 10000);
+		await waitFor('the Git Map View to open', () => GitGraphView.currentPanel && getGitGraphTabs().length === 1, 10000);
 		// The Webview's script runs & requests the repositories, i.e. the Webview's resources load in this version of Visual Studio Code
 		await waitFor('the Webview to request data', () => record.requests.slice(since.requests).some((msg) => msg.command === 'loadRepoInfo'));
 		return 'Webview requests: ' + Array.from(new Set(record.requests.map((msg) => msg.command))).join(', ');
@@ -221,7 +221,7 @@ async function run() {
 		const reflogBefore = git(main, 'reflog', '--format=%gs').split('\n').length;
 		const error = await dataSource.rebase(main, fixtures.injectionBranch, 'Branch', false, true);
 		assert(error === null, 'Rebase returned an error: ' + error);
-		const terminal = vscode.window.terminals.find((terminal) => terminal.name === 'Git Graph: Rebase on "' + fixtures.injectionBranch + '"');
+		const terminal = vscode.window.terminals.find((terminal) => terminal.name === 'Git Map: Rebase on "' + fixtures.injectionBranch + '"');
 		assert(terminal, 'The interactive rebase terminal was not opened');
 		// The rebase runs in the Integrated Terminal, wait for it to finish
 		await waitFor('the interactive rebase to finish', () => {
@@ -258,8 +258,8 @@ async function run() {
 		assert(!remoteRefs().includes('refs/heads/asd') && remoteRefs().includes('refs/tags/asd'), 'Unexpected remote refs after deleting the branch: ' + remoteRefs().join(', '));
 	});
 
-	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Graph\'s', async () => {
-		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Graph\'s own Askpass prompt would wait for input)');
+	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
+		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');
 		assert(fs.existsSync(fixtures.askpassLog), 'The external Askpass program was not invoked. Fetch result: ' + result);
 		const prompts = fs.readFileSync(fixtures.askpassLog, 'utf8').trim().split('\n');
@@ -275,7 +275,7 @@ async function run() {
 			let since = marker(record);
 			await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(repo) });
 			await waitForCommitsLoaded(record, repo, since);
-			await sleep(2500); // File events are muted for 1.5 seconds after the Git Graph View has run Git commands
+			await sleep(2500); // File events are muted for 1.5 seconds after the Git Map View has run Git commands
 
 			since = marker(record);
 			git(repo, 'commit', '-q', '--allow-empty', '-m', 'Commit made outside of Visual Studio Code');
@@ -287,11 +287,11 @@ async function run() {
 		});
 	}
 
-	await check('#775', 'Selecting a graph colour preset re-renders the open Git Graph View with the preset\'s colours', async () => {
+	await check('#775', 'Selecting a graph colour preset re-renders the open Git Map View with the preset\'s colours', async () => {
 		const commands = await vscode.commands.getCommands(true);
 		assert(commands.includes('git-graph.selectGraphColourPreset'), 'The "Select Graph Colour Preset" command is not registered');
 		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
-		await waitFor('the Git Graph View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
+		await waitFor('the Git Map View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
 		const colourOf = (html) => (html.match(/--git-graph-color0:([^;]+);/) || [])[1];
 		try {
 			const renders = record.html.length;
@@ -306,7 +306,7 @@ async function run() {
 		return 'Tokyo Subway → --git-graph-color0: #f62e36, Default → #0085d9';
 	});
 
-	// Webview UI checks: run ./webview-harness.js inside a copy of the Git Graph View's HTML, in a real Webview of this version of Visual Studio Code
+	// Webview UI checks: run ./webview-harness.js inside a copy of the Git Map View's HTML, in a real Webview of this version of Visual Studio Code
 	const runWebviewHarness = async (html, titlePrefix) => {
 		const start = Date.now();
 		try {
@@ -314,7 +314,7 @@ async function run() {
 			const harness = fs.readFileSync(path.join(__dirname, 'webview-harness.js'), 'utf8');
 			const harnessHtml = html.replace(/<script nonce="[^"]+" src=/, (match) => '<script nonce="' + nonce + '">' + harness + '</script>' + match);
 
-			const panel = vscode.window.createWebviewPanel('git-graph-e2e-harness', 'Git Graph (E2E UI Harness)', vscode.ViewColumn.One, {
+			const panel = vscode.window.createWebviewPanel('git-graph-e2e-harness', 'Git Map (E2E UI Harness)', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join(extension.extensionPath, 'media'))]
 			});
@@ -332,9 +332,9 @@ async function run() {
 	await getView();
 	await runWebviewHarness(await waitFor('the Webview HTML', () => record.html.slice().reverse().find((html) => html.includes('id="view"'))), '[Webview UI] ');
 
-	// Display the Git Graph View, Status Bar Item & Webview UI in Simplified Chinese (git-graph.language), as a user who has set it would see them
+	// Display the Git Map View, Status Bar Item & Webview UI in Simplified Chinese (git-graph.language), as a user who has set it would see them
 	let chineseHtml = null;
-	await check('l10n', 'Setting git-graph.language to Simplified Chinese re-renders the open Git Graph View & Status Bar Item in Simplified Chinese', async () => {
+	await check('l10n', 'Setting git-graph.language to Simplified Chinese re-renders the open Git Map View & Status Bar Item in Simplified Chinese', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
 		const nlsKeys = (file) => Object.keys(JSON.parse(fs.readFileSync(path.join(extension.extensionPath, file), 'utf8')));
 		const placeholders = Array.from(new Set(JSON.stringify(packageJson.contributes).match(/"%[^"%]+%"/g).map((key) => key.slice(2, -2))));
@@ -347,14 +347,14 @@ async function run() {
 		const onDidChangeRepos = new EventEmitter(), onDidChangeConfiguration = new EventEmitter(), logger = new Logger();
 		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
 		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
-		await waitFor('the Git Graph View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
+		await waitFor('the Git Map View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
 		try {
 			const tooltipBefore = statusBarItem.statusBarItem.tooltip;
 			const renders = record.html.length;
 			await vscode.workspace.getConfiguration('git-graph').update('language', 'Simplified Chinese', vscode.ConfigurationTarget.Global);
 			onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-graph' || section === 'git-graph.language' });
 			chineseHtml = await waitFor('the view to be re-rendered', () => record.html.slice(renders).find((html) => html.includes('id="view"')));
-			assert(tooltipBefore === 'View Git Graph' && statusBarItem.statusBarItem.tooltip === '查看 Git Graph', 'Unexpected Status Bar Item tooltips: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip);
+			assert(tooltipBefore === 'View Git Map' && statusBarItem.statusBarItem.tooltip === '查看 Git Map', 'Unexpected Status Bar Item tooltips: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip);
 			assert(chineseHtml.includes('<html lang="zh-CN">'), 'The view isn\'t marked as Simplified Chinese');
 			assert(chineseHtml.includes('仓库：') && chineseHtml.includes('"l10n":{'), 'The view wasn\'t rendered with the Simplified Chinese translations');
 			return placeholders.length + ' contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip;
@@ -366,7 +366,7 @@ async function run() {
 	if (chineseHtml !== null) {
 		await runWebviewHarness(chineseHtml, '[Webview UI, 简体中文] ');
 	}
-	await check('l10n-reset', 'Resetting git-graph.language re-renders the open Git Graph View in the display language of Visual Studio Code (English)', async () => {
+	await check('l10n-reset', 'Resetting git-graph.language re-renders the open Git Map View in the display language of Visual Studio Code (English)', async () => {
 		await getView();
 		const renders = record.html.length;
 		await vscode.workspace.getConfiguration('git-graph').update('language', undefined, vscode.ConfigurationTarget.Global);

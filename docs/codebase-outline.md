@@ -1,24 +1,24 @@
 # Codebase Outline
 
-Git Graph has two parts that communicate with messages: the extension (`src/`, runs in the Visual Studio Code Extension Host), and the Git Graph View's front-end (`web/`, runs in a Webview). The messages exchanged between them are typed in `src/types.ts` (`RequestMessage` & `ResponseMessage`), which is shared by both parts.
+Git Map has two parts that communicate with messages: the extension (`src/`, runs in the Visual Studio Code Extension Host), and the Git Map View's front-end (`web/`, runs in a Webview). The messages exchanged between them are typed in `src/types.ts` (`RequestMessage` & `ResponseMessage`), which is shared by both parts.
 
 ## Extension (`src/`)
 
 | File | Responsibility |
 |---|---|
 | `extension.ts` | Activation: creates the components below, and registers them for disposal. |
-| `commands.ts` | The commands contributed to the Command Palette (e.g. "Git Graph: View Git Graph"). |
-| `gitGraphView.ts` | The Git Graph View's Webview panel: its HTML & initial state, and the handling of every message from the front-end. |
+| `commands.ts` | The commands contributed to the Command Palette (e.g. "Git Map: View Git Map"). |
+| `gitGraphView.ts` | The Git Map View's Webview panel: its HTML & initial state, and the handling of every message from the front-end. |
 | `dataSource.ts` | Runs Git commands, and parses their output (commits, refs, config, etc.). |
 | `repoManager.ts` | Discovers the repositories in the workspace, and keeps their state. |
 | `repoFileWatcher.ts` | Watches a repository (including its Git directory) to refresh the view when it changes. |
 | `extensionState.ts` | State persisted by Visual Studio Code: repository state, Code Reviews, avatars, etc. |
 | `avatarManager.ts` | Fetches & caches the avatars of commit authors (when enabled). |
 | `diffDocProvider.ts` | Provides the contents of files at a revision to the Visual Studio Code Diff View. |
-| `statusBarItem.ts` | The Git Graph Status Bar Item. |
+| `statusBarItem.ts` | The Git Map Status Bar Item. |
 | `config.ts` | Typed access to the `git-graph.*` Extension Settings. |
 | `l10n.ts` | Translation of messages (see [Localisation](#localisation)). |
-| `askpass/` | Git Graph's integrated Askpass, which prompts for credentials needed by Git. |
+| `askpass/` | Git Map's integrated Askpass, which prompts for credentials needed by Git. |
 | `utils.ts`, `utils/` | Shared helpers (Visual Studio Code APIs, Git executable discovery, events, disposables, queues). |
 
 ## Front-end (`web/`)
@@ -42,7 +42,7 @@ Messages are translated with `t('English message {0}', ...args)` in both parts; 
 ## Tests
 
 * `tests/`: Unit tests (Jest), with Visual Studio Code mocked by `tests/mocks/vscode.ts`. Run with `npm run test`.
-* `e2e/`: End-to-end tests, run in a real instance of Visual Studio Code against real Git repositories. `e2e/webview-harness.js` drives the Git Graph View's UI in a real Webview. Run with `npm run test-e2e` (after `npm run compile`); the report is written to `e2e/.artifacts/report.json`.
+* `e2e/`: End-to-end tests, run in a real instance of Visual Studio Code against real Git repositories. `e2e/webview-harness.js` drives the Git Map View's UI in a real Webview. Run with `npm run test-e2e` (after `npm run compile`); the report is written to `e2e/.artifacts/report.json`.
 
 ## Build & Release
 

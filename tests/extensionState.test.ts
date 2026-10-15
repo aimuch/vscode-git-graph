@@ -515,7 +515,7 @@ describe('ExtensionState', () => {
 
 			// Assert
 			expect(extensionContext.globalState.update).toHaveBeenCalledWith('globalViewState', globalViewState);
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Global State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Global State Memento.');
 		});
 	});
 
@@ -605,7 +605,7 @@ describe('ExtensionState', () => {
 
 			// Assert
 			expect(extensionContext.workspaceState.update).toHaveBeenCalledWith('workspaceViewState', workspaceViewState);
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Workspace State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Workspace State Memento.');
 		});
 	});
 
@@ -660,7 +660,7 @@ describe('ExtensionState', () => {
 
 			// Assert
 			expect(extensionContext.workspaceState.update).toHaveBeenCalledWith('ignoredRepos', ignoreRepos);
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Workspace State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Workspace State Memento.');
 		});
 	});
 
@@ -926,7 +926,7 @@ describe('ExtensionState', () => {
 			const result = await extensionState.clearAvatarCache();
 
 			// Assert
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Global State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Global State Memento.');
 			expect(extensionContext.globalState.update).toHaveBeenCalledWith('avatarCache', {});
 			expect(spyOnReaddir).not.toHaveBeenCalled();
 		});
@@ -1016,7 +1016,7 @@ describe('ExtensionState', () => {
 			const result = await extensionState.startCodeReview('/path/to/repo', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', ['file2.txt', 'file3.txt'], 'file1.txt');
 
 			// Assert
-			expect(result.error).toBe('Visual Studio Code was unable to save the Git Graph Workspace State Memento.');
+			expect(result.error).toBe('Visual Studio Code was unable to save the Git Map Workspace State Memento.');
 		});
 	});
 
@@ -1126,7 +1126,7 @@ describe('ExtensionState', () => {
 			const result = await extensionState.endCodeReview('/path/to/repo', 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2');
 
 			// Assert
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Workspace State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Workspace State Memento.');
 		});
 	});
 
@@ -1332,7 +1332,7 @@ describe('ExtensionState', () => {
 			const result = await extensionState.updateCodeReview(repo, id, ['file3.txt'], 'file2.txt');
 
 			// Asset
-			expect(result).toBe('Visual Studio Code was unable to save the Git Graph Workspace State Memento.');
+			expect(result).toBe('Visual Studio Code was unable to save the Git Map Workspace State Memento.');
 		});
 	});
 

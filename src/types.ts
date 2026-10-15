@@ -221,13 +221,13 @@ export interface GitRepoState {
 }
 
 
-/* Git Graph View Types */
+/* Git Map View Types */
 
 export type L10nBundle = { readonly [message: string]: string };
 
 export interface GitGraphViewInitialState {
 	readonly config: GitGraphViewConfig;
-	readonly l10n: L10nBundle | null; // The translations of the messages displayed by the Git Graph View (NULL => English)
+	readonly l10n: L10nBundle | null; // The translations of the messages displayed by the Git Map View (NULL => English)
 	readonly lastActiveRepo: string | null;
 	readonly loadViewTo: LoadGitGraphViewTo;
 	readonly repos: GitRepoSet;

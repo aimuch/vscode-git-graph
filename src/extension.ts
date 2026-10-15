@@ -13,12 +13,12 @@ import { EventEmitter } from './utils/event';
 import { t } from './l10n';
 
 /**
- * Activate Git Graph.
+ * Activate Git Map.
  * @param context The context of the extension.
  */
 export async function activate(context: vscode.ExtensionContext) {
 	const logger = new Logger();
-	logger.log('Starting Git Graph ...');
+	logger.log('Starting Git Map ...');
 
 	const gitExecutableEmitter = new EventEmitter<GitExecutable>();
 	const onDidChangeGitExecutable = gitExecutableEmitter.subscribe;
@@ -57,8 +57,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 				getGitExecutableFromPaths(paths).then((gitExecutable) => {
 					gitExecutableEmitter.emit(gitExecutable);
-					showInformationMessage(t('Git Graph is now using {0} (version: {1})', gitExecutable.path, gitExecutable.version));
-					logger.log('Git Graph is now using ' + gitExecutable.path + ' (version: ' + gitExecutable.version + ')');
+					showInformationMessage(t('Git Map is now using {0} (version: {1})', gitExecutable.path, gitExecutable.version));
+					logger.log('Git Map is now using ' + gitExecutable.path + ' (version: ' + gitExecutable.version + ')');
 					repoManager.searchWorkspaceForRepos();
 				}, () => {
 					const msg = 'The new value of "git.path" ("' + paths.join('", "') + '") does not ' + (paths.length > 1 ? 'contain a string that matches' : 'match') + ' the path and filename of a valid Git executable.';
@@ -80,12 +80,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		gitExecutableEmitter,
 		logger
 	);
-	logger.log('Started Git Graph - Ready to use!');
+	logger.log('Started Git Map - Ready to use!');
 
 	extensionState.expireOldCodeReviews();
 }
 
 /**
- * Deactivate Git Graph.
+ * Deactivate Git Map.
  */
 export function deactivate() { }

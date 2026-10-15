@@ -21,8 +21,8 @@ export class DiffDocProvider extends Disposable implements vscode.TextDocumentCo
 	private readonly onDidChangeEventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
 	/**
-	 * Creates the Git Graph Diff Document Provider.
-	 * @param dataSource The Git Graph DataSource instance.
+	 * Creates the Git Map Diff Document Provider.
+	 * @param dataSource The Git Map DataSource instance.
 	 */
 	constructor(dataSource: DataSource) {
 		super();

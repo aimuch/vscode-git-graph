@@ -213,7 +213,7 @@ class GitGraphView {
 				this.loadViewTo = loadViewTo;
 			} else {
 				this.loadViewTo = null;
-				showErrorMessage(t('Unable to load the Git Graph View for the repository "{0}". It is not currently included in Git Graph.', loadViewTo.repo));
+				showErrorMessage(t('Unable to load the Git Map View for the repository "{0}". It is not currently included in Git Map.', loadViewTo.repo));
 			}
 		} else {
 			this.loadViewTo = null;
@@ -1326,7 +1326,7 @@ class GitGraphView {
 				title: t('Drop') + ELLIPSIS,
 				visible: visibility.drop && this.graph.dropCommitPossible(this.commitLookup[hash]),
 				onClick: () => {
-					dialog.showConfirmation(t('Are you sure you want to permanently drop commit <b><i>{0}</i></b>?{1}', abbrevCommit(hash), (this.onlyFollowFirstParent ? t('<br/><i>Note: By enabling "Only follow the first parent of commits", some commits may have been hidden from the Git Graph View that could affect the outcome of performing this action.</i>') : '')), t('Yes, drop'), () => {
+					dialog.showConfirmation(t('Are you sure you want to permanently drop commit <b><i>{0}</i></b>?{1}', abbrevCommit(hash), (this.onlyFollowFirstParent ? t('<br/><i>Note: By enabling "Only follow the first parent of commits", some commits may have been hidden from the Git Map View that could affect the outcome of performing this action.</i>') : '')), t('Yes, drop'), () => {
 						runAction({ command: 'dropCommit', repo: this.currentRepo, commitHash: hash }, t('Dropping Commit'));
 					}, target);
 				}
@@ -2192,7 +2192,7 @@ class GitGraphView {
 	}
 
 	private observeKeyboardEvents() {
-		// The time at which a Ctrl / Cmd keybinding that wasn't handled by Git Graph was pressed. Visual Studio Code may treat it as the first part of a keybinding chord (e.g. Ctrl+K Ctrl+S), so Git Graph doesn't handle the next keypress (which Visual Studio Code is waiting for).
+		// The time at which a Ctrl / Cmd keybinding that wasn't handled by Git Map was pressed. Visual Studio Code may treat it as the first part of a keybinding chord (e.g. Ctrl+K Ctrl+S), so Git Map doesn't handle the next keypress (which Visual Studio Code is waiting for).
 		let possibleChordStart = 0;
 		window.addEventListener('blur', () => {
 			possibleChordStart = 0;

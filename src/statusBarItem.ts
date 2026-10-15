@@ -8,7 +8,7 @@ import { Event } from './utils/event';
 import { t } from './l10n';
 
 /**
- * Manages the Git Graph Status Bar Item, which allows users to open the Git Graph View from the Visual Studio Code Status Bar.
+ * Manages the Git Map Status Bar Item, which allows users to open the Git Map View from the Visual Studio Code Status Bar.
  */
 export class StatusBarItem extends Disposable {
 	private readonly logger: Logger;
@@ -17,18 +17,18 @@ export class StatusBarItem extends Disposable {
 	private numRepos: number = 0;
 
 	/**
-	 * Creates the Git Graph Status Bar Item.
-	 * @param repoManager The Git Graph RepoManager instance.
-	 * @param logger The Git Graph Logger instance.
+	 * Creates the Git Map Status Bar Item.
+	 * @param repoManager The Git Map RepoManager instance.
+	 * @param logger The Git Map Logger instance.
 	 */
 	constructor(initialNumRepos: number, onDidChangeRepos: Event<RepoChangeEvent>, onDidChangeConfiguration: Event<vscode.ConfigurationChangeEvent>, logger: Logger) {
 		super();
 		this.logger = logger;
 
 		const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
-		statusBarItem.name = 'Git Graph';
+		statusBarItem.name = 'Git Map';
 		statusBarItem.text = getStatusBarItemText();
-		statusBarItem.tooltip = t('View Git Graph');
+		statusBarItem.tooltip = t('View Git Map');
 		statusBarItem.command = 'git-graph.view';
 		this.statusBarItem = statusBarItem;
 
@@ -44,7 +44,7 @@ export class StatusBarItem extends Disposable {
 					this.statusBarItem.text = getStatusBarItemText();
 				}
 				if (event.affectsConfiguration('git-graph.language')) {
-					this.statusBarItem.tooltip = t('View Git Graph');
+					this.statusBarItem.tooltip = t('View Git Map');
 				}
 			}),
 			statusBarItem
@@ -54,8 +54,8 @@ export class StatusBarItem extends Disposable {
 	}
 
 	/**
-	 * Sets the number of repositories known to Git Graph, before refreshing the Status Bar Item.
-	 * @param numRepos The number of repositories known to Git Graph.
+	 * Sets the number of repositories known to Git Map, before refreshing the Status Bar Item.
+	 * @param numRepos The number of repositories known to Git Map.
 	 */
 	private setNumRepos(numRepos: number) {
 		this.numRepos = numRepos;
@@ -63,17 +63,17 @@ export class StatusBarItem extends Disposable {
 	}
 
 	/**
-	 * Show or hide the Status Bar Item according to the configured value of `git-graph.showStatusBarItem`, and the number of repositories known to Git Graph.
+	 * Show or hide the Status Bar Item according to the configured value of `git-graph.showStatusBarItem`, and the number of repositories known to Git Map.
 	 */
 	private refresh() {
 		const shouldBeVisible = getConfig().showStatusBarItem && this.numRepos > 0;
 		if (this.isVisible !== shouldBeVisible) {
 			if (shouldBeVisible) {
 				this.statusBarItem.show();
-				this.logger.log('Showing "Git Graph" Status Bar Item');
+				this.logger.log('Showing "Git Map" Status Bar Item');
 			} else {
 				this.statusBarItem.hide();
-				this.logger.log('Hiding "Git Graph" Status Bar Item');
+				this.logger.log('Hiding "Git Map" Status Bar Item');
 			}
 			this.isVisible = shouldBeVisible;
 		}
@@ -82,15 +82,15 @@ export class StatusBarItem extends Disposable {
 
 /**
  * Get the text of the Status Bar Item, according to the configured value of `git-graph.statusBarItemDisplay`.
- * @returns The text, using the `git-graph-logo` icon contributed by Git Graph.
+ * @returns The text, using the `git-graph-logo` icon contributed by Git Map.
  */
 function getStatusBarItemText() {
 	switch (getConfig().statusBarItemDisplay) {
 		case StatusBarItemDisplay.Icon:
 			return '$(git-graph-logo)';
 		case StatusBarItemDisplay.Text:
-			return 'Git Graph';
+			return 'Git Map';
 		default:
-			return '$(git-graph-logo) Git Graph';
+			return '$(git-graph-logo) Git Map';
 	}
 }

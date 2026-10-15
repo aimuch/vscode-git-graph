@@ -16,7 +16,7 @@ interface MinimapMarker {
 }
 
 /**
- * Implements the Minimap of the Git Graph View: the number of loaded commits each day (or week / month when the commits span a long time),
+ * Implements the Minimap of the Git Map View: the number of loaded commits each day (or week / month when the commits span a long time),
  * where HEAD, branches & tags are, and the commits that are currently visible. Clicking on a day scrolls to its commits.
  */
 class Minimap {
@@ -100,7 +100,7 @@ class Minimap {
 
 		const maxCount = Math.max.apply(null, this.buckets.map((bucket) => bucket.count));
 		const left = (bucketIndex: number) => ((bucketIndex + 0.5) / this.buckets.length * 100).toFixed(3) + '%';
-		this.elem.innerHTML = '<span class="minimapTitle">' + t('Activity') + '</span>'
+		this.elem.innerHTML = '<span class="minimapTitle" title="' + escapeHtml(t('The number of commits each day (or week / month). The markers above show where HEAD (circle), branches (squares in the colour of their branch) & tags (diamonds) are. The box shows when the commits that are visible in the view were made. Click on a bar to scroll to its commits.')) + '">' + t('Activity') + '</span>'
 			+ '<div class="minimapChart">'
 			+ '<div class="minimapMarkers">' + markers.map((marker) => '<span class="minimapMarker ' + marker.kind + '" style="left:' + left(marker.bucket) + ';background-color:' + escapeHtml(marker.colour) + '" title="' + escapeHtml(marker.title) + '"></span>').join('') + '</div>'
 			+ '<div class="minimapBars">' + this.buckets.map((bucket, i) => '<span class="minimapBar' + (bucket.count > 0 ? '' : ' empty') + '" data-index="' + i + '" title="' + escapeHtml(this.getBucketLabel(bucket) + ': ' + t('{0} commits', bucket.count)) + '" style="height:' + (bucket.count > 0 ? 3 + Math.round((MINIMAP_BAR_MAX_HEIGHT - 3) * Math.sqrt(bucket.count / maxCount)) : 1) + 'px"></span>').join('') + '</div>'
@@ -146,7 +146,7 @@ class Minimap {
 
 
 /**
- * Implements the markers on the right edge of the Git Graph View (alongside its scrollbar), that show where HEAD, branches, tags, stashes
+ * Implements the markers on the right edge of the Git Map View (alongside its scrollbar), that show where HEAD, branches, tags, stashes
  * & find matches are in the loaded commits.
  */
 class ScrollMarkers {
@@ -155,7 +155,7 @@ class ScrollMarkers {
 
 	/**
 	 * Construct a new ScrollMarkers instance.
-	 * @param viewElem The scrolling element of the Git Graph View.
+	 * @param viewElem The scrolling element of the Git Map View.
 	 */
 	constructor(viewElem: HTMLElement) {
 		this.viewElem = viewElem;

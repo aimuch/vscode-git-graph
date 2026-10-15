@@ -61,7 +61,7 @@ export interface CodeReviewData {
 export type CodeReviews = { [repo: string]: { [id: string]: CodeReviewData } };
 
 /**
- * Manages the Git Graph Extension State, which stores data in both the Visual Studio Code Global & Workspace State.
+ * Manages the Git Map Extension State, which stores data in both the Visual Studio Code Global & Workspace State.
  */
 export class ExtensionState extends Disposable {
 	private readonly globalState: vscode.Memento;
@@ -70,9 +70,9 @@ export class ExtensionState extends Disposable {
 	private avatarStorageAvailable: boolean = false;
 
 	/**
-	 * Creates the Git Graph Extension State.
+	 * Creates the Git Map Extension State.
 	 * @param context The context of the extension.
-	 * @param onDidChangeGitExecutable The Event emitting the Git executable for Git Graph to use.
+	 * @param onDidChangeGitExecutable The Event emitting the Git executable for Git Map to use.
 	 */
 	constructor(context: vscode.ExtensionContext, onDidChangeGitExecutable: Event<GitExecutable>) {
 		super();
@@ -157,7 +157,7 @@ export class ExtensionState extends Disposable {
 	/* Global View State */
 
 	/**
-	 * Get the global state of the Git Graph View.
+	 * Get the global state of the Git Map View.
 	 * @returns The global state.
 	 */
 	public getGlobalViewState() {
@@ -166,7 +166,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Set the global state of the Git Graph View.
+	 * Set the global state of the Git Map View.
 	 * @param state The global state.
 	 */
 	public setGlobalViewState(state: GitGraphViewGlobalState) {
@@ -177,7 +177,7 @@ export class ExtensionState extends Disposable {
 	/* Workspace View State */
 
 	/**
-	 * Get the workspace state of the Git Graph View.
+	 * Get the workspace state of the Git Map View.
 	 * @returns The workspace state.
 	 */
 	public getWorkspaceViewState() {
@@ -186,7 +186,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Set the workspace state of the Git Graph View.
+	 * Set the workspace state of the Git Map View.
 	 * @param state The workspace state.
 	 */
 	public setWorkspaceViewState(state: GitGraphViewWorkspaceState) {
@@ -235,7 +235,7 @@ export class ExtensionState extends Disposable {
 	/* Last Known Git Path */
 
 	/**
-	 * Get the last known path of the Git executable used by Git Graph.
+	 * Get the last known path of the Git executable used by Git Map.
 	 * @returns The path of the Git executable.
 	 */
 	public getLastKnownGitPath() {
@@ -243,7 +243,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Set the last known path of the Git executable used by Git Graph.
+	 * Set the last known path of the Git executable used by Git Map.
 	 * @param path The path of the Git executable.
 	 */
 	private setLastKnownGitPath(path: string) {
@@ -262,7 +262,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Gets the path that is used to store avatars globally in Git Graph.
+	 * Gets the path that is used to store avatars globally in Git Map.
 	 * @returns The folder path.
 	 */
 	public getAvatarStoragePath() {
@@ -270,7 +270,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Gets the cache of avatars known to Git Graph.
+	 * Gets the cache of avatars known to Git Map.
 	 * @returns The avatar cache.
 	 */
 	public getAvatarCache() {
@@ -278,7 +278,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Add a new avatar to the cache of avatars known to Git Graph.
+	 * Add a new avatar to the cache of avatars known to Git Map.
 	 * @param email The email address that the avatar is for.
 	 * @param avatar The details of the avatar.
 	 */
@@ -289,7 +289,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Removes an avatar from the cache of avatars known to Git Graph.
+	 * Removes an avatar from the cache of avatars known to Git Map.
 	 * @param email The email address of the avatar to remove.
 	 */
 	public removeAvatarFromCache(email: string) {
@@ -299,7 +299,7 @@ export class ExtensionState extends Disposable {
 	}
 
 	/**
-	 * Clear all avatars from the cache of avatars known to Git Graph.
+	 * Clear all avatars from the cache of avatars known to Git Map.
 	 * @returns A Thenable resolving to the ErrorInfo that resulted from executing this method.
 	 */
 	public clearAvatarCache() {
@@ -439,7 +439,7 @@ export class ExtensionState extends Disposable {
 	/* Update State Memento's */
 
 	/**
-	 * Update the Git Graph Global State with a new <key, value> pair.
+	 * Update the Git Map Global State with a new <key, value> pair.
 	 * @param key The key.
 	 * @param value The value.
 	 * @returns A Thenable resolving to the ErrorInfo that resulted from updating the Global State.
@@ -447,12 +447,12 @@ export class ExtensionState extends Disposable {
 	private updateGlobalState(key: string, value: any): Thenable<ErrorInfo> {
 		return this.globalState.update(key, value).then(
 			() => null,
-			() => t('Visual Studio Code was unable to save the Git Graph Global State Memento.')
+			() => t('Visual Studio Code was unable to save the Git Map Global State Memento.')
 		);
 	}
 
 	/**
-	 * Update the Git Graph Workspace State with a new <key, value> pair.
+	 * Update the Git Map Workspace State with a new <key, value> pair.
 	 * @param key The key.
 	 * @param value The value.
 	 * @returns A Thenable resolving to the ErrorInfo that resulted from updating the Workspace State.
@@ -460,7 +460,7 @@ export class ExtensionState extends Disposable {
 	private updateWorkspaceState(key: string, value: any): Thenable<ErrorInfo> {
 		return this.workspaceState.update(key, value).then(
 			() => null,
-			() => t('Visual Studio Code was unable to save the Git Graph Workspace State Memento.')
+			() => t('Visual Studio Code was unable to save the Git Map Workspace State Memento.')
 		);
 	}
 }

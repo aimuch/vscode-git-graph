@@ -21,7 +21,7 @@ const FIND_OPERATORS: { readonly [operator: string]: 'author' | 'message' | 'com
 };
 
 /**
- * Implements the Git Graph View's Find Widget.
+ * Implements the Git Map View's Find Widget.
  */
 class FindWidget {
 	private readonly view: GitGraphView;
@@ -40,7 +40,7 @@ class FindWidget {
 
 	/**
 	 * Construct a new FindWidget instance.
-	 * @param view The Git Graph View that the FindWidget is for.
+	 * @param view The Git Map View that the FindWidget is for.
 	 * @returns The FindWidget instance.
 	 */
 	constructor(view: GitGraphView) {

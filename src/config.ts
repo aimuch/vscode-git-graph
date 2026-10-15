@@ -53,7 +53,7 @@ const VIEW_COLUMN_MAPPING: { [column: string]: vscode.ViewColumn } = {
 };
 
 /**
- * Represents the users configuration of Git Graph Extension Settings.
+ * Represents the users configuration of Git Map Extension Settings.
  */
 class Config {
 	private readonly config: vscode.WorkspaceConfiguration;
@@ -659,7 +659,7 @@ class Config {
 }
 
 /**
- * Get a Config instance for retrieving the users configuration of Git Graph Extension Settings.
+ * Get a Config instance for retrieving the users configuration of Git Map Extension Settings.
  * @param repo An optional path of a repository (to be used for Workspace Folder Scoped Configuration Values).
  * @returns A Config instance.
  */

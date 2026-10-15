@@ -1,7 +1,7 @@
 /**
  * End-to-End Test Runner
  *
- * Builds fixture Git repositories, launches a real instance of Visual Studio Code with Git Graph loaded from this
+ * Builds fixture Git repositories, launches a real instance of Visual Studio Code with Git Map loaded from this
  * folder, and runs ./suite.js inside its Extension Host. Visual Studio Code runs with an isolated user data directory
  * & extensions directory, so the user's own profile is never touched.
  *

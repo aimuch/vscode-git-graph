@@ -26,10 +26,10 @@ export class AvatarManager extends Disposable {
 	private gitLabTimeout: number = 0;
 
 	/**
-	 * Creates the Git Graph Avatar Manager.
-	 * @param dataSource The Git Graph DataSource instance.
-	 * @param extensionState The Git Graph ExtensionState instance.
-	 * @param logger The Git Graph Logger instance.
+	 * Creates the Git Map Avatar Manager.
+	 * @param dataSource The Git Map DataSource instance.
+	 * @param extensionState The Git Map ExtensionState instance.
+	 * @param logger The Git Map Logger instance.
 	 */
 	constructor(dataSource: DataSource, extensionState: ExtensionState, logger: Logger) {
 		super();
@@ -443,10 +443,10 @@ export class AvatarManager extends Disposable {
 		this.logger.log('Saved Avatar for ' + maskEmail(email));
 		this.emitAvatar(email).then(
 			(sent) => this.logger.log(sent
-				? 'Sent Avatar for ' + maskEmail(email) + ' to the Git Graph View'
-				: 'Avatar for ' + maskEmail(email) + ' is ready to be used the next time the Git Graph View is opened'
+				? 'Sent Avatar for ' + maskEmail(email) + ' to the Git Map View'
+				: 'Avatar for ' + maskEmail(email) + ' is ready to be used the next time the Git Map View is opened'
 			),
-			() => this.logger.log('Failed to Send Avatar for ' + maskEmail(email) + ' to the Git Graph View')
+			() => this.logger.log('Failed to Send Avatar for ' + maskEmail(email) + ' to the Git Map View')
 		);
 	}
 }

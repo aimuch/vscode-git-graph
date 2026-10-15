@@ -14,7 +14,7 @@ import { Event } from './utils/event';
 import { t } from './l10n';
 
 /**
- * Manages the registration and execution of Git Graph Commands.
+ * Manages the registration and execution of Git Map Commands.
  */
 export class CommandManager extends Disposable {
 	private readonly context: vscode.ExtensionContext;
@@ -26,15 +26,15 @@ export class CommandManager extends Disposable {
 	private gitExecutable: GitExecutable | null;
 
 	/**
-	 * Creates the Git Graph Command Manager.
+	 * Creates the Git Map Command Manager.
 	 * @param extensionPath The absolute file path of the directory containing the extension.
-	 * @param avatarManger The Git Graph AvatarManager instance.
-	 * @param dataSource The Git Graph DataSource instance.
-	 * @param extensionState The Git Graph ExtensionState instance.
-	 * @param repoManager The Git Graph RepoManager instance.
-	 * @param gitExecutable The Git executable available to Git Graph at startup.
-	 * @param onDidChangeGitExecutable The Event emitting the Git executable for Git Graph to use.
-	 * @param logger The Git Graph Logger instance.
+	 * @param avatarManger The Git Map AvatarManager instance.
+	 * @param dataSource The Git Map DataSource instance.
+	 * @param extensionState The Git Map ExtensionState instance.
+	 * @param repoManager The Git Map RepoManager instance.
+	 * @param gitExecutable The Git executable available to Git Map at startup.
+	 * @param onDidChangeGitExecutable The Event emitting the Git executable for Git Map to use.
+	 * @param logger The Git Map Logger instance.
 	 */
 	constructor(context: vscode.ExtensionContext, avatarManger: AvatarManager, dataSource: DataSource, extensionState: ExtensionState, repoManager: RepoManager, gitExecutable: GitExecutable | null, onDidChangeGitExecutable: Event<GitExecutable>, logger: Logger) {
 		super();
@@ -74,7 +74,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * Register a Git Graph command with Visual Studio Code.
+	 * Register a Git Map command with Visual Studio Code.
 	 * @param command A unique identifier for the command.
 	 * @param callback A command handler function.
 	 */
@@ -140,13 +140,13 @@ export class CommandManager extends Disposable {
 				if (isPathInWorkspace(path)) {
 					this.repoManager.registerRepo(path, false).then(status => {
 						if (status.error === null) {
-							showInformationMessage(t('The repository "{0}" was added to Git Graph.', status.root!));
+							showInformationMessage(t('The repository "{0}" was added to Git Map.', status.root!));
 						} else {
-							showErrorMessage(t('{0} Therefore it could not be added to Git Graph.', status.error));
+							showErrorMessage(t('{0} Therefore it could not be added to Git Map.', status.error));
 						}
 					});
 				} else {
-					showErrorMessage(t('The folder "{0}" is not within the opened Visual Studio Code workspace, and therefore could not be added to Git Graph.', path));
+					showErrorMessage(t('The folder "{0}" is not within the opened Visual Studio Code workspace, and therefore could not be added to Git Map.', path));
 				}
 			}
 		}, () => { });
@@ -168,14 +168,14 @@ export class CommandManager extends Disposable {
 		}));
 
 		vscode.window.showQuickPick(items, {
-			placeHolder: t('Select a repository to remove from Git Graph:'),
+			placeHolder: t('Select a repository to remove from Git Map:'),
 			canPickMany: false
 		}).then((item) => {
 			if (item && item.description !== undefined) {
 				if (this.repoManager.ignoreRepo(item.description)) {
-					showInformationMessage(t('The repository "{0}" was removed from Git Graph.', item.label));
+					showInformationMessage(t('The repository "{0}" was removed from Git Map.', item.label));
 				} else {
-					showErrorMessage(t('The repository "{0}" is not known to Git Graph.', item.label));
+					showErrorMessage(t('The repository "{0}" is not known to Git Map.', item.label));
 				}
 			}
 		}, () => { });
@@ -219,7 +219,7 @@ export class CommandManager extends Disposable {
 			}
 
 			vscode.window.showQuickPick(items, {
-				placeHolder: t('Select the repository you want to open in Git Graph, and fetch from remote(s):'),
+				placeHolder: t('Select the repository you want to open in Git Map, and fetch from remote(s):'),
 				canPickMany: false
 			}).then((item) => {
 				if (item && item.description) {
@@ -333,7 +333,7 @@ export class CommandManager extends Disposable {
 	private async version() {
 		try {
 			const gitGraphVersion = await getExtensionVersion(this.context);
-			const information = 'Git Graph: ' + gitGraphVersion + '\nVisual Studio Code: ' + vscode.version + '\nOS: ' + os.type() + ' ' + os.arch() + ' ' + os.release() + '\nGit: ' + (this.gitExecutable !== null ? this.gitExecutable.version : '(none)');
+			const information = 'Git Map: ' + gitGraphVersion + '\nVisual Studio Code: ' + vscode.version + '\nOS: ' + os.type() + ' ' + os.arch() + ' ' + os.release() + '\nGit: ' + (this.gitExecutable !== null ? this.gitExecutable.version : '(none)');
 			vscode.window.showInformationMessage(information, { modal: true }, t('Copy')).then((selectedItem) => {
 				if (selectedItem === t('Copy')) {
 					copyToClipboard(information).then((result) => {
@@ -349,14 +349,14 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * Opens a file in Visual Studio Code, based on a Git Graph URI (from the Diff View).
+	 * Opens a file in Visual Studio Code, based on a Git Map URI (from the Diff View).
 	 * The method run when the `git-graph.openFile` command is invoked.
-	 * @param arg The Git Graph URI.
+	 * @param arg The Git Map URI.
 	 */
 	private openFile(arg?: vscode.Uri) {
 		const uri = arg || vscode.window.activeTextEditor?.document.uri;
 		if (typeof uri === 'object' && uri && uri.scheme === DiffDocProvider.scheme) {
-			// A Git Graph URI has been provided
+			// A Git Map URI has been provided
 			const request = decodeDiffDocUri(uri);
 			return openFile(request.repo, request.filePath, request.commit, this.dataSource, vscode.ViewColumn.Active).then((errorInfo) => {
 				if (errorInfo !== null) {

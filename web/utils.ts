@@ -264,7 +264,7 @@ function formatCommaSeparatedList(items: string[]) {
 }
 
 /**
- * Translate a message into the language of the Git Graph View.
+ * Translate a message into the language of the Git Map View.
  * @param message The message (in English), which is also the key of its translations. It can contain placeholders ({0}, {1}, etc.) for the arguments.
  * @param args The arguments substituted into the message's placeholders.
  * @returns The translated message.

@@ -98,12 +98,12 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Graph', vscode.ViewColumn.Two, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.Two, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
 			});
-			expect(spyOnLog).toHaveBeenCalledWith('Created Git Graph View');
+			expect(spyOnLog).toHaveBeenCalledWith('Created Git Map View');
 		});
 
 		it('Should reveal the existing WebviewPanel (when one exists)', () => {
@@ -163,7 +163,7 @@ describe('GitGraphView', () => {
 
 			// Assert
 			const mockedWebviewPanel = vscode.getMockedWebviewPanel(0);
-			expect(spyOnLog).toHaveBeenCalledWith('Created Git Graph View (active repo: /path/to/repo)');
+			expect(spyOnLog).toHaveBeenCalledWith('Created Git Map View (active repo: /path/to/repo)');
 			expect(mockedWebviewPanel.panel.webview.html).toContain('"loadViewTo":{"repo":"/path/to/repo"}');
 		});
 
@@ -175,12 +175,12 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Graph', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
 			});
-			expect(spyOnLog).toHaveBeenCalledWith('Created Git Graph View');
+			expect(spyOnLog).toHaveBeenCalledWith('Created Git Map View');
 		});
 
 		it('Should construct a WebviewPanel with retainContextWhenHidden set to TRUE', () => {
@@ -191,12 +191,12 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Graph', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
 			});
-			expect(spyOnLog).toHaveBeenCalledWith('Created Git Graph View');
+			expect(spyOnLog).toHaveBeenCalledWith('Created Git Map View');
 		});
 
 		it('Should construct a WebviewPanel with retainContextWhenHidden set to FALSE', () => {
@@ -207,12 +207,12 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Graph', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: false
 			});
-			expect(spyOnLog).toHaveBeenCalledWith('Created Git Graph View');
+			expect(spyOnLog).toHaveBeenCalledWith('Created Git Map View');
 		});
 
 		it('Should construct a WebviewPanel with a colour icon', () => {
@@ -3571,7 +3571,7 @@ describe('GitGraphView', () => {
 					error: null
 				});
 				expect(spyOnLog).not.toHaveBeenCalled();
-				expect(spyOnLogError).toHaveBeenCalledWith('Unable to send "viewScm" message to the Git Graph View.');
+				expect(spyOnLogError).toHaveBeenCalledWith('Unable to send "viewScm" message to the Git Map View.');
 			});
 		});
 
@@ -3595,7 +3595,7 @@ describe('GitGraphView', () => {
 					command: 'viewScm',
 					error: null
 				});
-				expect(spyOnLog).toHaveBeenCalledWith('The Git Graph View was disposed while sending "viewScm" message.');
+				expect(spyOnLog).toHaveBeenCalledWith('The Git Map View was disposed while sending "viewScm" message.');
 				expect(spyOnLogError).not.toHaveBeenCalled();
 			});
 		});
@@ -3615,7 +3615,7 @@ describe('GitGraphView', () => {
 			// Assert
 			await waitForExpect(() => {
 				expect(mockedWebviewPanel.panel.webview.postMessage).not.toHaveBeenCalled();
-				expect(spyOnLog).toHaveBeenCalledWith('The Git Graph View has already been disposed, ignored sending "viewScm" message.');
+				expect(spyOnLog).toHaveBeenCalledWith('The Git Map View has already been disposed, ignored sending "viewScm" message.');
 				expect(spyOnLogError).not.toHaveBeenCalled();
 			});
 		});
@@ -3630,7 +3630,7 @@ describe('GitGraphView', () => {
 			const mockedWebviewPanel = vscode.getMockedWebviewPanel(0);
 			expect(mockedWebviewPanel.panel.webview.html).toContain('<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src vscode-webview-resource: \'unsafe-inline\'; script-src \'nonce-1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d\'; img-src data:;">');
 			expect(mockedWebviewPanel.panel.webview.html).toContain('<link rel="stylesheet" type="text/css" href="vscode-webview-resource://file///path/to/extension/media/out.min.css">');
-			expect(mockedWebviewPanel.panel.webview.html).toContain('<title>Git Graph</title>');
+			expect(mockedWebviewPanel.panel.webview.html).toContain('<title>Git Map</title>');
 			expect(mockedWebviewPanel.panel.webview.html).toContain('<style>body{--git-graph-color0:#0085d9; --git-graph-color1:#d9008f; --git-graph-color2:#00d90a; --git-graph-color3:#d98500; --git-graph-color4:#a300d9; --git-graph-color5:#ff0000; --git-graph-color6:#00d9cc; --git-graph-color7:#e138e8; --git-graph-color8:#85d900; --git-graph-color9:#dc5b23; --git-graph-color10:#6f24d6; --git-graph-color11:#ffcc00; } [data-color=\"0\"]{--git-graph-color:var(--git-graph-color0);} [data-color=\"1\"]{--git-graph-color:var(--git-graph-color1);} [data-color=\"2\"]{--git-graph-color:var(--git-graph-color2);} [data-color=\"3\"]{--git-graph-color:var(--git-graph-color3);} [data-color=\"4\"]{--git-graph-color:var(--git-graph-color4);} [data-color=\"5\"]{--git-graph-color:var(--git-graph-color5);} [data-color=\"6\"]{--git-graph-color:var(--git-graph-color6);} [data-color=\"7\"]{--git-graph-color:var(--git-graph-color7);} [data-color=\"8\"]{--git-graph-color:var(--git-graph-color8);} [data-color=\"9\"]{--git-graph-color:var(--git-graph-color9);} [data-color=\"10\"]{--git-graph-color:var(--git-graph-color10);} [data-color=\"11\"]{--git-graph-color:var(--git-graph-color11);} </style>');
 		});
 
@@ -3643,7 +3643,7 @@ describe('GitGraphView', () => {
 
 			// Assert
 			const mockedWebviewPanel = vscode.getMockedWebviewPanel(0);
-			expect(mockedWebviewPanel.panel.webview.html).toContain('<h2>Unable to load Git Graph</h2>');
+			expect(mockedWebviewPanel.panel.webview.html).toContain('<h2>Unable to load Git Map</h2>');
 			expect(mockedWebviewPanel.panel.webview.html).toContain(utils.UNABLE_TO_FIND_GIT_MSG);
 		});
 
@@ -3656,8 +3656,8 @@ describe('GitGraphView', () => {
 
 			// Assert
 			const mockedWebviewPanel = vscode.getMockedWebviewPanel(0);
-			expect(mockedWebviewPanel.panel.webview.html).toContain('<h2>Unable to load Git Graph</h2>');
-			expect(mockedWebviewPanel.panel.webview.html).toContain('No Git repositories were found in the current workspace when it was last scanned by Git Graph.');
+			expect(mockedWebviewPanel.panel.webview.html).toContain('<h2>Unable to load Git Map</h2>');
+			expect(mockedWebviewPanel.panel.webview.html).toContain('No Git repositories were found in the current workspace when it was last scanned by Git Map.');
 			expect(mockedWebviewPanel.panel.webview.html).toContain('<script nonce="1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d">');
 		});
 

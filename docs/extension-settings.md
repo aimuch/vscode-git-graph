@@ -1,10 +1,10 @@
 # Extension Settings
 
-Every Git Graph setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and summarised in the [README](../README.md#extension-settings). This page documents the settings that need more explanation than fits in a description.
+Every Git Map setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and summarised in the [README](../README.md#extension-settings). This page documents the settings that need more explanation than fits in a description.
 
 ## Context Menu Actions Visibility
 
-`git-graph.contextMenuActionsVisibility` customises which actions are displayed on Git Graph's context menus. It's an object keyed by context menu, each containing the actions to show (`true`) or hide (`false`). Actions that aren't specified are visible.
+`git-graph.contextMenuActionsVisibility` customises which actions are displayed on Git Map's context menus. It's an object keyed by context menu, each containing the actions to show (`true`) or hide (`false`). Actions that aren't specified are visible.
 
 For example, to hide "Rebase current branch on Branch..." from the branch context menu, and "Drop..." from the commit context menu:
 
@@ -84,17 +84,17 @@ The context menus, and the key of each of their actions:
 
 ## Max Depth of Repo Search
 
-`git-graph.maxDepthOfRepoSearch` (default: `0`) is how many levels of subfolders Git Graph searches when it discovers the repositories in the workspace:
+`git-graph.maxDepthOfRepoSearch` (default: `0`) is how many levels of subfolders Git Map searches when it discovers the repositories in the workspace:
 
 * `0`: Only the workspace folders themselves (and the repository that contains each of them).
 * `1`: The workspace folders, and their immediate subfolders.
 * `2` or more: Each further level of subfolders.
 
-Searching stops at the first repository found on each path, so repositories nested inside another repository (other than submodules) aren't discovered. They can be added with the command "Git Graph: Add Git Repository...". Larger values make the search slower in workspaces with many folders. Changing the setting triggers a new search.
+Searching stops at the first repository found on each path, so repositories nested inside another repository (other than submodules) aren't discovered. They can be added with the command "Git Map: Add Git Repository...". Larger values make the search slower in workspaces with many folders. Changing the setting triggers a new search.
 
 ## Custom Pull Request Providers
 
-The "Pull Request Creation" integration (configured in the Repository Settings of the Git Graph View) opens a pre-filled Pull Request form from a branch's context menu. Bitbucket, GitHub & GitLab are built-in. Other providers (e.g. a self-hosted Gitea or Azure DevOps Server) are added with `git-graph.customPullRequestProviders`, an array of providers, each with:
+The "Pull Request Creation" integration (configured in the Repository Settings of the Git Map View) opens a pre-filled Pull Request form from a branch's context menu. Bitbucket, GitHub & GitLab are built-in. Other providers (e.g. a self-hosted Gitea or Azure DevOps Server) are added with `git-graph.customPullRequestProviders`, an array of providers, each with:
 
 * `name`: A unique display name, which is listed as a provider in the Repository Settings.
 * `templateUrl`: The URL that creates a Pull Request, containing the variables below.
