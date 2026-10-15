@@ -1508,6 +1508,18 @@
 					"command": "git-graph.view",
 					"group": "inline"
 				}
+			],
+			"scm/repository": [
+				{
+					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'Inline'",
+					"command": "git-graph.view",
+					"group": "inline"
+				},
+				{
+					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'More Actions'",
+					"command": "git-graph.view",
+					"group": "navigation"
+				}
 			]
 		}
 	},

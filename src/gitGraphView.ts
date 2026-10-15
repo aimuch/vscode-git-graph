@@ -452,6 +452,11 @@ export class GitGraphView extends Disposable {
 					error: await this.dataSource.merge(msg.repo, msg.obj, msg.actionOn, msg.createNewCommit, msg.squash, msg.noCommit)
 				});
 				break;
+			case 'navigateEditorHistory':
+				if (vscode.workspace.getConfiguration('workbench.editor').get<boolean>('mouseBackForwardToNavigate', true)) {
+					vscode.commands.executeCommand(msg.forward ? 'workbench.action.navigateForward' : 'workbench.action.navigateBack').then(() => { }, () => { });
+				}
+				break;
 			case 'openExtensionSettings':
 				this.sendMessage({
 					command: 'openExtensionSettings',

@@ -107,7 +107,7 @@ export class CommandManager extends Disposable {
 	private async view(arg: any) {
 		let loadRepo: string | null = null;
 
-		if (typeof arg === 'object' && arg.rootUri) {
+		if (typeof arg === 'object' && arg !== null && arg.rootUri) {
 			// If command is run from the Visual Studio Code Source Control View, load the specific repo
 			const repoPath = getPathFromUri(arg.rootUri);
 			loadRepo = await this.repoManager.getKnownRepo(repoPath);

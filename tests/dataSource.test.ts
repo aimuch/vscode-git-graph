@@ -4740,7 +4740,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['tag', '-d', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
@@ -4883,7 +4883,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should push a branch to the remote and set upstream', async () => {
@@ -4895,7 +4895,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should force push a branch to the remote', async () => {
@@ -4907,7 +4907,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should force (with lease) push a branch to the remote', async () => {
@@ -4919,7 +4919,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master', '--force-with-lease'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master', '--force-with-lease'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should return an error message thrown by git', async () => {
@@ -4944,7 +4944,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null]);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should push a branch to multiple remotes', async () => {
@@ -4957,8 +4957,8 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null, null]);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/heads/master:refs/heads/master', '--force'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should push a branch to multiple remotes, stopping if an error occurs', async () => {
@@ -4971,8 +4971,8 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null, 'error message']);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/heads/master:refs/heads/master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/heads/master:refs/heads/master', '--set-upstream'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should return an error when no remotes are specified', async () => {
@@ -4994,7 +4994,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null]);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should push a tag to multiple remotes', async () => {
@@ -5007,8 +5007,8 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null, null]);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		describe('Should check that the commit exists on each remote the tag is being pushed to', () => {
@@ -5027,8 +5027,8 @@ describe('DataSource', () => {
 				// Assert
 				expect(result).toStrictEqual([null, null]);
 				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-r', '--no-color', '--contains=1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			});
 
 			it('Commit exists on one remote', async () => {
@@ -5074,8 +5074,8 @@ describe('DataSource', () => {
 				// Assert
 				expect(result).toStrictEqual([null, null]);
 				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-r', '--no-color', '--contains=1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			});
 
 			it('Handles remote names that contain slashes', async () => {
@@ -5093,8 +5093,8 @@ describe('DataSource', () => {
 				// Assert
 				expect(result).toStrictEqual([null, null]);
 				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-r', '--no-color', '--contains=1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other/origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other/origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			});
 
 			it('Ignores records that aren\'t branches in the git branch output', async () => {
@@ -5125,8 +5125,8 @@ describe('DataSource', () => {
 				// Assert
 				expect(result).toStrictEqual([null, null]);
 				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-r', '--no-color', '--contains=1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+				expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			});
 		});
 
@@ -5140,8 +5140,8 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toStrictEqual([null, 'error message']);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'other-origin', 'refs/tags/tag-name'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should return an error when no remotes are specified', async () => {
@@ -5332,7 +5332,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'develop'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'refs/heads/develop'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
 		it('Should delete the remote tracking branch if the branch is no longer on the remote', async () => {
@@ -5345,7 +5345,7 @@ describe('DataSource', () => {
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'develop'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['push', 'origin', '--delete', 'refs/heads/develop'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-d', '-r', 'origin/develop'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
@@ -5906,71 +5906,50 @@ describe('DataSource', () => {
 
 		it('Should launch the interactive rebase of the current branch on a branch in a terminal', async () => {
 			// Setup
-			jest.useFakeTimers();
+			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b\n');
 			const spyOnOpenGitTerminal = jest.spyOn(utils, 'openGitTerminal');
 			spyOnOpenGitTerminal.mockReturnValueOnce();
 			vscode.mockExtensionSettingReturnValue('repository.sign.commits', false);
 
 			// Run
-			const resultPromise = dataSource.rebase('/path/to/repo', 'develop', RebaseActionOn.Branch, false, true);
-
-			// Assert
-			expect(setTimeout).toHaveBeenCalledWith(expect.anything(), 1000);
-
-			// Run
-			jest.runOnlyPendingTimers();
-			jest.useRealTimers();
-			const result = await resultPromise;
+			const result = await dataSource.rebase('/path/to/repo', 'develop', RebaseActionOn.Branch, false, true);
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnOpenGitTerminal).toHaveBeenCalledWith('/path/to/repo', '/path/to/git', 'rebase --interactive develop', 'Rebase on "develop"');
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['rev-parse', '--verify', '--quiet', 'develop^{commit}'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnOpenGitTerminal).toHaveBeenCalledWith('/path/to/repo', '/path/to/git', 'rebase --interactive 1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', 'Rebase on "develop"');
 		});
 
 		it('Should launch the interactive rebase of the current branch on a commit in a terminal', async () => {
 			// Setup
-			jest.useFakeTimers();
+			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b\n');
 			const spyOnOpenGitTerminal = jest.spyOn(utils, 'openGitTerminal');
 			spyOnOpenGitTerminal.mockReturnValueOnce();
 			vscode.mockExtensionSettingReturnValue('repository.sign.commits', false);
 
 			// Run
-			const resultPromise = dataSource.rebase('/path/to/repo', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', RebaseActionOn.Commit, false, true);
-
-			// Assert
-			expect(setTimeout).toHaveBeenCalledWith(expect.anything(), 1000);
-
-			// Run
-			jest.runOnlyPendingTimers();
-			jest.useRealTimers();
-			const result = await resultPromise;
+			const result = await dataSource.rebase('/path/to/repo', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', RebaseActionOn.Commit, false, true);
 
 			// Assert
 			expect(result).toBe(null);
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['rev-parse', '--verify', '--quiet', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b^{commit}'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			expect(spyOnOpenGitTerminal).toHaveBeenCalledWith('/path/to/repo', '/path/to/git', 'rebase --interactive 1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', 'Rebase on "1a2b3c4d"');
 		});
 
 		it('Should launch the interactive rebase of the current branch on a branch in a terminal (signing the new commits)', async () => {
 			// Setup
-			jest.useFakeTimers();
+			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b\n');
 			const spyOnOpenGitTerminal = jest.spyOn(utils, 'openGitTerminal');
 			spyOnOpenGitTerminal.mockReturnValueOnce();
 			vscode.mockExtensionSettingReturnValue('repository.sign.commits', true);
 
 			// Run
-			const resultPromise = dataSource.rebase('/path/to/repo', 'develop', RebaseActionOn.Branch, false, true);
-
-			// Assert
-			expect(setTimeout).toHaveBeenCalledWith(expect.anything(), 1000);
-
-			// Run
-			jest.runOnlyPendingTimers();
-			jest.useRealTimers();
-			const result = await resultPromise;
+			const result = await dataSource.rebase('/path/to/repo', 'develop', RebaseActionOn.Branch, false, true);
 
 			// Assert
 			expect(result).toBe(null);
-			expect(spyOnOpenGitTerminal).toHaveBeenCalledWith('/path/to/repo', '/path/to/git', 'rebase --interactive -S develop', 'Rebase on "develop"');
+			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['rev-parse', '--verify', '--quiet', 'develop^{commit}'], expect.objectContaining({ cwd: '/path/to/repo' }));
+			expect(spyOnOpenGitTerminal).toHaveBeenCalledWith('/path/to/repo', '/path/to/git', 'rebase --interactive -S 1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', 'Rebase on "develop"');
 		});
 
 		it('Should return the "Unable to Find Git" error message when no git executable is known', async () => {

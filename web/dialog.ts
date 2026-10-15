@@ -257,6 +257,11 @@ class Dialog {
 			secondaryActioned(values);
 		} : null, target);
 
+		// The buttons follow the inputs in the tab order
+		const dialogAction = document.getElementById('dialogAction'), dialogSecondaryAction = document.getElementById('dialogSecondaryAction');
+		if (dialogAction !== null) dialogAction.tabIndex = inputs.length + 1;
+		if (dialogSecondaryAction !== null) dialogSecondaryAction.tabIndex = inputs.length + 2;
+
 		// Create custom select inputs
 		inputs.forEach((input, index) => {
 			if (input.type === DialogInputType.Select) {
@@ -269,7 +274,7 @@ class Dialog {
 		if (textRefInput > -1) {
 			let dialogInput = <HTMLInputElement>document.getElementById('dialogInput' + textRefInput), dialogAction = document.getElementById('dialogAction')!;
 			if (dialogInput.value === '') this.elem!.classList.add(CLASS_DIALOG_NO_INPUT);
-			dialogInput.addEventListener('keyup', () => {
+			dialogInput.addEventListener('input', () => {
 				if (this.elem === null) return;
 				if (initialState.config.dialogDefaults.general.referenceInputSpaceSubstitution !== null) {
 					const selectionStart = dialogInput.selectionStart, selectionEnd = dialogInput.selectionEnd;
@@ -341,7 +346,7 @@ class Dialog {
 		const dialog = document.createElement('div'), dialogContent = document.createElement('div');
 		dialog.className = 'dialog';
 		dialogContent.className = 'dialogContent';
-		dialogContent.innerHTML = html + '<br>' + (actionName !== null ? '<div id="dialogAction" class="roundedBtn">' + actionName + '</div>' : '') + '<div id="dialogSecondaryAction" class="roundedBtn">' + secondaryActionName + '</div>';
+		dialogContent.innerHTML = html + '<br>' + (actionName !== null ? '<div id="dialogAction" class="roundedBtn" role="button" tabindex="1">' + actionName + '</div>' : '') + '<div id="dialogSecondaryAction" class="roundedBtn" role="button" tabindex="2">' + secondaryActionName + '</div>';
 		dialog.appendChild(dialogContent);
 		this.elem = dialog;
 		document.body.appendChild(dialog);
@@ -357,6 +362,17 @@ class Dialog {
 			this.actioned = actioned;
 		}
 		document.getElementById('dialogSecondaryAction')!.addEventListener('click', secondaryActioned !== null ? secondaryActioned : () => this.close());
+
+		// Buttons focussed with the keyboard are triggered by Enter or Space
+		dialogContent.querySelectorAll('.roundedBtn').forEach((button) => {
+			button.addEventListener('keydown', (e) => {
+				const key = (<KeyboardEvent>e).key;
+				if (key === 'Enter' || key === ' ') {
+					handledEvent(e);
+					(<HTMLElement>button).click();
+				}
+			});
+		});
 
 		if (this.target !== null && this.target.type !== TargetType.Repo) {
 			alterClass(this.target.elem, CLASS_DIALOG_ACTIVE, true);

@@ -15,7 +15,7 @@ import { getNonce } from '../utils';
 import { Disposable, toDisposable } from '../utils/disposable';
 
 export interface AskpassEnvironment {
-	GIT_ASKPASS: string;
+	GIT_ASKPASS?: string;
 	ELECTRON_RUN_AS_NODE?: string;
 	VSCODE_GIT_GRAPH_ASKPASS_NODE?: string;
 	VSCODE_GIT_GRAPH_ASKPASS_MAIN?: string;
@@ -75,6 +75,11 @@ export class AskpassManager extends Disposable {
 	}
 
 	public getEnv(): AskpassEnvironment {
+		if (isExternalAskpassConfigured()) {
+			// Respect the Askpass program that the environment Git Graph is running in has been configured to use (e.g. by a remote development environment), instead of replacing it with Git Graph's integrated Askpass
+			return {};
+		}
+
 		return this.enabled
 			? {
 				ELECTRON_RUN_AS_NODE: '1',
@@ -87,6 +92,17 @@ export class AskpassManager extends Disposable {
 				GIT_ASKPASS: path.join(__dirname, 'askpass-empty.sh')
 			};
 	}
+}
+
+/**
+ * Check whether the environment Git Graph is running in has been configured with an external Askpass program (i.e. GIT_ASKPASS is set, and doesn't refer to the Askpass of Visual Studio Code or Git Graph, which can be inherited from an Integrated Terminal).
+ * @returns TRUE => An external Askpass program is configured, FALSE => No external Askpass program is configured.
+ */
+function isExternalAskpassConfigured() {
+	const env = process.env;
+	return typeof env['GIT_ASKPASS'] === 'string' && env['GIT_ASKPASS'] !== ''
+		&& typeof env['VSCODE_GIT_IPC_HANDLE'] === 'undefined' && typeof env['VSCODE_GIT_ASKPASS_MAIN'] === 'undefined'
+		&& typeof env['VSCODE_GIT_GRAPH_ASKPASS_HANDLE'] === 'undefined';
 }
 
 function getIPCHandlePath(nonce: string): string {

@@ -111,6 +111,10 @@ body.vscode-high-contrast .dialog{
 	margin:10px 6px 0 6px;
 	border-radius:11px;
 }
+.dialog .roundedBtn:focus{
+	outline:none;
+	border-color:var(--vscode-focusBorder);
+}
 
 .dialog .messageContent{
 	display:inline-block;

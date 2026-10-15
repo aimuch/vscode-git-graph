@@ -13,6 +13,8 @@ import { Event } from './utils/event';
 
 const DRIVE_LETTER_PATH_REGEX = /^[a-z]:\//;
 const EOL_REGEX = /\r\n|\r|\n/g;
+const LF_REGEX = /\r?\n/g;
+const COMMIT_HASH_REGEXP = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 const INVALID_BRANCH_REGEXP = /^\(.* .*\)$/;
 const REMOTE_HEAD_BRANCH_REGEXP = /^remotes\/.*\/HEAD$/;
 const GIT_LOG_SEPARATOR = 'XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb';
@@ -726,7 +728,7 @@ export class DataSource extends Disposable {
 	 */
 	public async deleteTag(repo: string, tagName: string, deleteOnRemote: string | null) {
 		if (deleteOnRemote !== null) {
-			let status = await this.runGitCommand(['push', deleteOnRemote, '--delete', tagName], repo);
+			let status = await this.runGitCommand(['push', deleteOnRemote, '--delete', 'refs/tags/' + tagName], repo);
 			if (status !== null) return status;
 		}
 		return this.runGitCommand(['tag', '-d', tagName], repo);
@@ -772,7 +774,7 @@ export class DataSource extends Disposable {
 	 */
 	public pushBranch(repo: string, branchName: string, remote: string, setUpstream: boolean, mode: GitPushBranchMode) {
 		let args = ['push'];
-		args.push(remote, branchName);
+		args.push(remote, 'refs/heads/' + branchName + ':refs/heads/' + branchName);
 		if (setUpstream) args.push('--set-upstream');
 		if (mode !== GitPushBranchMode.Normal) args.push('--' + mode);
 
@@ -826,7 +828,7 @@ export class DataSource extends Disposable {
 
 		const results: ErrorInfo[] = [];
 		for (let i = 0; i < remotes.length; i++) {
-			const result = await this.runGitCommand(['push', remotes[i], tagName], repo);
+			const result = await this.runGitCommand(['push', remotes[i], 'refs/tags/' + tagName], repo);
 			results.push(result);
 			if (result !== null) break;
 		}
@@ -898,7 +900,7 @@ export class DataSource extends Disposable {
 	 * @returns The ErrorInfo from the executed command.
 	 */
 	public async deleteRemoteBranch(repo: string, branchName: string, remote: string) {
-		let remoteStatus = await this.runGitCommand(['push', remote, '--delete', branchName], repo);
+		let remoteStatus = await this.runGitCommand(['push', remote, '--delete', 'refs/heads/' + branchName], repo);
 		if (remoteStatus !== null && (new RegExp('remote ref does not exist', 'i')).test(remoteStatus)) {
 			let trackingBranchStatus = await this.runGitCommand(['branch', '-d', '-r', remote + '/' + branchName], repo);
 			return trackingBranchStatus === null ? null : 'Branch does not exist on the remote, deleting the remote tracking branch ' + remote + '/' + branchName + '.\n' + trackingBranchStatus;
@@ -1005,11 +1007,12 @@ export class DataSource extends Disposable {
 	 */
 	public rebase(repo: string, obj: string, actionOn: RebaseActionOn, ignoreDate: boolean, interactive: boolean) {
 		if (interactive) {
-			return this.openGitTerminal(
+			// The command is run by the shell of the Integrated Terminal, so only the resolved commit hash (never the branch name, which may contain shell syntax) is included in it
+			return this.resolveCommitHash(repo, obj).then((commitHash) => this.openGitTerminal(
 				repo,
-				'rebase --interactive ' + (getConfig().signCommits ? '-S ' : '') + (actionOn === RebaseActionOn.Branch ? obj.replace(/'/g, '"\'"') : obj),
+				'rebase --interactive ' + (getConfig().signCommits ? '-S ' : '') + commitHash,
 				'Rebase on "' + (actionOn === RebaseActionOn.Branch ? obj : abbrevCommit(obj)) + '"'
-			);
+			), (errorMessage: string) => errorMessage);
 		} else {
 			const args = ['rebase', obj];
 			if (ignoreDate) {
@@ -1301,6 +1304,20 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Resolve a branch name or commit hash to the full hash of the commit it refers to.
+	 * @param repo The path of the repository.
+	 * @param obj The branch name or commit hash.
+	 * @returns A promise resolving to the commit hash, or rejecting with an error message.
+	 */
+	private resolveCommitHash(repo: string, obj: string): Promise<string> {
+		const errorMessage = 'Unable to resolve "' + obj + '" to a commit.';
+		return this.spawnGit(['rev-parse', '--verify', '--quiet', obj + '^{commit}'], repo, (stdout) => stdout.trim()).then(
+			(commitHash) => COMMIT_HASH_REGEXP.test(commitHash) ? commitHash : Promise.reject(errorMessage),
+			() => Promise.reject(this.gitExecutable !== null ? errorMessage : UNABLE_TO_FIND_GIT_MSG)
+		);
+	}
+
+	/**
 	 * Open a new terminal, set up the Git executable, and optionally run a command.
 	 * @param repo The path of the repository.
 	 * @param command The command to run.
@@ -1529,11 +1546,12 @@ export class DataSource extends Disposable {
 		args.push('--');
 
 		return this.spawnGit(args, repo, (stdout) => {
-			let lines = stdout.split(EOL_REGEX);
+			// Records are only split on LF, as subjects can contain a raw CR character
+			let lines = stdout.split(LF_REGEX);
 			let commits: GitCommitRecord[] = [];
 			for (let i = 0; i < lines.length - 1; i++) {
 				let line = lines[i].split(GIT_LOG_SEPARATOR);
-				if (line.length !== 6) break;
+				if (line.length !== 6) continue;
 				commits.push({ hash: line[0], parents: line[1] !== '' ? line[1].split(' ') : [], author: line[2], email: line[3], date: parseInt(line[4]), message: line[5] });
 			}
 			return commits;
@@ -1612,7 +1630,8 @@ export class DataSource extends Disposable {
 	 */
 	private getStashes(repo: string) {
 		return this.spawnGit(['reflog', '--format=' + this.gitFormatStash, 'refs/stash', '--'], repo, (stdout) => {
-			let lines = stdout.split(EOL_REGEX);
+			// Records are only split on LF, as subjects can contain a raw CR character
+			let lines = stdout.split(LF_REGEX);
 			let stashes: GitStash[] = [];
 			for (let i = 0; i < lines.length - 1; i++) {
 				let line = lines[i].split(GIT_LOG_SEPARATOR);

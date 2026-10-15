@@ -31,6 +31,7 @@ class GitGraphView {
 	private readonly config: Config;
 
 	private moreCommitsAvailable: boolean = false;
+	private scrollToHeadPending: boolean = false;
 	private expandedCommit: ExpandedCommit | null = null;
 	private maxCommits: number;
 	private scrollTop = 0;
@@ -115,6 +116,7 @@ class GitGraphView {
 		this.observeWebviewStyleChanges();
 		this.observeViewScroll();
 		this.observeKeyboardEvents();
+		this.observeMouseNavigationButtons();
 		this.observeUrls();
 		this.observeTableEvents();
 
@@ -207,6 +209,7 @@ class GitGraphView {
 	private loadRepo(repo: string) {
 		this.currentRepo = repo;
 		this.currentRepoLoading = true;
+		this.scrollToHeadPending = false;
 		this.showRemoteBranchesElem.checked = getShowRemoteBranches(this.gitRepos[this.currentRepo].showRemoteBranchesV2);
 		this.maxCommits = this.config.initialLoadCommits;
 		this.gitConfig = null;
@@ -409,6 +412,10 @@ class GitGraphView {
 		}
 
 		this.finaliseRepoLoad(true);
+
+		if (this.scrollToHeadPending) {
+			this.scrollToHead();
+		}
 	}
 
 	private finaliseRepoLoad(didLoadRepoData: boolean) {
@@ -1931,6 +1938,24 @@ class GitGraphView {
 		}
 	}
 
+	/**
+	 * Scroll to the commit referenced by HEAD. If it hasn't been loaded yet, more commits are loaded until it is (when the branches being shown include HEAD).
+	 */
+	private scrollToHead() {
+		const headBranchShown = this.currentBranches === null || this.currentBranches.includes(SHOW_ALL_BRANCHES) || (this.gitBranchHead !== null && this.currentBranches.includes(this.gitBranchHead));
+		if (this.commitHead !== null && typeof this.commitLookup[this.commitHead] === 'number') {
+			this.scrollToHeadPending = false;
+			this.scrollToCommit(this.commitHead, true, true);
+		} else if (this.commitHead !== null && this.moreCommitsAvailable && headBranchShown) {
+			this.scrollToHeadPending = true;
+			if (!this.currentRepoRefreshState.inProgress) {
+				this.loadMoreCommits();
+			}
+		} else {
+			this.scrollToHeadPending = false;
+		}
+	}
+
 	private loadMoreCommits() {
 		this.footerElem.innerHTML = '<h2 id="loadingHeader">' + SVG_ICONS.loading + 'Loading ...</h2>';
 		this.maxCommits += this.config.loadMoreCommits;
@@ -2022,8 +2047,28 @@ class GitGraphView {
 		});
 	}
 
+	private observeMouseNavigationButtons() {
+		// The back / forward buttons of a mouse navigate the Visual Studio Code editor history (the events aren't handled by Visual Studio Code when they occur in a Webview)
+		document.addEventListener('mouseup', (e) => {
+			if (e.button === 3 || e.button === 4) {
+				handledEvent(e);
+				sendMessage({ command: 'navigateEditorHistory', forward: e.button === 4 });
+			}
+		});
+	}
+
 	private observeKeyboardEvents() {
+		// The time at which a Ctrl / Cmd keybinding that wasn't handled by Git Graph was pressed. Visual Studio Code may treat it as the first part of a keybinding chord (e.g. Ctrl+K Ctrl+S), so Git Graph doesn't handle the next keypress (which Visual Studio Code is waiting for).
+		let possibleChordStart = 0;
+		window.addEventListener('blur', () => {
+			possibleChordStart = 0;
+		});
+
 		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Control' || e.key === 'Meta' || e.key === 'Shift' || e.key === 'Alt') return;
+			const chordInProgress = possibleChordStart > 0 && Date.now() - possibleChordStart < 1500;
+			possibleChordStart = 0;
+
 			if (contextMenu.isOpen()) {
 				if (e.key === 'Escape') {
 					contextMenu.close();
@@ -2074,21 +2119,23 @@ class GitGraphView {
 					if (elem !== null) this.loadCommitDetails(elem);
 				}
 			} else if (e.key && (e.ctrlKey || e.metaKey)) {
+				if (chordInProgress) return; // Leave the second keypress of a chord to Visual Studio Code
+
 				const key = e.key.toLowerCase(), keybindings = this.config.keybindings;
 				if (key === keybindings.scrollToStash) {
 					this.scrollToStash(!e.shiftKey);
 					handledEvent(e);
-				} else if (!e.shiftKey) {
-					if (key === keybindings.refresh) {
-						this.refresh(true, true);
-						handledEvent(e);
-					} else if (key === keybindings.find) {
-						this.findWidget.show(true);
-						handledEvent(e);
-					} else if (key === keybindings.scrollToHead && this.commitHead !== null) {
-						this.scrollToCommit(this.commitHead, true, true);
-						handledEvent(e);
-					}
+				} else if (!e.shiftKey && key === keybindings.refresh) {
+					this.refresh(true, true);
+					handledEvent(e);
+				} else if (!e.shiftKey && key === keybindings.find) {
+					this.findWidget.show(true);
+					handledEvent(e);
+				} else if (!e.shiftKey && key === keybindings.scrollToHead && this.commitHead !== null) {
+					this.scrollToHead();
+					handledEvent(e);
+				} else if (key.length === 1 && !['a', 'c', 'v', 'x', 'y', 'z'].includes(key)) {
+					possibleChordStart = Date.now();
 				}
 			} else if (e.key === 'Escape') {
 				if (this.repoDropdown.isOpen()) {
@@ -2127,6 +2174,17 @@ class GitGraphView {
 		};
 
 		document.body.addEventListener('click', followInternalLink);
+
+		document.body.addEventListener('click', (e: MouseEvent) => {
+			// Visual Studio Code only follows links with standard schemes (e.g. http & https) that are clicked in a Webview, so links to other applications (e.g. issue links using a custom scheme) are opened by the extension
+			if (e.target === null || !isExternalUrlElem(<Element>e.target)) return;
+			const url = (<HTMLAnchorElement>e.target).href;
+			const scheme = url.substring(0, url.indexOf(':')).toLowerCase();
+			if (/^[a-z][a-z0-9+.-]*$/.test(scheme) && !['http', 'https', 'mailto', 'file', 'javascript', 'data', 'vbscript', 'command', 'vscode', 'vscode-insiders'].includes(scheme)) {
+				handledEvent(e);
+				sendMessage({ command: 'openExternalUrl', url: url });
+			}
+		});
 
 		document.body.addEventListener('contextmenu', (e: MouseEvent) => {
 			if (e.target === null) return;
@@ -2344,6 +2402,22 @@ class GitGraphView {
 				contextMenu.show(actions, false, target, <MouseEvent>e, this.viewElem);
 			}
 		});
+
+		// When a context menu is requested with the keyboard (e.g. the Menu key or Shift+F10), show the context menu of the commit selected with the keyboard
+		document.addEventListener('contextmenu', (e: MouseEvent) => {
+			if (e.button === 2 || (e.target !== document.body && e.target !== document.documentElement && e.target !== this.viewElem)) return;
+			if (this.expandedCommit === null || this.expandedCommit.commitElem === null || dialog.isOpen()) return;
+
+			handledEvent(e);
+			const bounds = this.expandedCommit.commitElem.getBoundingClientRect();
+			this.expandedCommit.commitElem.dispatchEvent(new MouseEvent('contextmenu', {
+				bubbles: true,
+				cancelable: true,
+				button: 2,
+				clientX: Math.round(bounds.left + Math.min(bounds.width / 2, 200)),
+				clientY: Math.round(bounds.top + bounds.height / 2)
+			}));
+		}, true);
 	}
 
 
@@ -3173,7 +3247,7 @@ class GitGraphView {
 
 /* Main */
 
-const contextMenu = new ContextMenu(), dialog = new Dialog(), eventOverlay = new EventOverlay();
+const contextMenu = new ContextMenu(), dialog = new Dialog(), eventOverlay = new EventOverlay(), titleTooltip = new TitleTooltip();
 let loaded = false;
 
 window.addEventListener('load', () => {
@@ -3579,6 +3653,19 @@ function generateFileListHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG
 	return '<ul class="fileTreeFolderContents">' + html + '</ul>';
 }
 
+/**
+ * Get the label displayed for the original path of a renamed file. Only the original file name is displayed if the file was renamed within the same directory.
+ * @param oldFilePath The original path of the file.
+ * @param newFilePath The new path of the file.
+ * @returns The label.
+ */
+function getRenamedFromLabel(oldFilePath: string, newFilePath: string) {
+	const oldDirectoryEnd = oldFilePath.lastIndexOf('/'), newDirectoryEnd = newFilePath.lastIndexOf('/');
+	return oldFilePath.substring(0, oldDirectoryEnd + 1) === newFilePath.substring(0, newDirectoryEnd + 1)
+		? oldFilePath.substring(oldDirectoryEnd + 1)
+		: oldFilePath;
+}
+
 function generateFileTreeLeafHtml(name: string, leaf: FileTreeLeaf, gitFiles: ReadonlyArray<GG.GitFileChange>, lastViewedFile: string | null, fileContextMenuOpen: number, isUncommitted: boolean) {
 	let encodedName = encodeURIComponent(name), escapedName = escapeHtml(name);
 	if (leaf.type === 'file') {
@@ -3586,7 +3673,8 @@ function generateFileTreeLeafHtml(name: string, leaf: FileTreeLeaf, gitFiles: Re
 		const textFile = fileTreeFile.additions !== null && fileTreeFile.deletions !== null;
 		const diffPossible = fileTreeFile.type === GG.GitFileStatus.Untracked || textFile;
 		const changeTypeMessage = GIT_FILE_CHANGE_TYPES[fileTreeFile.type] + (fileTreeFile.type === GG.GitFileStatus.Renamed ? ' (' + escapeHtml(fileTreeFile.oldFilePath) + ' → ' + escapeHtml(fileTreeFile.newFilePath) + ')' : '');
-		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? 'Click to View Diff' : 'Unable to View Diff' + (fileTreeFile.type !== GG.GitFileStatus.Deleted ? ' (this is a binary file)' : '')) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileIcon">' + SVG_ICONS.file + '</span><span class="gitFileName ' + fileTreeFile.type + '">' + escapedName + '</span></span>' +
+		const renamedFromHtml = fileTreeFile.type === GG.GitFileStatus.Renamed ? '<span class="gitFileRenamedFrom">← ' + escapeHtml(getRenamedFromLabel(fileTreeFile.oldFilePath, fileTreeFile.newFilePath)) + '</span>' : '';
+		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? 'Click to View Diff' : 'Unable to View Diff' + (fileTreeFile.type !== GG.GitFileStatus.Deleted ? ' (this is a binary file)' : '')) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileIcon">' + SVG_ICONS.file + '</span><span class="gitFileName ' + fileTreeFile.type + '">' + escapedName + '</span>' + renamedFromHtml + '</span>' +
 			(initialState.config.enhancedAccessibility ? '<span class="fileTreeFileType" title="' + changeTypeMessage + '">' + fileTreeFile.type + '</span>' : '') +
 			(fileTreeFile.type !== GG.GitFileStatus.Added && fileTreeFile.type !== GG.GitFileStatus.Untracked && fileTreeFile.type !== GG.GitFileStatus.Deleted && textFile ? '<span class="fileTreeFileAddDel">(<span class="fileTreeFileAdd" title="' + fileTreeFile.additions + ' addition' + (fileTreeFile.additions !== 1 ? 's' : '') + '">+' + fileTreeFile.additions + '</span>|<span class="fileTreeFileDel" title="' + fileTreeFile.deletions + ' deletion' + (fileTreeFile.deletions !== 1 ? 's' : '') + '">-' + fileTreeFile.deletions + '</span>)</span>' : '') +
 			(fileTreeFile.newFilePath === lastViewedFile ? '<span id="cdvLastFileViewed" title="Last File Viewed">' + SVG_ICONS.eyeOpen + '</span>' : '') +

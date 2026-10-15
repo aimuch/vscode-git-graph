@@ -579,13 +579,14 @@ class SettingsWidget {
 	 */
 	private showIssueLinkingDialog(defaultIssueRegex: string | null, defaultIssueUrl: string | null, defaultUseGlobally: boolean, isEdit: boolean) {
 		let html = '<b>' + (isEdit ? 'Edit Issue Linking for' : 'Add Issue Linking to') + ' this Repository</b>';
-		html += '<p style="font-size:12px; margin:6px 0;">The following example links <b>#123</b> in commit messages to <b>https://github.com/mhutchie/repo/issues/123</b>:</p>';
-		html += '<table style="display:inline-table; width:360px; text-align:left; font-size:12px; margin-bottom:2px;"><tr><td>Issue Regex:</td><td>#(\\d+)</td></tr><tr><td>Issue URL:</td><td>https://github.com/mhutchie/repo/issues/$1</td></tr></tbody></table>';
+		html += '<p style="font-size:12px; margin:6px 0;">The following example links <b>#123</b> in commit messages to <b>https://github.com/owner/repo/issues/123</b>:</p>';
+		html += '<table style="display:inline-table; width:360px; text-align:left; font-size:12px; margin-bottom:2px;"><tr><td>Issue Regex:</td><td>#(\\d+)</td></tr><tr><td>Issue URL:</td><td>https://github.com/owner/repo/issues/$1</td></tr></tbody></table>';
 
 		if (!isEdit && defaultIssueRegex === null && defaultIssueUrl === null) {
 			defaultIssueRegex = SettingsWidget.autoDetectIssueRegex(this.view.getCommits());
 			if (defaultIssueRegex !== null) {
-				html += '<p style="font-size:12px"><i>The prefilled Issue Regex was detected in commit messages in this repository. Review and/or correct it if necessary.</i></p>';
+				defaultIssueUrl = this.config !== null ? SettingsWidget.autoDetectIssueUrl(defaultIssueRegex, this.config.remotes) : null;
+				html += '<p style="font-size:12px"><i>The prefilled Issue Regex' + (defaultIssueUrl !== null ? ' and Issue URL were detected from the commit messages and remote' : ' was detected in commit messages') + ' in this repository. Review and/or correct ' + (defaultIssueUrl !== null ? 'them' : 'it') + ' if necessary.</i></p>';
 			}
 		}
 
@@ -828,6 +829,31 @@ class SettingsWidget {
 		if (patterns[0].matches > 0.1 * commits.length) {
 			// If the most common pattern was matched in more than 10% of commits, return the pattern
 			return patterns[0].pattern;
+		}
+		return null;
+	}
+
+	/**
+	 * Automatically detect the Issue URL for "#123" style issue references, if the repository's remote is hosted on GitHub, GitLab or Bitbucket.
+	 * @param issueRegex The Issue Regex being used.
+	 * @param remotes The remotes of the repository.
+	 * @returns The Issue URL, or NULL if it couldn't be detected.
+	 */
+	private static autoDetectIssueUrl(issueRegex: string, remotes: ReadonlyArray<{ readonly name: string, readonly url: string | null }>) {
+		if (issueRegex !== '#(\\d+)' || remotes.length === 0) return null;
+
+		const originIndex = remotes.findIndex((remote) => remote.name === 'origin');
+		const remoteUrl = remotes[originIndex > -1 ? originIndex : 0].url;
+		const match = remoteUrl !== null ? remoteUrl.match(/^(?:https?:\/\/(?:[^/@]+@)?|ssh:\/\/(?:[^/@]+@)?|git@)([^/:]+)(?::\d+)?[/:](.+?)(?:\.git)?\/?$/) : null;
+		if (match === null) return null;
+
+		const host = match[1], path = match[2];
+		if (host.includes('github')) {
+			return 'https://' + host + '/' + path + '/issues/$1';
+		} else if (host.includes('gitlab')) {
+			return 'https://' + host + '/' + path + '/-/issues/$1';
+		} else if (host.includes('bitbucket')) {
+			return 'https://' + host + '/' + path + '/issues/$1';
 		}
 		return null;
 	}

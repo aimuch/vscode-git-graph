@@ -995,6 +995,11 @@ export interface ResponseOpenExternalDirDiff extends ResponseWithErrorInfo {
 	readonly command: 'openExternalDirDiff';
 }
 
+export interface RequestNavigateEditorHistory extends BaseMessage {
+	readonly command: 'navigateEditorHistory';
+	readonly forward: boolean;
+}
+
 export interface RequestOpenExternalUrl extends BaseMessage {
 	readonly command: 'openExternalUrl';
 	readonly url: string;
@@ -1282,6 +1287,7 @@ export type RequestMessage =
 	| RequestLoadRepoInfo
 	| RequestLoadRepos
 	| RequestMerge
+	| RequestNavigateEditorHistory
 	| RequestOpenExtensionSettings
 	| RequestOpenExternalDirDiff
 	| RequestOpenExternalUrl

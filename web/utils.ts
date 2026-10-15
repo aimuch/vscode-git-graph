@@ -652,3 +652,95 @@ class EventOverlay {
 		document.body.removeChild(eventOverlayElem);
 	}
 }
+
+/**
+ * Implements tooltips for elements with a title attribute, as Visual Studio Code doesn't reliably show the native tooltips of elements in Webviews.
+ */
+class TitleTooltip {
+	private elem: HTMLElement | null = null;
+	private target: Element | null = null;
+	private title: string = '';
+	private timeout: number | null = null;
+
+	/**
+	 * Creates the Title Tooltip, and registers the event listeners it requires.
+	 */
+	constructor() {
+		document.addEventListener('mouseover', (e) => this.onMouseOver(e), true);
+		document.addEventListener('mouseout', (e) => {
+			if (e.relatedTarget === null) this.hide(); // The mouse left the Webview
+		}, true);
+		document.addEventListener('mousedown', () => this.hide(), true);
+		document.addEventListener('keydown', () => this.hide(), true);
+		document.addEventListener('wheel', () => this.hide(), { capture: true, passive: true });
+		window.addEventListener('blur', () => this.hide());
+	}
+
+	/**
+	 * Handles the mouse moving over an element, determining the element (if any) whose title should be shown.
+	 * @param e The mouse event.
+	 */
+	private onMouseOver(e: MouseEvent) {
+		if (!(e.target instanceof Element)) return;
+		const target = e.target.closest('[title]:not([title=""])');
+		if (this.target !== null && this.target.contains(e.target) && (target === null || !this.target.contains(target))) {
+			// The mouse is still over the current target (whose title attribute was removed while its tooltip is pending / shown)
+			return;
+		}
+
+		this.hide();
+		if (target === null) return;
+
+		// Remove the title attribute while the mouse is over the element, so that the native tooltip isn't also shown
+		this.target = target;
+		this.title = target.getAttribute('title')!;
+		target.removeAttribute('title');
+
+		const x = e.clientX, y = e.clientY;
+		this.timeout = setTimeout(() => {
+			this.timeout = null;
+			this.show(x, y);
+		}, 500);
+	}
+
+	/**
+	 * Show the tooltip of the current target.
+	 * @param x The x-coordinate of the mouse when it moved over the target.
+	 * @param y The y-coordinate of the mouse when it moved over the target.
+	 */
+	private show(x: number, y: number) {
+		if (this.target === null || !document.body.contains(this.target)) return;
+
+		const elem = document.createElement('div');
+		elem.id = 'titleTooltip';
+		elem.textContent = this.title;
+		document.body.appendChild(elem);
+
+		const viewWidth = document.documentElement.clientWidth, viewHeight = document.documentElement.clientHeight;
+		let left = x + 10, top = y + 18;
+		if (left + elem.offsetWidth > viewWidth - 4) left = Math.max(4, viewWidth - 4 - elem.offsetWidth);
+		if (top + elem.offsetHeight > viewHeight - 4) top = Math.max(4, y - 6 - elem.offsetHeight);
+		elem.style.left = left + 'px';
+		elem.style.top = top + 'px';
+		this.elem = elem;
+	}
+
+	/**
+	 * Hide the tooltip (if it is shown), and restore the title attribute of the current target.
+	 */
+	public hide() {
+		if (this.timeout !== null) {
+			clearTimeout(this.timeout);
+			this.timeout = null;
+		}
+		if (this.elem !== null) {
+			this.elem.remove();
+			this.elem = null;
+		}
+		if (this.target !== null) {
+			// Only restore the title if it wasn't set (or cleared) while the mouse was over the element
+			if (!this.target.hasAttribute('title')) this.target.setAttribute('title', this.title);
+			this.target = null;
+		}
+	}
+}
