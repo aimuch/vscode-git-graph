@@ -1,6 +1,8 @@
 .github/
 .vscode/
+.vscode-test/
 coverage/
+e2e/
 node_modules/*/*.md
 out/**/*.d.ts
 out/**/*.js.map
