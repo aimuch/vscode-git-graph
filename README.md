@@ -2,7 +2,7 @@
 
 View a Git Graph of your repository, and easily perform Git actions from the graph. Configurable to look the way you want!
 
-> This is a fork of [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, and fixes a number of reported issues (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). It keeps the original extension identifier (`mhutchie.git-graph`), so installing it replaces the original extension. Links to the Git Graph wiki refer to the original project's documentation.
+> This is a fork of [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, and fixes a number of reported issues (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `Andy.git-graph`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. Links to the Git Graph wiki refer to the original project's documentation.
 
 ![Recording of Git Graph](resources/demo.gif)
 
@@ -169,7 +169,7 @@ This fork isn't published on the Visual Studio Marketplace. To build and install
 1. Run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
 2. Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
 
-As the extension identifier is unchanged, the VSIX replaces the original Git Graph extension if it's installed. Disable "Auto Update" for Git Graph in the Extensions View, so that it isn't replaced by a version from the Visual Studio Marketplace.
+Uninstall the original Git Graph extension (`mhutchie.git-graph`) first if it's installed, as both extensions register the same commands and settings. Settings in `settings.json` (`git-graph.*`) are kept, however Git Graph's per-repository state (e.g. column widths, hidden remotes, Issue Linking & Pull Request configuration) is stored per extension, and starts empty. Use "Export Repository Configuration" in the original extension's Repository Settings to keep a repository's configuration.
 
 ## Acknowledgements
 

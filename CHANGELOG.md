@@ -24,7 +24,7 @@ This release continues development from the last upstream release (1.30.0), adap
 * #852 The mouse back & forward buttons navigate the Visual Studio Code editor history when used on the Git Graph View (if `workbench.editor.mouseBackForwardToNavigate` is enabled).
 * #864 The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard.
 * #719 Development: The project builds again on current Node.js versions: TypeScript 5.9, ESLint 10 (flat config), Jest 30, and `@vscode/vsce` (installed as a dev dependency).
-* This fork is maintained at [aimuch/vscode-git-graph](https://github.com/aimuch/vscode-git-graph): the author, repository & issue links now refer to it, and installation instructions replace the Visual Studio Marketplace link. The extension identifier (`mhutchie.git-graph`) is unchanged, so installing this version replaces the original extension.
+* This fork is maintained at [aimuch/vscode-git-graph](https://github.com/aimuch/vscode-git-graph), and is published as `Andy.git-graph`: the publisher, author, repository & issue links refer to it, and installation instructions replace the Visual Studio Marketplace link. Uninstall the original extension (`mhutchie.git-graph`) before installing it. The demo recording is now included in the package, so it's displayed on the extension's details page.
 * Removed the anonymous install / update / uninstall events that were sent to the original author's API (`api.mhutchie.com`). Git Graph no longer makes any network requests other than the ones you use it for (e.g. Git commands, avatars).
 
 ## 1.30.0 - 2021-04-05

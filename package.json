@@ -2,7 +2,7 @@
 	"name": "git-graph",
 	"displayName": "Git Graph",
 	"version": "1.31.0",
-	"publisher": "mhutchie",
+	"publisher": "Andy",
 	"author": {
 		"name": "Andy",
 		"url": "https://github.com/aimuch"
@@ -1536,7 +1536,7 @@
 		"compile-web": "tsc -p ./web && node ./.vscode/package-web.js",
 		"compile-web-debug": "tsc -p ./web && node ./.vscode/package-web.js debug",
 		"lint": "eslint --max-warnings 0 ./src ./tests ./web",
-		"package": "vsce package",
+		"package": "vsce package --no-rewrite-relative-links",
 		"package-and-install": "npm run package && node ./.vscode/install-package.js",
 		"test": "jest --verbose",
 		"test-and-report-coverage": "jest --verbose --coverage",
