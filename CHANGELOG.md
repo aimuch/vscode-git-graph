@@ -1,5 +1,30 @@
 # Change Log
 
+## 1.31.0 - Unreleased
+This release continues development from the last upstream release (1.30.0), adapting Git Graph to the latest versions of Visual Studio Code, and fixing reported issues. All fixes are covered by the new end-to-end test suite (`npm run test-e2e`), which runs Git Graph in a real instance of Visual Studio Code (verified with Visual Studio Code 1.141.2).
+* Visual Studio Code compatibility:
+    * #903, #871 The "View Git Graph" action is contributed to the new `scm/repository` menu, so that it's displayed on each repository in the Source Control Repositories View again.
+    * Git Graph is activated once Visual Studio Code has finished starting up (`onStartupFinished`), instead of on every startup event (`*`).
+    * #928 Tooltips (e.g. the (i) icons on dialogs) are now displayed by Git Graph, as Visual Studio Code doesn't reliably show the native tooltips of elements in Webviews.
+    * Replaced the deprecated Node.js `url.parse()` API (which logs a deprecation warning in the Node.js versions used by recent Visual Studio Code releases).
+    * The minimum supported version of Visual Studio Code is now 1.85.0.
+* #940 Security: Interactive Rebase no longer includes the branch name in the command run by the shell of the Integrated Terminal (it is resolved to a commit hash first). Previously a branch name containing shell syntax (e.g. from a cloned repository) could execute arbitrary commands.
+* #935, #880, #641 Commits with a raw carriage return (CR) character in their subject no longer prevent all older commits from being loaded. This is also the likely cause of #930 (in PowerShell, `` `r `` in a commit message is a CR character).
+* #794 The "View Git Graph" action no longer fails with "Cannot read properties of null (reading 'rootUri')".
+* #932 An existing `GIT_ASKPASS` program (e.g. provided by a remote development environment) is now used for authentication, instead of being replaced by Git Graph's integrated Askpass.
+* #708 Tags and branches that have the same name can now be pushed to, and deleted from remotes (fully qualified references are used).
+* #789, #668 The Git Graph View now automatically refreshes for submodules and worktrees when they're changed outside of Visual Studio Code (their Git directory, which is outside of the repository, is now also watched).
+* #892, #834 The second keypress of a keybinding chord (e.g. Ctrl+K Ctrl+S) is no longer handled by Git Graph's keyboard shortcuts, so Visual Studio Code keybinding chords work when the Git Graph View is focused. Git Graph's keyboard shortcuts are not handled within 1.5 seconds of a Ctrl / Cmd keybinding that Git Graph doesn't handle.
+* #856 Pasting a name into a dialog using the mouse now enables the dialog's action button (e.g. "Create Branch").
+* #652 The buttons on dialogs can now be focused with the Tab key (after the dialog's inputs), and triggered with Enter or Space.
+* #792 Issue links that use a custom URL scheme (e.g. `linear://`) can now be opened by clicking on them.
+* #707 When adding Issue Linking, the Issue URL is prefilled for repositories hosted on GitHub, GitLab & Bitbucket, and the example no longer refers to a placeholder repository that users copied by mistake.
+* #723 Renamed files display their original name in the Commit Details View.
+* #857 The "Scroll to HEAD" keyboard shortcut loads more commits until the commit referenced by HEAD has been loaded (when all branches, or the checked out branch, are shown).
+* #852 The mouse back & forward buttons navigate the Visual Studio Code editor history when used on the Git Graph View (if `workbench.editor.mouseBackForwardToNavigate` is enabled).
+* #864 The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard.
+* #719 Development: The project builds again on current Node.js versions: TypeScript 5.9, ESLint 10 (flat config), Jest 30, and `@vscode/vsce` (installed as a dev dependency).
+
 ## 1.30.0 - 2021-04-05
 * #395 Added a "Force Fetch" option onto the "Fetch into Local Branch" Dialog, allowing any local branch (that's not checked out) to be reset to the remote branch. This dialog is accessed via the Remote Branch Context Menu.
 * #457 New "View Diff with Working File" action on the File Context Menu in the Commit Details View.

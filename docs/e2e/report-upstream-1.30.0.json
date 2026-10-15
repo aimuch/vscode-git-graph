@@ -1,0 +1,156 @@
+{
+	"date": "2026-10-15T05:09:42.517Z",
+	"vscodeVersion": "1.141.2",
+	"gitVersion": "git version 2.56.0",
+	"platform": "darwin arm64",
+	"extensionHostNode": "v24.21.0",
+	"results": [
+		{
+			"id": "activation",
+			"title": "Git Graph activates in this version of Visual Studio Code (onStartupFinished)",
+			"pass": false,
+			"details": "Error: Unexpected activation events: [\"*\"]\n\tat assert (<repo>/e2e/suite.js:44:24)\n\tat <repo>/e2e/suite.js:124:3\n\tat check (<repo>/e2e/suite.js:50:25)\n\tat Object.run (<repo>/e2e/suite.js:121:8)",
+			"durationMs": 0
+		},
+		{
+			"id": "#903",
+			"title": "\"View Git Graph\" is contributed to the scm/repository menu (Source Control Repositories view)",
+			"pass": false,
+			"details": "Error: No inline scm/repository menu item\n\tat assert (<repo>/e2e/suite.js:44:24)\n\tat <repo>/e2e/suite.js:131:3\n\tat check (<repo>/e2e/suite.js:50:25)\n\tat Object.run (<repo>/e2e/suite.js:128:8)",
+			"durationMs": 1
+		},
+		{
+			"id": "#794",
+			"title": "The \"View Git Graph\" command opens the view when invoked with a null argument",
+			"pass": false,
+			"details": "Error: Timed out waiting for the Git Graph View to open\n\tat waitFor (<repo>/e2e/suite.js:36:8)\n\tat async <repo>/e2e/suite.js:138:3\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:135:2)",
+			"durationMs": 10074
+		},
+		{
+			"id": "webview-csp",
+			"title": "The Webview HTML loads its script & stylesheet through the Webview resource URIs and CSP of this version",
+			"pass": true,
+			"details": "script src: https://file%2B.vscode-resource.vscode-cdn.net<upstream-1.30.0-build>/media/out.min.js",
+			"durationMs": 8
+		},
+		{
+			"id": "#668",
+			"title": "Repositories, submodules and worktrees in the workspace are all discovered",
+			"pass": true,
+			"details": "Repositories: main, wt, main/sub",
+			"durationMs": 1
+		},
+		{
+			"id": "#935",
+			"title": "Commits after a commit whose subject contains a raw CR character are loaded (from the Webview)",
+			"pass": false,
+			"details": "Error: The raw CR character was not preserved in the subject\n\tat assert (<repo>/e2e/suite.js:44:24)\n\tat <repo>/e2e/suite.js:170:3\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:164:2)",
+			"durationMs": 305
+		},
+		{
+			"id": "#940",
+			"title": "Interactive rebase on a branch whose name contains shell syntax does not execute it",
+			"pass": false,
+			"details": "Error: The command substitution in the branch name was executed by the shell\n\tat assert (<repo>/e2e/suite.js:44:24)\n\tat <repo>/e2e/suite.js:185:4\n\tat waitFor (<repo>/e2e/suite.js:32:23)\n\tat <repo>/e2e/suite.js:184:9\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:175:2)",
+			"durationMs": 1010
+		},
+		{
+			"id": "#708",
+			"title": "Tags & branches that share a name can be deleted from and pushed to a remote",
+			"pass": false,
+			"details": "Error: Deleting the tag failed: error: dst refspec asd matches more than one\nerror: failed to push some refs to '<repo>/e2e/.artifacts/remote.git'\n\tat assert (<repo>/e2e/suite.js:44:24)\n\tat <repo>/e2e/suite.js:200:3\n\tat process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:195:2)",
+			"durationMs": 27
+		},
+		{
+			"id": "#932",
+			"title": "An externally configured GIT_ASKPASS is used for authentication instead of Git Graph's",
+			"pass": false,
+			"details": "Error: Timed out after 30000ms: fetching from the remote requiring authentication (Git Graph's own Askpass prompt would wait for input)\n\tat <repo>/e2e/suite.js:40:61\n\tat async <repo>/e2e/suite.js:219:18\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:218:2)",
+			"durationMs": 30001
+		},
+		{
+			"id": "#789",
+			"title": "The view refreshes when a commit is made in a submodule from outside of Visual Studio Code",
+			"pass": false,
+			"details": "Error: Timed out waiting for the extension to tell the Webview to refresh\n\tat waitFor (<repo>/e2e/suite.js:36:8)\n\tat async <repo>/e2e/suite.js:240:4\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:231:3)",
+			"durationMs": 17716
+		},
+		{
+			"id": "#668-watch",
+			"title": "The view refreshes when a commit is made in a worktree from outside of Visual Studio Code",
+			"pass": false,
+			"details": "Error: Timed out waiting for the extension to tell the Webview to refresh\n\tat waitFor (<repo>/e2e/suite.js:36:8)\n\tat async <repo>/e2e/suite.js:240:4\n\tat async check (<repo>/e2e/suite.js:50:19)\n\tat async Object.run (<repo>/e2e/suite.js:231:3)",
+			"durationMs": 17715
+		},
+		{
+			"id": "#857",
+			"title": "[Webview UI] \"Scroll to HEAD\" loads more commits until HEAD is loaded",
+			"pass": false,
+			"details": "Error: Timed out waiting for more commits to be requested\n    at waitFor (<webview>)\n    at async <webview>    at async check (<webview>)\n    at async run (<webview>)",
+			"durationMs": 10313
+		},
+		{
+			"id": "#892",
+			"title": "[Webview UI] The second keypress of a keybinding chord (e.g. Ctrl+K Ctrl+H) is left to Visual Studio Code",
+			"pass": false,
+			"details": "Error: Git Graph handled the second keypress of the chord\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#928",
+			"title": "[Webview UI] Tooltips are shown for elements with a title (e.g. the (i) icons)",
+			"pass": false,
+			"details": "Error: The title attribute should be removed while hovering, so the native tooltip isn't also shown\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#852",
+			"title": "[Webview UI] The mouse back / forward buttons navigate the editor history",
+			"pass": false,
+			"details": "Error: Unexpected navigation requests: []\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#723",
+			"title": "[Webview UI] Renamed files show their original name in the Commit Details View",
+			"pass": false,
+			"details": "Error: Unexpected labels: []\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#792",
+			"title": "[Webview UI] Issue links using a custom URL scheme are opened (via the extension)",
+			"pass": false,
+			"details": "Error: The click wasn't handled\n    at assert (<webview>)\n    at <webview>    at async check (<webview>)\n    at async run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#864",
+			"title": "[Webview UI] The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard",
+			"pass": false,
+			"details": "Error: Timed out waiting for the context menu to open\n    at waitFor (<webview>)\n    at async <webview>    at async check (<webview>)\n    at async run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#856",
+			"title": "[Webview UI] Pasting a branch name with the mouse enables the \"Create Branch\" button",
+			"pass": false,
+			"details": "Error: The \"Create Branch\" button is still disabled\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#652",
+			"title": "[Webview UI] The dialog buttons can be focused with Tab (after the inputs), and activated with Enter",
+			"pass": false,
+			"details": "Error: Unexpected tab order: inputs [1,2], buttons -1, -1\n    at assert (<webview>)\n    at <webview>    at check (<webview>)\n    at run (<webview>)",
+			"durationMs": 10314
+		},
+		{
+			"id": "#707",
+			"title": "[Webview UI] Adding Issue Linking prefills the Issue URL of the repository's GitHub remote (not an example URL)",
+			"pass": false,
+			"details": "Error: Unexpected Issue URL: \n    at assert (<webview>)\n    at <webview>    at async check (<webview>)\n    at async run (<webview>)",
+			"durationMs": 10314
+		}
+	]
+}

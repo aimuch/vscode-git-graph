@@ -87,7 +87,7 @@ Step 4: To quickly test your changes:
     * Stop the Extension Development Host
 
 Step 5: To do a complete test of your changes:
-1. Install Visual Studio Code Extensions `npm install -g vsce` if it is not already installed.
+1. Run the unit tests with `npm test`, and the end-to-end tests with `npm run test-e2e`. The end-to-end tests build fixture repositories, and run Git Graph in a real instance of Visual Studio Code (with an isolated profile). They default to the locally installed Visual Studio Code on macOS (otherwise the latest stable release is downloaded), which can be overridden with the `VSCODE_E2E_EXECUTABLE` environment variable. The result of every check is written to `e2e/.artifacts/report.json`. The end-to-end tests are not run by the GitHub Actions workflow yet (on Linux they require a display, e.g. `xvfb-run`). _Note: `vsce` is installed as a dev dependency (`@vscode/vsce`), it doesn't need to be installed globally._
 2. Change the version of the extension defined in `package.json` on line 4 to an alpha release, for example `1.13.0-alpha.0`. You should increment the alpha version each time you package a modified version of the extension. _Make sure you don't commit the version number with your changes._
 3. Run the npm script `npm run package-and-install` in the Visual Studio Code terminal. This will compile and package the extension into a `vsix` file, and then install it.
 4. Restart Visual Studio Code, and verify that you have the correct alpha version installed.

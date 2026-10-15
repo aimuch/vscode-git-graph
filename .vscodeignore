@@ -2,6 +2,7 @@
 .vscode/
 .vscode-test/
 coverage/
+docs/
 e2e/
 node_modules/*/*.md
 out/**/*.d.ts
