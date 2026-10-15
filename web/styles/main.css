@@ -71,7 +71,7 @@ code{
 
 #scrollShadow.active{
 	position:fixed;
-	top:0;
+	top:var(--git-graph-headerHeight, 0px);
 	left:0;
 	right:0;
 	height:0;
@@ -116,6 +116,15 @@ code{
 #commitGraph path.line{
 	fill:none;
 	stroke-width:2;
+}
+#commitGraph path.line, #commitGraph circle{
+	transition:opacity .15s ease;
+}
+#commitGraph svg.branchHighlight path.line:not(.highlight), #commitGraph svg.branchHighlight circle[data-branch]:not(.highlight){
+	opacity:0.25;
+}
+#commitGraph svg.branchHighlight path.line.highlight{
+	stroke-width:2.5;
 }
 
 #titleTooltip{
@@ -216,10 +225,6 @@ code{
 	border-collapse:collapse;
 }
 #commitTable table, #commitTable tbody, #commitTable tr, #commitTable th, #commitTable td{
-	padding:0;
-	margin:0;
-}
-#commitTable th, #commitTable td{
 	white-space:nowrap;
 	font-size:13px;
 	cursor:default;
@@ -227,13 +232,25 @@ code{
 	overflow:hidden;
 }
 #commitTable td{
-	line-height:24px;
-	padding:0 4px;
+	line-height:28px;
+	padding:0 6px;
 }
 #commitTable th{
-	border-bottom:1px solid rgba(128,128,128,0.5);
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
 	line-height:18px;
 	padding:6px 12px;
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+	font-weight:600;
+	text-align:left;
+}
+#commitTable td.dateCol{
+	color:var(--vscode-descriptionForeground);
+}
+#commitTable td.hashCol{
+	color:var(--vscode-descriptionForeground);
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
 }
 #commitTable tr.commit td{
 	cursor:pointer;
@@ -424,31 +441,112 @@ code{
 	user-select:text;
 }
 
-.cdvSummaryTop{
-	display:inline-table;
-	width:100%;
+.cdvSummaryHeader{
+	display:flex;
+	align-items:center;
+	gap:10px;
+	margin-bottom:10px;
 }
-.cdvSummaryTopRow{
-	display:table-row;
-}
-.cdvSummaryKeyValues, .cdvSummaryAvatar{
-	display:table-cell;
-	vertical-align:top;
-}
-.cdvSummaryKeyValues{
-	max-width:0px;
-	overflow-x:hidden;
-	text-overflow:ellipsis;
-}
-.cdvSummaryTop.withAvatar .cdvSummaryKeyValues{
-	padding-right:10px;
+.cdvSummaryHeader .authorInitial{
+	flex:0 0 auto;
+	width:32px;
+	height:32px;
+	margin:0;
+	font-size:14px;
+	line-height:32px;
 }
 .cdvSummaryAvatar{
-	width:54px;
+	flex:0 0 auto;
+	width:32px;
+	height:32px;
 }
 .cdvSummaryAvatar > img{
-	width:54px;
-	border-radius:4px;
+	width:32px;
+	height:32px;
+	border-radius:50%;
+}
+.cdvSummaryHeaderText{
+	display:flex;
+	flex-direction:column;
+	min-width:0;
+}
+.cdvSummaryAuthor{
+	font-weight:600;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.cdvSummaryDate{
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+}
+.cdvSummarySubject{
+	font-size:14px;
+	font-weight:600;
+	line-height:20px;
+	word-wrap:break-word;
+}
+.cdvSummaryBody{
+	margin-top:6px;
+	color:var(--vscode-descriptionForeground);
+	word-wrap:break-word;
+}
+.cdvSummaryDetails{
+	display:grid;
+	grid-template-columns:max-content minmax(0, 1fr);
+	gap:4px 10px;
+	margin-top:12px;
+	padding-top:10px;
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	font-size:12.5px;
+}
+.cdvSummaryKey{
+	color:var(--vscode-descriptionForeground);
+	white-space:nowrap;
+}
+.cdvSummaryValue{
+	overflow:hidden;
+	text-overflow:ellipsis;
+	word-wrap:break-word;
+}
+.cdvSummaryHash{
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
+}
+#cdvActions{
+	display:flex;
+	flex-wrap:wrap;
+	gap:6px;
+	margin-top:12px;
+}
+#cdvActions:empty{
+	display:none;
+}
+.cdvActionBtn{
+	height:26px;
+	padding:0 12px;
+	border:1px solid var(--vscode-button-border, rgba(128,128,128,0.35));
+	border-radius:6px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.1));
+	color:var(--vscode-button-secondaryForeground, inherit);
+	font-family:inherit;
+	font-size:12.5px;
+	cursor:pointer;
+}
+.cdvActionBtn:hover{
+	background-color:var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,0.2));
+}
+.cdvActionBtn.primary{
+	border-color:transparent;
+	background-color:var(--vscode-button-background, rgba(128,128,128,0.2));
+	color:var(--vscode-button-foreground, inherit);
+}
+.cdvActionBtn.primary:hover{
+	background-color:var(--vscode-button-hoverBackground, rgba(128,128,128,0.3));
+}
+.cdvActionBtn:focus-visible{
+	outline:2px solid var(--vscode-focusBorder);
+	outline-offset:1px;
 }
 
 .signatureInfo{
@@ -559,6 +657,61 @@ code{
 	border-top:2px solid rgba(128,128,128,0.2);
 }
 
+#cdv.docked.right{
+	top:0;
+	left:auto;
+	box-sizing:border-box;
+	border-left:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+	background-color:var(--vscode-sideBar-background, var(--vscode-editor-background));
+}
+#cdv.docked.right #cdvContent, #cdv.docked.right #cdvControls{
+	top:0;
+	bottom:0;
+}
+#cdv.docked.right #cdvContent{
+	left:6px;
+}
+#cdv.docked.right #cdvSummary{
+	left:0;
+	right:0;
+	width:auto !important;
+	bottom:auto;
+	padding:14px 12px 12px 10px;
+	border-right:none;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+}
+#cdv.docked.right #cdvFiles{
+	left:0 !important;
+	right:0;
+	bottom:0;
+	padding:6px 8px 8px 0;
+	border-right:none;
+}
+#cdv.docked.right #cdvDivider{
+	left:0 !important;
+	right:0;
+	width:auto;
+	height:6px;
+	margin-top:-3px;
+	cursor:row-resize;
+}
+#cdv.docked.right #cdvControls{
+	border-left:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+}
+#cdv.docked.right .cdvHeightResize{
+	top:0;
+	bottom:0;
+	left:0;
+	right:auto;
+	width:6px;
+	height:auto;
+	border-top:none;
+	cursor:col-resize;
+}
+#cdv.docked.right .cdvHeightResize:hover{
+	background-color:var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
+}
+
 
 /* File Tree */
 
@@ -654,10 +807,24 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	display:inline-block;
 	width:18px;
 	height:18px;
-	border-radius:4px;
+	border-radius:50%;
 	vertical-align:top;
-	margin-top:3px;
-	margin-right:4px;
+	margin-top:5px;
+	margin-right:6px;
+}
+.authorInitial{
+	display:inline-block;
+	width:18px;
+	height:18px;
+	margin-top:5px;
+	margin-right:6px;
+	border-radius:50%;
+	color:#ffffff;
+	font-size:10px;
+	font-weight:700;
+	line-height:18px;
+	text-align:center;
+	vertical-align:top;
 }
 
 
@@ -669,19 +836,19 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	border:2px solid var(--git-graph-color);
 	display:inline-block;
 	border-radius:6px;
-	margin-right:5px;
+	margin-right:6px;
 	vertical-align:top;
-	margin-top:7px;
+	margin-top:9px;
 	cursor:help;
 }
 #commitTable tr.commit:hover, #commitTable tr.commit.contextMenuActive, #commitTable tr.commit.findCurrentCommit:hover, #commitTable tr.commit.graphVertexActive, #commitTable tr.commit.dialogActive{
-	background-color:rgba(128,128,128,0.15);
+	background-color:var(--vscode-list-hoverBackground, rgba(128,128,128,0.15));
 }
-#commitTable tr.commit.commitDetailsOpen{
-	background-color:rgba(128,128,128,0.25);
+#commitTable tr.commit.commitDetailsOpen, #commitTable tr.commit.commitDetailsOpen:hover, #commitTable tr.commit.commitDetailsOpen.contextMenuActive, #commitTable tr.commit.commitDetailsOpen.dialogActive, #commitTable tr.commit.commitDetailsOpen.graphVertexActive{
+	background-color:var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25));
 }
-#commitTable tr.commit.commitDetailsOpen:hover, #commitTable tr.commit.commitDetailsOpen.contextMenuActive, #commitTable tr.commit.commitDetailsOpen.dialogActive, #commitTable tr.commit.commitDetailsOpen.graphVertexActive{
-	background-color:rgba(128,128,128,0.35);
+#commitTable tr.commit.commitDetailsOpen td:first-child{
+	box-shadow:inset 3px 0 0 var(--vscode-focusBorder);
 }
 
 #commitTable tr.commit.findCurrentCommit {
@@ -716,51 +883,65 @@ body.vscode-high-contrast #commitTable tr.commit.findCurrentCommit{
 /* Ref labels */
 
 .gitRef{
-	display:inline-block;
-	height:18px;
+	display:inline-flex;
+	align-items:center;
+	box-sizing:border-box;
+	height:20px;
 	line-height:18px;
-	margin-top:2px;
+	margin-top:4px;
 	margin-right:5px;
-	background-color:rgba(128,128,128,0.15);
-	border-radius:5px;
-	border:1px solid rgba(128,128,128,0.75);
+	background-color:color-mix(in srgb, var(--git-graph-color) 22%, transparent);
+	border-radius:10px;
+	border:1px solid color-mix(in srgb, var(--git-graph-color) 75%, transparent);
 	vertical-align:top;
 	font-size:12px;
 	cursor:default;
 	overflow:hidden;
 }
+.gitRef.remote{
+	background-color:transparent;
+	border-style:dashed;
+}
+.gitRef.tag{
+	background-color:transparent;
+	border-color:color-mix(in srgb, var(--vscode-foreground) 45%, transparent);
+}
 .gitRef.active{
 	border-color:var(--git-graph-color);
+	box-shadow:inset 0 0 0 1px var(--git-graph-color);
 }
 .gitRef.active .gitRefName{
 	font-weight:bold;
 }
 .gitRef > svg{
-	background-color:var(--git-graph-color);
-	fill:var(--vscode-editor-background);
-	width:14px;
-	height:14px;
-	padding:2px;
-	vertical-align:top;
+	flex:0 0 auto;
+	fill:var(--git-graph-color);
+	width:12px;
+	height:12px;
+	margin-left:6px;
+}
+.gitRef.tag > svg{
+	fill:var(--vscode-foreground);
+	opacity:0.75;
 }
 
 .gitRefName, .gitRefHeadRemote{
 	display:inline-block;
 	height:18px;
 	line-height:18px;
-	padding:0 5px;
+	padding:0 7px 0 4px;
+	overflow:hidden;
+	text-overflow:ellipsis;
 }
 .gitRefHeadRemote{
-	border-left:1px solid rgba(128,128,128,0.45);
+	padding:0 7px;
+	border-left:1px solid color-mix(in srgb, var(--git-graph-color) 55%, transparent);
 	font-style:italic;
-}
-
-#commitTable tr.commit.commitDetailsOpen:hover .gitRef, #commitTable tr.commit.commitDetailsOpen.contextMenuActive .gitRef, #commitTable tr.commit.commitDetailsOpen.dialogActive .gitRef, #commitTable tr.commit.commitDetailsOpen.graphVertexActive .gitRef{
-	background-color:rgba(128,128,128,0.05);
+	opacity:0.85;
 }
 
 .gitRef .contextMenuActive, .gitRef .dialogActive, .gitRef .gitRefName:hover, .gitRef .gitRefHeadRemote:hover{
-	background-color:rgba(128,128,128,0.1);
+	background-color:rgba(128,128,128,0.15);
 }
 
 body.branchLabelsAlignedToGraph tr.commit td:first-child .gitRef:last-child{
@@ -797,38 +978,43 @@ body.tagLabelsRightAligned .gitRef.tag{
 /* Controls */
 
 #controls{
-	display:block;
-	position:relative;
-	left:0;
-	right:0;
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:6px 8px;
+	position:sticky;
 	top:0;
-	padding:4px 132px 4px 0;
-	border-bottom:1px solid rgba(128,128,128,0.5);
-	line-height:32px;
-	text-align:center;
-	font-weight:700;
+	z-index:15;
+	padding:8px 12px;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+	background-color:var(--vscode-sideBar-background, var(--vscode-editor-background));
 	font-size:13px;
 	-webkit-user-select:none;
 	user-select:none;
 }
 
-#repoControl, #branchControl, #authorControl, #showRemoteBranchesControl{
-	display:inline-block;
+#repoControl, #branchControl, #authorControl{
+	display:inline-flex;
+	align-items:center;
 	white-space:nowrap;
-	margin:0 10px;
 }
-#repoDropdown, #branchDropdown, #authorDropdown{
-	margin-left:3px;
+#controls.singleRepo #repoControl{
+	display:none;
+}
+#showRemoteBranchesControl{
+	display:inline-flex;
+	align-items:center;
+	height:28px;
+	padding:0 4px;
+	white-space:nowrap;
 }
 #showRemoteBranchesControl > .customCheckbox{
+	margin-top:0;
 	margin-right:6px;
 }
 
 .dropdownCurrentValue{
 	max-width:30vw;
-}
-#controls.singleRepo #repoControl{
-	display:none;
 }
 #authorDropdown .dropdownCurrentValue{
 	max-width:20vw;
@@ -837,91 +1023,179 @@ body.tagLabelsRightAligned .gitRef.tag{
 	max-width:40vw;
 }
 
-#findBtn, #terminalBtn, #settingsBtn, #fetchBtn, #refreshBtn{
-	position:absolute;
-	top:50%;
-	width:20px;
-	height:20px;
-	margin-top:-10px;
+.controlBtn{
+	position:relative;
+	flex:0 0 auto;
+	width:28px;
+	height:28px;
+	border-radius:6px;
 	cursor:pointer;
 	-webkit-user-select:none;
 	user-select:none;
 }
+.controlBtn:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
 #findBtn{
-	right:100px;
-}
-#terminalBtn{
-	right:70px;
-}
-#settingsBtn{
-	right:40px;
+	margin-left:auto;
 }
 #fetchBtn{
 	display:none;
-	right:40px;
-}
-#refreshBtn{
-	right:10px;
-}
-#refreshBtn.refreshing{
-	cursor:default;
-}
-#findBtn svg, #terminalBtn svg, #settingsBtn svg, #fetchBtn svg, #refreshBtn svg{
-	position:absolute;
-	fill:var(--vscode-editor-foreground);
-	opacity:0.8;
-	stroke:var(--vscode-editor-foreground);
-	stroke-opacity:0.5;
-	stroke-width:0;
-}
-#findBtn svg, #terminalBtn svg{
-	stroke-width:0.5px;
-}
-#findBtn:hover svg, #terminalBtn:hover svg, #settingsBtn:hover svg, #fetchBtn:hover svg, #refreshBtn:hover svg{
-	opacity:1;
-	stroke-width:0.5px;
-}
-#findBtn:hover svg, #terminalBtn:hover svg{
-	stroke-width:1px;
-}
-#findBtn svg, #terminalBtn svg, #settingsBtn svg, #fetchBtn svg{
-	left:1px;
-	top:1px;
-	width:18px !important;
-	height:18px !important;
-}
-#refreshBtn svg{
-	left:2px;
-	top:2px;
-	width:16px !important;
-	height:16px !important;
-}
-#refreshBtn.refreshing svg{
-	left:3.25px;
-	top:2px;
-	width:13.5px !important;
-	height:18px !important;
-	animation:loadingIconAnimation 2s linear infinite;
-}
-
-#controls.fetchSupported{
-	padding-right:162px;
-}
-#controls.fetchSupported #findBtn{
-	right:130px;
-}
-#controls.fetchSupported #terminalBtn{
-	right:100px;
-}
-#controls.fetchSupported #settingsBtn{
-	right:70px;
 }
 #controls.fetchSupported #fetchBtn{
 	display:block;
 }
+#refreshBtn.refreshing{
+	cursor:default;
+}
+.controlBtn svg{
+	position:absolute;
+	left:6px;
+	top:6px;
+	width:16px !important;
+	height:16px !important;
+	fill:var(--vscode-icon-foreground, var(--vscode-editor-foreground));
+	opacity:0.85;
+}
+.controlBtn:hover svg{
+	opacity:1;
+}
+#refreshBtn.refreshing svg{
+	left:7px;
+	width:13.5px !important;
+	height:16px !important;
+	animation:loadingIconAnimation 2s linear infinite;
+}
 
 #controls input:focus{
 	outline:none;
+}
+
+
+/* Minimap */
+
+#minimap{
+	display:none;
+	flex:1 0 100%;
+	align-items:stretch;
+	gap:10px;
+	height:46px;
+	margin-top:2px;
+}
+#minimap.active{
+	display:flex;
+}
+.minimapTitle{
+	flex:0 0 auto;
+	align-self:flex-start;
+	padding-top:10px;
+	color:var(--vscode-descriptionForeground);
+	font-size:11px;
+	font-weight:600;
+	letter-spacing:0.04em;
+}
+.minimapChart{
+	position:relative;
+	flex:1 1 auto;
+	min-width:0;
+}
+.minimapMarkers{
+	position:absolute;
+	left:0;
+	right:0;
+	top:0;
+	height:8px;
+}
+.minimapMarker{
+	position:absolute;
+	top:1px;
+	width:6px;
+	height:6px;
+	margin-left:-3px;
+	border-radius:1px;
+}
+.minimapMarker.head{
+	border-radius:50%;
+	z-index:1;
+}
+.minimapMarker.tag{
+	transform:rotate(45deg) scale(0.85);
+}
+.minimapBars{
+	position:absolute;
+	left:0;
+	right:0;
+	top:10px;
+	bottom:14px;
+	display:flex;
+	align-items:flex-end;
+	gap:1px;
+}
+.minimapBar{
+	flex:1 1 0;
+	min-width:1px;
+	border-radius:2px 2px 0 0;
+	background-color:color-mix(in srgb, var(--vscode-foreground) 35%, transparent);
+	cursor:pointer;
+}
+.minimapBar.empty{
+	background-color:color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+	cursor:default;
+}
+.minimapBar:not(.empty):hover{
+	background-color:var(--vscode-focusBorder);
+}
+#minimapViewport{
+	position:absolute;
+	top:8px;
+	bottom:12px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-focusBorder);
+	border-radius:3px;
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 18%, transparent);
+	pointer-events:none;
+}
+.minimapAxis{
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:0;
+	display:flex;
+	justify-content:space-between;
+	color:var(--vscode-descriptionForeground);
+	font-size:10.5px;
+	line-height:12px;
+}
+
+
+/* Scrollbar Markers */
+
+#scrollMarkers{
+	position:fixed;
+	width:6px;
+	margin-right:2px;
+	z-index:3;
+	pointer-events:none;
+}
+.scrollMarker{
+	position:absolute;
+	left:0;
+	right:0;
+	height:3px;
+	margin-top:-1px;
+	border-radius:1px;
+}
+.scrollMarker.tag, .scrollMarker.other{
+	left:2px;
+}
+.scrollMarker.findMatch{
+	left:-2px;
+	right:-2px;
+	z-index:1;
+}
+.scrollMarker.head{
+	height:4px;
+	z-index:2;
 }
 #controls label{
 	cursor:pointer;
@@ -932,9 +1206,9 @@ body.tagLabelsRightAligned .gitRef.tag{
 
 #loadMoreCommitsBtn, #rescanForReposBtn{
 	height:28px;
-	margin:10px auto;
-	border-radius:14px;
-	line-height:28px;
+	margin:12px auto;
+	border-radius:6px;
+	line-height:26px;
 }
 #loadMoreCommitsBtn{
 	width:180px;
@@ -945,14 +1219,16 @@ body.tagLabelsRightAligned .gitRef.tag{
 
 .roundedBtn{
 	display:block;
-	background-color:rgba(128,128,128,0.1);
-	border:1px solid rgba(128,128,128,0.5);
+	box-sizing:border-box;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.1));
+	border:1px solid var(--vscode-button-border, rgba(128,128,128,0.35));
+	color:var(--vscode-button-secondaryForeground, inherit);
 	font-size:13px;
 	text-align:center;
 	cursor:pointer;
 }
 .roundedBtn:hover{
-	background-color:rgba(128,128,128,0.2);
+	background-color:var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,0.2));
 }
 
 a, span.internalUrl{

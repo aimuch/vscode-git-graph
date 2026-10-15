@@ -148,13 +148,15 @@
 					"type": "string",
 					"enum": [
 						"Inline",
-						"Docked to Bottom"
+						"Docked to Bottom",
+						"Docked to Right"
 					],
 					"enumDescriptions": [
 						"%config.commitDetailsView.location.enumDescriptions.0%",
-						"%config.commitDetailsView.location.enumDescriptions.1%"
+						"%config.commitDetailsView.location.enumDescriptions.1%",
+						"%config.commitDetailsView.location.enumDescriptions.2%"
 					],
-					"default": "Inline",
+					"default": "Docked to Right",
 					"description": "%config.commitDetailsView.location.description%"
 				},
 				"git-graph.contextMenuActionsVisibility": {
@@ -783,6 +785,11 @@
 						"#ffcc00"
 					],
 					"description": "%config.graph.colours.description%"
+				},
+				"git-graph.graph.minimap": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.graph.minimap.description%"
 				},
 				"git-graph.graph.style": {
 					"type": "string",

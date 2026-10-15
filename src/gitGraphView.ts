@@ -125,7 +125,7 @@ export class GitGraphView extends Disposable {
 
 			// Re-render the view when the appearance of the graph, or the language, is changed
 			vscode.workspace.onDidChangeConfiguration((event) => {
-				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.language'))) {
+				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.minimap') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.language'))) {
 					this.update();
 				}
 			}),
@@ -732,15 +732,17 @@ export class GitGraphView extends Disposable {
 			body = `<body>
 			<div id="view" tabindex="-1">
 				<div id="controls">
-					<span id="repoControl"><span class="unselectable">${t('Repo:')} </span><div id="repoDropdown" class="dropdown"></div></span>
-					<span id="branchControl"><span class="unselectable">${t('Branches:')} </span><div id="branchDropdown" class="dropdown"></div></span>
-					<span id="authorControl"><span class="unselectable">${t('Authors:')} </span><div id="authorDropdown" class="dropdown"></div></span>
+					<span id="repoControl"><div id="repoDropdown" class="dropdown" data-label="${t('Repo:')}"></div></span>
+					<span id="branchControl"><div id="branchDropdown" class="dropdown" data-label="${t('Branches:')}"></div></span>
+					<span id="authorControl"><div id="authorDropdown" class="dropdown" data-label="${t('Authors:')}"></div></span>
 					<label id="showRemoteBranchesControl"><input type="checkbox" id="showRemoteBranchesCheckbox" tabindex="-1"><span class="customCheckbox"></span>${t('Show Remote Branches')}</label>
-					<div id="findBtn" title="${t('Find')}"></div>
-					<div id="terminalBtn" title="${t('Open a Terminal for this Repository')}"></div>
-					<div id="settingsBtn" title="${t('Repository Settings')}"></div>
-					<div id="fetchBtn"></div>
-					<div id="refreshBtn"></div>
+					<div id="findBtn" class="controlBtn" title="${t('Find')}"></div>
+					<div id="scrollToHeadBtn" class="controlBtn" title="${t('Scroll to HEAD')}"></div>
+					<div id="fetchBtn" class="controlBtn"></div>
+					<div id="refreshBtn" class="controlBtn"></div>
+					<div id="terminalBtn" class="controlBtn" title="${t('Open a Terminal for this Repository')}"></div>
+					<div id="settingsBtn" class="controlBtn" title="${t('Repository Settings')}"></div>
+					<div id="minimap"></div>
 				</div>
 				<div id="content">
 					<div id="commitGraph"></div>

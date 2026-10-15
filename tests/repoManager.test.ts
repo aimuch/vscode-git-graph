@@ -1225,6 +1225,7 @@ describe('RepoManager', () => {
 			const newRepoState = {
 				cdvDivider: 0.75,
 				cdvHeight: 300,
+				cdvWidth: 380,
 				columnWidths: null,
 				commitOrdering: RepoCommitOrdering.Default,
 				fileViewType: FileViewType.Default,
@@ -1894,6 +1895,7 @@ describe('RepoManager', () => {
 					'/path/to/workspace-folder1/repo': {
 						cdvDivider: 0.5,
 						cdvHeight: 250,
+						cdvWidth: 380,
 						columnWidths: null,
 						commitOrdering: RepoCommitOrdering.Default,
 						fileViewType: FileViewType.Default,
@@ -2247,6 +2249,7 @@ describe('RepoManager', () => {
 				'/path/to/workspace-folder1/repo1': {
 					cdvDivider: 0.5,
 					cdvHeight: 250,
+					cdvWidth: 380,
 					columnWidths: null,
 					commitOrdering: RepoCommitOrdering.Default,
 					fileViewType: FileViewType.Default,
@@ -2325,6 +2328,7 @@ describe('RepoManager', () => {
 				'/path/to/workspace-folder1/repo1': {
 					cdvDivider: 0.5,
 					cdvHeight: 250,
+					cdvWidth: 380,
 					columnWidths: null,
 					commitOrdering: RepoCommitOrdering.Default,
 					fileViewType: FileViewType.Default,

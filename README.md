@@ -9,6 +9,8 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
 ## Features
 
 * Git Graph View:
+    * A minimap of the activity of the loaded commits, markers alongside the scrollbar (HEAD, branches, tags & find matches), and highlighting of the branch of the commit under the mouse.
+    * Find commits by text, or with the search operators `author:` (`@:`), `message:` (`=:`) and `commit:` (`#:`).
     * Display:
         * Local & Remote Branches
         * Local Refs: Heads, Tags & Remotes
@@ -80,7 +82,7 @@ A summary of the Git Graph extension settings are:
         * **File Tree**:
             * **Compact Folders**: Render the File Tree in the Commit Details View in a compacted form, such that folders with a single child folder are compressed into a single combined folder element.
         * **Type**: Sets the default type of File View used in the Commit Details View.
-    * **Location**: Specifies where the Commit Details View is rendered in the Git Graph View.
+    * **Location**: Specifies where the Commit Details View is rendered in the Git Graph View: Inline (below the commit), Docked to Bottom, or Docked to Right (default).
 * **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#context-menu-actions-visibility).
 * **Custom Branch Glob Patterns**: An array of Custom Glob Patterns to be shown in the "Branches" dropdown. Example: `[{"name":"Feature Requests", "glob":"heads/feature/*"}]`
 * **Custom Emoji Shortcode Mappings**: An array of custom Emoji Shortcode mappings. Example: `[{"shortcode": ":sparkles:", "emoji":"✨"}]`
@@ -93,6 +95,7 @@ A summary of the Git Graph extension settings are:
 * **Enhanced Accessibility**: Visual file change A|M|D|R|U indicators in the Commit Details View for users with colour blindness. In the future, this setting will enable any additional accessibility related features of Git Graph that aren't enabled by default.
 * **File Encoding**: The character set encoding used when retrieving a specific version of repository files (e.g. in the Diff View). A list of all supported encodings can be found [here](https://github.com/ashtuchkin/iconv-lite/wiki/Supported-Encodings).
 * **Graph**:
+    * **Minimap**: Show a minimap of the activity of the loaded commits at the top of the Git Graph View (default: enabled).
     * **Colour Preset**: Specifies the colour preset used on the graph: Default (the colours of the "Colours" setting), Pastel, Vivid, High Contrast, Colour Blind Safe or Tokyo Subway. It can also be selected with the "Git Graph: Select Graph Colour Preset..." command.
     * **Colours**: Specifies the colours used on the graph.
     * **Style**: Specifies the style of the graph.

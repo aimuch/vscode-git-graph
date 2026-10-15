@@ -79,10 +79,20 @@ class Config {
 			fileViewType: this.getRenamedExtensionSetting<string>('commitDetailsView.fileView.type', 'defaultFileViewType', 'File Tree') === 'File List'
 				? FileViewType.List
 				: FileViewType.Tree,
-			location: this.getRenamedExtensionSetting<string>('commitDetailsView.location', 'commitDetailsViewLocation', 'Inline') === 'Docked to Bottom'
-				? CommitDetailsViewLocation.DockedToBottom
-				: CommitDetailsViewLocation.Inline
+			location: this.getCommitDetailsViewLocation()
 		};
+	}
+
+	/**
+	 * Get the value of the `git-graph.commitDetailsView.location` Extension Setting.
+	 */
+	private getCommitDetailsViewLocation() {
+		const location = this.getRenamedExtensionSetting<string>('commitDetailsView.location', 'commitDetailsViewLocation', 'Docked to Right');
+		return location === 'Inline'
+			? CommitDetailsViewLocation.Inline
+			: location === 'Docked to Bottom'
+				? CommitDetailsViewLocation.DockedToBottom
+				: CommitDetailsViewLocation.DockedToRight;
 	}
 
 	/**
@@ -286,6 +296,7 @@ class Config {
 				: Array.isArray(colours) && colours.length > 0
 					? colours.filter((v) => v.match(/^\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\s*\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\))\s*$/) !== null)
 					: ['#0085d9', '#d9008f', '#00d90a', '#d98500', '#a300d9', '#ff0000', '#00d9cc', '#e138e8', '#85d900', '#dc5b23', '#6f24d6', '#ffcc00'],
+			minimap: !!this.config.get('graph.minimap', true),
 			style: this.getRenamedExtensionSetting<string>('graph.style', 'graphStyle', 'rounded') === 'angular'
 				? GraphStyle.Angular
 				: GraphStyle.Rounded,

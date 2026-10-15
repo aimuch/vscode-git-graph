@@ -186,6 +186,9 @@
 			mouse(commitRow(0), 'click');
 			const cdv = await waitFor('the Commit Details View to load', () => document.querySelector('#cdv .fileTreeFileRecord') ? document.getElementById('cdv') : null);
 			['提交：', '父提交：', '作者：', '提交者：', '日期：'].forEach((text) => assert(cdv.textContent.includes(text), 'The Commit Details View doesn\'t include "' + text + '"'));
+			const actions = Array.from(cdv.querySelectorAll('#cdvActions .cdvActionBtn')).map((elem) => elem.textContent);
+			assert(actions[0] === '签出…' && actions[1] === '创建分支…' && actions[2] === '拣选…', 'Unexpected action buttons: ' + JSON.stringify(actions));
+			assert(document.querySelector('#minimap .minimapTitle').textContent === '活动', 'Unexpected minimap title: ' + document.querySelector('#minimap .minimapTitle').textContent);
 			const dropdown = document.getElementById('authorDropdown');
 			mouse(dropdown.querySelector('.dropdownCurrentValue'), 'click');
 			const options = await waitFor('the author options', () => {
@@ -298,6 +301,62 @@
 			await waitFor('the context menu to close', () => document.querySelector('.contextMenu') === null);
 		});
 
+		await check('ui-toolbar', '[Redesign] The control bar is sticky, has its labels inside the dropdowns, and a Jump to HEAD button', async () => {
+			const controls = document.getElementById('controls');
+			assert(getComputedStyle(controls).position === 'sticky', 'The controls aren\'t sticky: ' + getComputedStyle(controls).position);
+			const labels = Array.from(document.querySelectorAll('#controls .dropdownLabel')).map((elem) => elem.textContent);
+			assert(labels.includes('Branches:') && labels.includes('Authors:'), 'Unexpected dropdown labels: ' + JSON.stringify(labels));
+			const headBtn = document.getElementById('scrollToHeadBtn');
+			assert(headBtn !== null && headBtn.querySelector('svg') !== null && headBtn.getAttribute('title') === 'Scroll to HEAD', 'The Jump to HEAD button is missing');
+			mouse(document.querySelector('#branchDropdown .dropdownLabel'), 'click');
+			await waitFor('the Branches dropdown to open when its label is clicked', () => document.getElementById('branchDropdown').classList.contains('dropdownOpen'));
+			mouse(controls, 'click');
+			await waitFor('the Branches dropdown to close', () => !document.getElementById('branchDropdown').classList.contains('dropdownOpen'));
+			return 'Labels: ' + labels.join(', ');
+		});
+
+		await check('ui-cdv', '[Redesign] The Commit Details View is docked to the right, with buttons for the most common commit actions', async () => {
+			mouse(commitRow(3), 'click');
+			await waitFor('the Commit Details View of the commit to load', () => document.querySelector('#cdv .fileTreeFileRecord') && document.querySelector('#cdvActions .cdvActionBtn') && commitRow(3).classList.contains('commitDetailsOpen'));
+			const cdv = document.getElementById('cdv');
+			assert(cdv.classList.contains('docked') && cdv.classList.contains('right') && document.body.classList.contains('cdvDockedRight'), 'The Commit Details View isn\'t docked to the right: ' + cdv.className);
+			assert(cdv.style.width !== '' && document.getElementById('view').style.right === cdv.style.width, 'The view isn\'t beside the Commit Details View: ' + document.getElementById('view').style.right + ' / ' + cdv.style.width);
+			const buttons = Array.from(document.querySelectorAll('#cdvActions .cdvActionBtn')).map((elem) => elem.textContent);
+			assert(JSON.stringify(buttons) === JSON.stringify(['Checkout\u2026', 'Create Branch\u2026', 'Cherry Pick\u2026', '\u00b7\u00b7\u00b7']), 'Unexpected action buttons: ' + JSON.stringify(buttons));
+			mouse(document.getElementById('cdvMoreActions'), 'click');
+			const menu = await waitFor('the commit context menu to open', () => document.querySelector('.contextMenu'));
+			assert(menu.textContent.includes('Revert') && menu.textContent.includes('Copy Commit Hash to Clipboard'), 'Unexpected context menu: ' + menu.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the context menu to close', () => document.querySelector('.contextMenu') === null);
+			return 'Width: ' + cdv.style.width + ', actions: ' + buttons.join(' | ');
+		});
+
+		await check('ui-branch-highlight', '[GitLens] Hovering over a commit highlights the branch it is on in the graph', async () => {
+			const graph = document.querySelector('#commitGraph > svg');
+			mouse(commitRow(5), 'mouseover');
+			await waitFor('the branch to be highlighted', () => graph.classList.contains('branchHighlight'));
+			const highlighted = graph.querySelectorAll('path.line.highlight').length, vertices = graph.querySelectorAll('circle.highlight').length;
+			assert(highlighted > 0 && vertices > 0, 'Nothing was highlighted: ' + highlighted + ' lines, ' + vertices + ' vertices');
+			mouse(document.getElementById('commitTable'), 'mouseleave');
+			await waitFor('the highlight to be removed', () => !graph.classList.contains('branchHighlight'));
+			return highlighted + ' line(s) & ' + vertices + ' vertices highlighted';
+		});
+
+		await check('ui-minimap', '[GitLens] The minimap shows the activity of the loaded commits, where HEAD & branches are, and the visible commits', async () => {
+			const minimap = document.getElementById('minimap');
+			assert(minimap.classList.contains('active'), 'The minimap isn\'t shown');
+			const bars = Array.from(minimap.querySelectorAll('.minimapBar')), activeBars = bars.filter((bar) => !bar.classList.contains('empty'));
+			const loaded = document.querySelectorAll('#commitTable tr.commit').length;
+			const counted = activeBars.reduce((sum, bar) => sum + parseInt(bar.getAttribute('title').match(/: (\d+) commits$/)[1]), 0);
+			assert(bars.length >= 30 && counted === loaded, 'Unexpected bars: ' + bars.length + ' days, ' + counted + ' of ' + loaded + ' commits');
+			assert(minimap.querySelector('.minimapMarker.head') !== null && minimap.querySelector('.minimapMarker.branch') !== null, 'The HEAD & branch markers are missing');
+			const viewport = document.getElementById('minimapViewport');
+			assert(viewport !== null && viewport.style.width !== '', 'The visible commits aren\'t shown');
+			mouse(activeBars[0], 'click');
+			await waitFor('the oldest day\'s newest commit to be scrolled to', () => document.querySelector('#commitTable tr.commit.flash') !== null);
+			return bars.length + ' days, ' + activeBars.length + ' with commits (' + counted + ' commits)';
+		});
+
 		// Open the "Create Branch" dialog from the context menu of a commit
 		mouse(commitRow(1), 'contextmenu', { button: 2 });
 		const createBranchItem = await waitFor('the "Create Branch..." action', () => Array.from(document.querySelectorAll('.contextMenu .contextMenuItem')).find((elem) => elem.textContent.startsWith('Create Branch')));
@@ -369,6 +428,40 @@
 			await waitFor('the commits of all authors to be requested', () => requestsOf('loadCommits').slice(-1)[0].authors === null);
 			key(document.body, 'Escape');
 			return 'Options: ' + options.join(', ') + ' → requested authors ' + JSON.stringify(filtered.authors);
+		});
+
+		await check('ui-find-operators', '[GitLens] The Find Widget supports the author:, message: & commit: search operators, shown alongside the scrollbar', async () => {
+			await waitFor('the commits to be reloaded', () => document.querySelectorAll('#commitTable tr.commit').length > 0 && requestsOf('loadCommits').slice(-1)[0].authors === null);
+			const loaded = document.querySelectorAll('#commitTable tr.commit').length, fixture = makeCommits(loaded);
+			const find = async (text) => {
+				const input = document.getElementById('findInput');
+				input.value = text;
+				input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
+				const expected = text === '' ? '' : null;
+				return waitFor('the matches of ' + text, () => {
+					const position = document.getElementById('findPosition').textContent;
+					return position !== '' && document.getElementById('findInput').value === text && !document.querySelector('.findWidget').hasAttribute('data-error') ? position : expected;
+				});
+			};
+			document.getElementById('findBtn').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await waitFor('the Find Widget to open', () => document.querySelector('.findWidget').classList.contains('active'));
+			const results = {};
+			const expect = async (text, count) => {
+				const position = await find(text);
+				await sleep(300);
+				const actual = document.getElementById('findPosition').textContent;
+				assert(actual === (count > 0 ? '1 of ' + count : 'No Results'), 'Unexpected matches of ' + text + ': ' + actual + ' (expected ' + count + ')');
+				results[text] = actual;
+			};
+			await expect('author:"Second Author" Commit', fixture.filter((c) => c.author === 'Second Author' && c.message.includes('Commit')).length);
+			await expect('@:second', fixture.filter((c) => c.author === 'Second Author').length);
+			await expect('message:Resolve =:#10', fixture.filter((c) => c.message.includes('Resolve') && c.message.includes('#10')).length);
+			await expect('commit:' + hash(5), 1);
+			const view = document.getElementById('view'), markers = document.querySelectorAll('#scrollMarkers .scrollMarker.findMatch').length;
+			assert(view.scrollHeight <= view.clientHeight || markers === 1, 'The find match isn\'t shown alongside the scrollbar: ' + markers + ' markers');
+			mouse(document.getElementById('findClose'), 'click');
+			await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
+			return JSON.stringify(results) + (view.scrollHeight > view.clientHeight ? ', scrollbar markers shown' : ', the view isn\'t scrollable (no scrollbar markers)');
 		});
 	};
 

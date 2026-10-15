@@ -2,11 +2,13 @@
 	display:block;
 	position:absolute;
 	background-color:var(--vscode-menu-background);
-	box-shadow:0 1px 4px 1px var(--vscode-widget-shadow);
+	border:1px solid var(--vscode-menu-border, rgba(128,128,128,0.25));
+	border-radius:8px;
+	box-shadow:0 8px 24px var(--vscode-widget-shadow);
 	color:var(--vscode-menu-foreground);
 	list-style-type:none;
 	margin:0;
-	padding:4px 0;
+	padding:4px;
 	z-index:10;
 	-webkit-user-select:none;
 	user-select:none;
@@ -23,7 +25,8 @@ body.vscode-high-contrast .contextMenu{
 }
 
 .contextMenu li.contextMenuItem{
-	padding:6px 20px;
+	padding:5px 14px;
+	border-radius:5px;
 }
 
 .contextMenu li.contextMenuItem:hover{
@@ -36,14 +39,14 @@ body.vscode-high-contrast .contextMenu li.contextMenuItem:hover{
 }
 
 .contextMenu li.contextMenuDivider{
-	margin:4px 10px;
+	margin:4px 6px;
 	border-top:1px solid var(--vscode-menu-separatorBackground);
 	opacity:0.5;
 }
 
 .contextMenu.checked li.contextMenuItem{
 	position:relative;
-	padding-left:35px;
+	padding-left:32px;
 }
 
 .contextMenu.checked li.contextMenuItem .contextMenuItemCheck{
@@ -52,7 +55,7 @@ body.vscode-high-contrast .contextMenu li.contextMenuItem:hover{
 	height:16px;
 	top:50%;
 	margin-top:-8px;
-	left:15px;
+	left:12px;
 	-webkit-user-select:none;
 	user-select:none;
 }

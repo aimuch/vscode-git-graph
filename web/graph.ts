@@ -72,7 +72,7 @@ class Branch {
 
 	/* Rendering */
 
-	public draw(svg: SVGElement, config: GG.GraphConfig, expandAt: number) {
+	public draw(svg: SVGElement, config: GG.GraphConfig, expandAt: number, branchIndex: number) {
 		let colour = config.colours[this.colour % config.colours.length], i, x1, y1, x2, y2, lines: PlacedLine[] = [], curPath = '', d = config.grid.y * (config.style === GG.GraphStyle.Angular ? 0.38 : 0.8), line, nextLine;
 
 		// Convert branch lines into pixel coordinates, respecting expanded commit extensions
@@ -123,7 +123,7 @@ class Branch {
 
 			// If the new point belongs to a different path, render the current path and reset it for the new path
 			if (curPath !== '' && i > 0 && line.isCommitted !== lines[i - 1].isCommitted) {
-				Branch.drawPath(svg, curPath, lines[i - 1].isCommitted, colour, config.uncommittedChanges);
+				Branch.drawPath(svg, curPath, lines[i - 1].isCommitted, colour, config.uncommittedChanges, branchIndex);
 				curPath = '';
 			}
 
@@ -142,16 +142,17 @@ class Branch {
 		}
 
 		if (curPath !== '') {
-			Branch.drawPath(svg, curPath, lines[lines.length - 1].isCommitted, colour, config.uncommittedChanges); // Draw the remaining path
+			Branch.drawPath(svg, curPath, lines[lines.length - 1].isCommitted, colour, config.uncommittedChanges, branchIndex); // Draw the remaining path
 		}
 	}
 
-	private static drawPath(svg: SVGElement, path: string, isCommitted: boolean, colour: string, uncommittedChanges: GG.GraphUncommittedChangesStyle) {
+	private static drawPath(svg: SVGElement, path: string, isCommitted: boolean, colour: string, uncommittedChanges: GG.GraphUncommittedChangesStyle, branchIndex: number) {
 		const shadow = svg.appendChild(document.createElementNS(SVG_NAMESPACE, 'path')), line = svg.appendChild(document.createElementNS(SVG_NAMESPACE, 'path'));
 		shadow.setAttribute('class', 'shadow');
 		shadow.setAttribute('d', path);
 		line.setAttribute('class', 'line');
 		line.setAttribute('d', path);
+		line.dataset.branch = branchIndex.toString();
 		line.setAttribute('stroke', isCommitted ? colour : '#808080');
 		if (!isCommitted && uncommittedChanges === GG.GraphUncommittedChangesStyle.OpenCircleAtTheCheckedOutCommit) {
 			line.setAttribute('stroke-dasharray', '2px');
@@ -295,7 +296,7 @@ class Vertex {
 
 	/* Rendering */
 
-	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void) {
+	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, branchIndex: number, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void) {
 		if (this.onBranch === null) return;
 
 		const colour = this.isCommitted ? config.colours[this.onBranch.getColour() % config.colours.length] : '#808080';
@@ -304,6 +305,7 @@ class Vertex {
 
 		const circle = document.createElementNS(SVG_NAMESPACE, 'circle');
 		circle.dataset.id = this.id.toString();
+		circle.dataset.branch = branchIndex.toString();
 		circle.setAttribute('cx', cx);
 		circle.setAttribute('cy', cy);
 		circle.setAttribute('r', '4');
@@ -445,12 +447,13 @@ class Graph {
 		group.setAttribute('mask', 'url(#GraphMask)');
 
 		for (i = 0; i < this.branches.length; i++) {
-			this.branches[i].draw(group, this.config, this.expandedCommitIndex);
+			this.branches[i].draw(group, this.config, this.expandedCommitIndex, i);
 		}
 
 		const overListener = (e: MouseEvent) => this.vertexOver(e), outListener = (e: MouseEvent) => this.vertexOut(e);
 		for (i = 0; i < this.vertices.length; i++) {
-			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, overListener, outListener);
+			const branch = this.vertices[i].getBranch();
+			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener);
 		}
 
 		if (this.group !== null) this.svg.removeChild(this.group);
@@ -459,6 +462,21 @@ class Graph {
 		this.setDimensions(contentWidth, this.getHeight(expandedCommit));
 		this.applyMaxWidth(contentWidth);
 		this.closeTooltip();
+	}
+
+
+	/**
+	 * Highlight the branch (line) of the graph that a commit is on, dimming the other branches.
+	 * @param id The index of the commit, or NULL to remove the highlight.
+	 */
+	public highlightBranchOfCommit(id: number | null) {
+		if (this.group === null) return;
+		const branch = id !== null && id < this.vertices.length ? this.vertices[id].getBranch() : null;
+		const branchIndex = branch !== null ? this.branches.indexOf(branch).toString() : null;
+		this.svg.classList.toggle('branchHighlight', branchIndex !== null);
+		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch]').forEach((elem) => {
+			elem.classList.toggle('highlight', branchIndex !== null && elem.dataset.branch === branchIndex);
+		});
 	}
 
 

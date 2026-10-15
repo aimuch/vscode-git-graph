@@ -200,6 +200,7 @@ export type PullRequestConfig = PullRequestConfigBuiltIn | PullRequestConfigCust
 export interface GitRepoState {
 	cdvDivider: number;
 	cdvHeight: number;
+	cdvWidth: number;
 	columnWidths: ColumnWidth[] | null;
 	commitOrdering: RepoCommitOrdering;
 	fileViewType: FileViewType;
@@ -286,6 +287,7 @@ export interface CommitDetailsViewConfig {
 
 export interface GraphConfig {
 	readonly colours: ReadonlyArray<string>;
+	readonly minimap: boolean;
 	readonly style: GraphStyle;
 	readonly grid: { x: number, y: number, offsetX: number, offsetY: number, expandY: number };
 	readonly uncommittedChanges: GraphUncommittedChangesStyle;
@@ -335,7 +337,8 @@ export const enum BooleanOverride {
 
 export const enum CommitDetailsViewLocation {
 	Inline,
-	DockedToBottom
+	DockedToBottom,
+	DockedToRight
 }
 
 export const enum CommitOrdering {

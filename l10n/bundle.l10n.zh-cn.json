@@ -636,5 +636,12 @@
 	"Drop": "丢弃",
 	"Save": "保存",
 	"Next": "下一步",
-	"Back": "返回"
+	"Back": "返回",
+	"Scroll to HEAD": "跳到 HEAD",
+	"More Actions": "更多操作",
+	"Activity": "活动",
+	"{0} commits": "{0} 个提交",
+	"Week of {0}": "{0} 起的一周",
+	"{0} days from {1}": "{1} 起的 {0} 天",
+	"Search operators: author: (or @:), message: (or =:), commit: (or #:). Enclose a value containing spaces in double quotes.": "搜索运算符：author:（或 @:）、message:（或 =:）、commit:（或 #:）。包含空格的值请用双引号括起来。"
 }

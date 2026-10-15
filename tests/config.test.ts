@@ -229,7 +229,19 @@ describe('Config', () => {
 				expect(value).toBe(CommitDetailsViewLocation.DockedToBottom);
 			});
 
-			it('Should return the default value (CommitDetailsViewLocation.Inline) when the configuration value is invalid', () => {
+			it('Should return CommitDetailsViewLocation.DockedToRight when the configuration value is "Docked to Right"', () => {
+				// Setup
+				vscode.mockExtensionSettingReturnValue('commitDetailsView.location', 'Docked to Right');
+
+				// Run
+				const value = config.commitDetailsView.location;
+
+				// Assert
+				expectRenamedExtensionSettingToHaveBeenCalled('commitDetailsView.location', 'commitDetailsViewLocation');
+				expect(value).toBe(CommitDetailsViewLocation.DockedToRight);
+			});
+
+			it('Should return the default value (CommitDetailsViewLocation.DockedToRight) when the configuration value is invalid', () => {
 				// Setup
 				vscode.mockExtensionSettingReturnValue('commitDetailsView.location', 'invalid');
 
@@ -238,16 +250,16 @@ describe('Config', () => {
 
 				// Assert
 				expectRenamedExtensionSettingToHaveBeenCalled('commitDetailsView.location', 'commitDetailsViewLocation');
-				expect(value).toBe(CommitDetailsViewLocation.Inline);
+				expect(value).toBe(CommitDetailsViewLocation.DockedToRight);
 			});
 
-			it('Should return the default value (CommitDetailsViewLocation.Inline) when the configuration value is unknown', () => {
+			it('Should return the default value (CommitDetailsViewLocation.DockedToRight) when the configuration value is unknown', () => {
 				// Run
 				const value = config.commitDetailsView.location;
 
 				// Assert
 				expectRenamedExtensionSettingToHaveBeenCalled('commitDetailsView.location', 'commitDetailsViewLocation');
-				expect(value).toBe(CommitDetailsViewLocation.Inline);
+				expect(value).toBe(CommitDetailsViewLocation.DockedToRight);
 			});
 		});
 	});

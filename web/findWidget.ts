@@ -7,6 +7,19 @@ interface FindWidgetState {
 	readonly visible: boolean;
 }
 
+interface FindQuery {
+	readonly text: string;
+	readonly author: string[];
+	readonly message: string[];
+	readonly commit: string[];
+}
+
+const FIND_OPERATORS: { readonly [operator: string]: 'author' | 'message' | 'commit' } = {
+	'author:': 'author', '@:': 'author',
+	'message:': 'message', '=:': 'message',
+	'commit:': 'commit', '#:': 'commit'
+};
+
 /**
  * Implements the Git Graph View's Find Widget.
  */
@@ -34,7 +47,7 @@ class FindWidget {
 		this.view = view;
 		this.widgetElem = document.createElement('div');
 		this.widgetElem.className = 'findWidget';
-		this.widgetElem.innerHTML = '<input id="findInput" type="text" placeholder="' + t('Find') + '" disabled/><span id="findCaseSensitive" class="findModifier" title="' + t('Match Case') + '">Aa</span><span id="findRegex" class="findModifier" title="' + t('Use Regular Expression') + '">.*</span><span id="findPosition"></span><span id="findPrev" title="' + t('Previous match (Shift+Enter)') + '"></span><span id="findNext" title="' + t('Next match (Enter)') + '"></span><span id="findOpenCdv" title="' + t('Open the Commit Details View for the current match') + '"></span><span id="findClose" title="' + t('Close (Escape)') + '"></span>';
+		this.widgetElem.innerHTML = '<input id="findInput" type="text" placeholder="' + t('Find') + '" title="' + t('Search operators: author: (or @:), message: (or =:), commit: (or #:). Enclose a value containing spaces in double quotes.') + '" disabled/><span id="findCaseSensitive" class="findModifier" title="' + t('Match Case') + '">Aa</span><span id="findRegex" class="findModifier" title="' + t('Use Regular Expression') + '">.*</span><span id="findPosition"></span><span id="findPrev" title="' + t('Previous match (Shift+Enter)') + '"></span><span id="findNext" title="' + t('Next match (Enter)') + '"></span><span id="findOpenCdv" title="' + t('Open the Commit Details View for the current match') + '"></span><span id="findClose" title="' + t('Close (Escape)') + '"></span>';
 		document.body.appendChild(this.widgetElem);
 
 		this.inputElem = <HTMLInputElement>document.getElementById('findInput')!;
@@ -141,6 +154,15 @@ class FindWidget {
 		this.prevElem.classList.add(CLASS_DISABLED);
 		this.nextElem.classList.add(CLASS_DISABLED);
 		this.view.saveState();
+		this.view.renderScrollMarkers();
+	}
+
+	/**
+	 * Get the hashes of the commits that match the Find Widget's criteria.
+	 * @returns The hashes.
+	 */
+	public getMatchHashes() {
+		return this.matches.map((match) => match.hash);
 	}
 
 	/**
@@ -206,6 +228,27 @@ class FindWidget {
 	/* Matching */
 
 	/**
+	 * Parse the text entered into the Find Widget into the text to find, and the values of the search operators it contains:
+	 * `author:` (or `@:`), `message:` (or `=:`) and `commit:` (or `#:`). A value containing spaces can be enclosed in double quotes.
+	 * @param text The text entered into the Find Widget.
+	 * @returns The parsed query.
+	 */
+	public static parseQuery(text: string): FindQuery {
+		const query: FindQuery = { text: '', author: [], message: [], commit: [] }, remaining: string[] = [];
+		const pattern = /(author:|@:|message:|=:|commit:|#:)(?:"([^"]*)"|(\S*))/g;
+		let lastIndex = 0, match: RegExpExecArray | null;
+		while ((match = pattern.exec(text)) !== null) {
+			if (match.index > 0 && !/\s/.test(text.charAt(match.index - 1))) continue; // Only operators at the start of a word
+			remaining.push(text.substring(lastIndex, match.index));
+			lastIndex = pattern.lastIndex;
+			const value = typeof match[2] === 'string' ? match[2] : match[3];
+			if (value !== '') query[FIND_OPERATORS[match[1]]].push(value);
+		}
+		remaining.push(text.substring(lastIndex));
+		return Object.assign(query, { text: remaining.join(' ').trim().replace(/\s+/g, ' ') });
+	}
+
+	/**
 	 * Find all matches based on the user's criteria.
 	 * @param goToCommitHash If this commit hash matches the criteria, directly go to this commit instead of starting at the first match.
 	 * @param scrollToCommit Should the resultant find match be scrolled to (so it's visible in the view).
@@ -214,27 +257,33 @@ class FindWidget {
 		this.matches = [];
 		this.position = -1;
 
-		if (this.text !== '') {
+		const query = FindWidget.parseQuery(this.text);
+		if (query.text !== '' || query.author.length > 0 || query.message.length > 0 || query.commit.length > 0) {
 			let colVisibility = this.view.getColumnVisibility(), findPattern: RegExp | null, findGlobalPattern: RegExp | null;
-			const regexText = workspaceState.findIsRegex ? this.text : this.text.replace(/[\\\[\](){}|.*+?^$]/g, '\\$&'), flags = 'u' + (workspaceState.findIsCaseSensitive ? '' : 'i');
+			let authorPatterns: RegExp[] = [], messagePatterns: RegExp[] = [], commitPatterns: RegExp[] = [];
+			const toRegexText = (text: string) => workspaceState.findIsRegex ? text : text.replace(/[\\\[\](){}|.*+?^$]/g, '\\$&'), flags = 'u' + (workspaceState.findIsCaseSensitive ? '' : 'i');
+			const highlightText = [query.text].concat(query.author, query.message).filter((text) => text !== '').map((text) => '(?:' + toRegexText(text) + ')').join('|');
 			try {
-				findPattern = new RegExp(regexText, flags);
-				findGlobalPattern = new RegExp(regexText, 'g' + flags);
+				findPattern = query.text !== '' ? new RegExp(toRegexText(query.text), flags) : null;
+				authorPatterns = query.author.map((text) => new RegExp(toRegexText(text), flags));
+				messagePatterns = query.message.map((text) => new RegExp(toRegexText(text), flags));
+				commitPatterns = query.commit.map((text) => new RegExp('^(?:' + toRegexText(text) + ')', flags));
+				findGlobalPattern = new RegExp(highlightText !== '' ? highlightText : '(?!)', 'g' + flags);
 				this.widgetElem.removeAttribute(ATTR_ERROR);
 			} catch (e) {
 				findPattern = null;
 				findGlobalPattern = null;
 				this.widgetElem.setAttribute(ATTR_ERROR, e instanceof Error ? e.message : String(e));
 			}
-			if (findPattern !== null && findGlobalPattern !== null) {
-				let commitElems = getCommitElems(), j = 0, commit, zeroLengthMatch = false;
+			if (findGlobalPattern !== null && (findPattern !== null || query.text === '')) {
+				let commitElems = getCommitElems(), j = 0, commit: GG.GitCommit, zeroLengthMatch = false;
 
 				// Search the commit data itself to detect commits that match, so that dom tree traversal is performed on matching commit rows (for performance)
 				const commits = this.view.getCommits();
 				for (let i = 0; i < commits.length; i++) {
 					commit = commits[i];
 					let branchLabels = getBranchLabels(commit.heads, commit.remotes);
-					if (commit.hash !== UNCOMMITTED && (
+					if (commit.hash !== UNCOMMITTED && (findPattern === null || (
 						(colVisibility.author && findPattern.test(commit.author))
 						|| (colVisibility.commit && (commit.hash.search(findPattern) === 0 || findPattern.test(abbrevCommit(commit.hash))))
 						|| findPattern.test(commit.message)
@@ -243,7 +292,9 @@ class FindWidget {
 						|| commit.tags.some(tag => findPattern!.test(tag.name))
 						|| (colVisibility.date && findPattern.test(formatShortDate(commit.date).formatted))
 						|| (commit.stash !== null && findPattern.test(commit.stash.selector))
-					)) {
+					)) && authorPatterns.every((pattern) => pattern.test(commit.author) || pattern.test(commit.email))
+						&& messagePatterns.every((pattern) => pattern.test(commit.message))
+						&& commitPatterns.every((pattern) => pattern.test(commit.hash))) {
 						let idStr = i.toString();
 						while (j < commitElems.length && commitElems[j].dataset.id !== idStr) j++;
 						if (j === commitElems.length) continue;
@@ -289,7 +340,7 @@ class FindWidget {
 							}
 							if (zeroLengthMatch) break;
 						}
-						if (colVisibility.commit && commit.hash.search(findPattern) === 0 && !findPattern.test(abbrevCommit(commit.hash)) && textElems.length > 0) {
+						if (colVisibility.commit && ((findPattern !== null && commit.hash.search(findPattern) === 0 && !findPattern.test(abbrevCommit(commit.hash))) || commitPatterns.length > 0) && textElems.length > 0) {
 							// The commit matches on more than the abbreviated commit, so the commit should be highlighted
 							let commitNode = textElems[textElems.length - 1]; // Commit is always the last column if it is visible
 							commitNode.parentNode!.replaceChild(FindWidget.createMatchElem(commitNode.textContent!), commitNode);
@@ -319,6 +370,7 @@ class FindWidget {
 			}
 		}
 		this.updatePosition(newPos, scrollToCommit);
+		this.view.renderScrollMarkers();
 	}
 
 	/**

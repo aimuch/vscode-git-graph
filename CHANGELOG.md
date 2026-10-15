@@ -2,6 +2,16 @@
 
 ## 2.0.0 - Unreleased
 This release continues development from the last upstream release (1.30.0), adapting Git Graph to the latest versions of Visual Studio Code, and fixing reported issues. All fixes are covered by the new end-to-end test suite (`npm run test-e2e`), which runs Git Graph in a real instance of Visual Studio Code (verified with Visual Studio Code 1.141.2 & 1.142.0). The major version is incremented to distinguish this fork's releases from the upstream 1.x releases.
+* Redesigned Git Graph View:
+    * The control bar stays at the top of the view while scrolling. The Repo / Branches / Authors dropdowns show their label inside the dropdown, and are highlighted while they filter the commits. New "Jump to HEAD" button.
+    * Taller rows, rounded branch & tag labels tinted with the colour of their branch (dashed for remote branches), author initials (when avatars aren't fetched), and the commit hash in a monospace font. Colours follow the Visual Studio Code theme (list, button, input & widget colours).
+    * The Commit Details View is docked to the right of the view by default (new "Docked to Right" option of `git-graph.commitDetailsView.location`, which is resizable), with the author, subject & body above the commit's details, and buttons for the most common actions (Checkout, Create Branch, Cherry Pick, and all others).
+    * Restyled dialogs, context menus, dropdowns, the Find Widget & Repository Settings.
+* Features inspired by [GitLens](https://github.com/gitkraken/vscode-gitlens) (no GitLens code is used):
+    * Minimap of the activity of the loaded commits at the top of the view (the number of commits each day, where HEAD, branches & tags are, and the visible commits). Clicking on a day scrolls to its commits. It can be hidden with the new `git-graph.graph.minimap` setting.
+    * Markers alongside the scrollbar, showing where HEAD, branches, tags, stashes & find matches are in the loaded commits.
+    * Hovering over a commit highlights the branch it is on in the graph.
+    * Search operators in the Find Widget: `author:` (or `@:`), `message:` (or `=:`) and `commit:` (or `#:`), which can be combined with each other and with text to find.
 * Visual Studio Code compatibility:
     * #903, #871 The "View Git Graph" action is contributed to the new `scm/repository` menu, so that it's displayed on each repository in the Source Control Repositories View again.
     * Git Graph is activated once Visual Studio Code has finished starting up (`onStartupFinished`), instead of on every startup event (`*`).

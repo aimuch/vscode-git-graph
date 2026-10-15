@@ -46,6 +46,8 @@ class GitGraphView {
 
 	private readonly findWidget: FindWidget;
 	private readonly settingsWidget: SettingsWidget;
+	private readonly minimap: Minimap;
+	private readonly scrollMarkers: ScrollMarkers;
 	private readonly repoDropdown: Dropdown;
 	private readonly branchDropdown: Dropdown;
 	private readonly authorDropdown: Dropdown;
@@ -82,6 +84,10 @@ class GitGraphView {
 		viewElem.focus();
 
 		this.graph = new Graph('commitGraph', viewElem, this.config.graph, this.config.mute);
+		this.minimap = new Minimap(document.getElementById('minimap')!, (index) => {
+			if (index < this.commits.length) this.scrollToCommit(this.commits[index].hash, true, true);
+		});
+		this.scrollMarkers = new ScrollMarkers(viewElem);
 
 		this.repoDropdown = new Dropdown('repoDropdown', true, false, 'Repos', (values) => {
 			this.loadRepo(values[0]);
@@ -119,6 +125,7 @@ class GitGraphView {
 
 		this.findWidget = new FindWidget(this);
 		this.settingsWidget = new SettingsWidget(this);
+		this.observeOverviews();
 
 		alterClass(document.body, CLASS_BRANCH_LABELS_ALIGNED_TO_GRAPH, this.config.referenceLabels.branchLabelsAlignedToGraph);
 		alterClass(document.body, CLASS_TAG_LABELS_RIGHT_ALIGNED, this.config.referenceLabels.tagLabelsOnRight);
@@ -160,12 +167,14 @@ class GitGraphView {
 			this.requestLoadRepoInfoAndCommits(false, false);
 		}
 
-		const fetchBtn = document.getElementById('fetchBtn')!, findBtn = document.getElementById('findBtn')!, settingsBtn = document.getElementById('settingsBtn')!, terminalBtn = document.getElementById('terminalBtn')!;
+		const fetchBtn = document.getElementById('fetchBtn')!, findBtn = document.getElementById('findBtn')!, scrollToHeadBtn = document.getElementById('scrollToHeadBtn')!, settingsBtn = document.getElementById('settingsBtn')!, terminalBtn = document.getElementById('terminalBtn')!;
 		fetchBtn.title = this.config.fetchAndPrune ? t('Fetch & Prune from Remote(s)') : t('Fetch from Remote(s)');
 		fetchBtn.innerHTML = SVG_ICONS.download;
 		fetchBtn.addEventListener('click', () => this.fetchFromRemotesAction());
 		findBtn.innerHTML = SVG_ICONS.search;
 		findBtn.addEventListener('click', () => this.findWidget.show(true));
+		scrollToHeadBtn.innerHTML = SVG_ICONS.target;
+		scrollToHeadBtn.addEventListener('click', () => this.scrollToHead());
 		settingsBtn.innerHTML = SVG_ICONS.gear;
 		settingsBtn.addEventListener('click', () => this.settingsWidget.show(this.currentRepo));
 		terminalBtn.innerHTML = SVG_ICONS.terminal;
@@ -834,6 +843,78 @@ class GitGraphView {
 	private render() {
 		this.renderTable();
 		this.renderGraph();
+		this.renderOverviews();
+	}
+
+	/**
+	 * Render the overviews of the loaded commits: the Minimap, and the markers alongside the scrollbar.
+	 */
+	private renderOverviews() {
+		this.minimap.render(this.commits, this.commitHead, this.graph.getVertexColours(), this.config.graph.colours, this.config.graph.minimap);
+		this.updateMinimapViewport();
+		this.renderScrollMarkers();
+	}
+
+	public renderScrollMarkers() {
+		this.scrollMarkers.render(this.commits, this.commitHead, this.graph.getVertexColours(), this.config.graph.colours, this.findWidget.getMatchHashes());
+	}
+
+	/**
+	 * Show the commits that are visible in the view on the Minimap.
+	 */
+	private updateMinimapViewport() {
+		const commitElems = getCommitElems();
+		if (commitElems.length === 0) return;
+		const viewRect = this.viewElem.getBoundingClientRect(), top = viewRect.top + this.controlsElem.offsetHeight, bottom = viewRect.bottom;
+		let low = 0, high = commitElems.length - 1, first = commitElems.length - 1, last: number;
+		while (low <= high) {
+			const mid = (low + high) >> 1;
+			if (commitElems[mid].getBoundingClientRect().bottom > top) {
+				first = mid;
+				high = mid - 1;
+			} else {
+				low = mid + 1;
+			}
+		}
+		low = first;
+		high = commitElems.length - 1;
+		last = first;
+		while (low <= high) {
+			const mid = (low + high) >> 1;
+			if (commitElems[mid].getBoundingClientRect().top < bottom) {
+				last = mid;
+				low = mid + 1;
+			} else {
+				high = mid - 1;
+			}
+		}
+		this.minimap.setViewport(parseInt(commitElems[first].dataset.id!), parseInt(commitElems[last].dataset.id!));
+	}
+
+	/**
+	 * Keep the Minimap's viewport and the scrollbar markers up to date as the view is scrolled & resized.
+	 */
+	private observeOverviews() {
+		let viewportFrame: number | null = null, markersFrame: number | null = null;
+		this.viewElem.addEventListener('scroll', () => {
+			if (viewportFrame !== null) return;
+			viewportFrame = requestAnimationFrame(() => {
+				viewportFrame = null;
+				this.updateMinimapViewport();
+			});
+		});
+		const resizeObserver = new ResizeObserver(() => {
+			document.body.style.setProperty('--git-graph-headerHeight', this.controlsElem.offsetHeight + 'px');
+			if (markersFrame !== null) return;
+			markersFrame = requestAnimationFrame(() => {
+				markersFrame = null;
+				this.updateMinimapViewport();
+				this.renderScrollMarkers();
+			});
+		});
+		resizeObserver.observe(this.viewElem);
+		resizeObserver.observe(this.controlsElem);
+		resizeObserver.observe(document.getElementById('content')!);
 	}
 
 	private renderGraph() {
@@ -922,8 +1003,8 @@ class GitGraphView {
 			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
 				(this.config.referenceLabels.branchLabelsAlignedToGraph ? '<td>' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td><span class="description">' + commitDot : '<td></td><td><span class="description">' + commitDot + refBranches) + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message) + '</span></td>' +
 				(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
-				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : '') + escapeHtml(commit.author) + '</td>' : '') +
-				(colVisibility.commit ? '<td class="text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
+				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
+				(colVisibility.commit ? '<td class="hashCol text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
 				'</tr>';
 		}
 		this.tableElem.innerHTML = '<table>' + html + '</table>';
@@ -981,7 +1062,7 @@ class GitGraphView {
 		document.getElementById('uncommittedChanges')!.innerHTML = '<td></td><td><b>' + escapeHtml(this.commits[0].message) + '</b></td>' +
 			(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
 			(colVisibility.author ? '<td class="authorCol text" title="* <>">*</td>' : '') +
-			(colVisibility.commit ? '<td class="text" title="*">*</td>' : '');
+			(colVisibility.commit ? '<td class="hashCol text" title="*">*</td>' : '');
 	}
 
 	private renderFetchButton() {
@@ -1972,9 +2053,10 @@ class GitGraphView {
 		const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(hash));
 		if (elem === null) return;
 
-		let elemTop = this.controlsElem.clientHeight + elem.offsetTop;
-		if (alwaysCenterCommit || elemTop - 8 < this.viewElem.scrollTop || elemTop + 32 - this.viewElem.clientHeight > this.viewElem.scrollTop) {
-			this.viewElem.scroll(0, this.controlsElem.clientHeight + elem.offsetTop + 12 - this.viewElem.clientHeight / 2);
+		// The controls are sticky (always visible at the top of the view), so commits are only visible below them
+		const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + elem.offsetTop;
+		if (alwaysCenterCommit || elemTop - 8 < this.viewElem.scrollTop + headerHeight || elemTop + 32 - this.viewElem.clientHeight > this.viewElem.scrollTop) {
+			this.viewElem.scroll(0, elemTop + 12 - (this.viewElem.clientHeight + headerHeight) / 2);
 		}
 
 		if (flash && !elem.classList.contains('flash')) {
@@ -2016,6 +2098,10 @@ class GitGraphView {
 	private observeWindowSizeChanges() {
 		let windowWidth = window.outerWidth, windowHeight = window.outerHeight;
 		window.addEventListener('resize', () => {
+			const cdvElem = document.getElementById('cdv');
+			if (cdvElem !== null && this.isCdvDocked() && this.isCdvDockedRight()) {
+				this.setCdvHeight(cdvElem, true);
+			}
 			if (windowWidth === window.outerWidth && windowHeight === window.outerHeight) {
 				this.renderGraph();
 			} else {
@@ -2347,6 +2433,19 @@ class GitGraphView {
 		});
 
 		// Register Double Click Event Handler
+		// Highlight the branch of the commit that the mouse is over (on the graph)
+		let highlightedCommit: number | null = null;
+		const highlightBranchOfCommit = (id: number | null) => {
+			if (id === highlightedCommit) return;
+			highlightedCommit = id;
+			this.graph.highlightBranchOfCommit(id);
+		};
+		this.tableElem.addEventListener('mouseover', (e: MouseEvent) => {
+			const commitElem = e.target instanceof Element ? <HTMLElement | null>e.target.closest('.commit') : null;
+			highlightBranchOfCommit(commitElem !== null && typeof commitElem.dataset.id === 'string' ? parseInt(commitElem.dataset.id) : null);
+		});
+		this.tableElem.addEventListener('mouseleave', () => highlightBranchOfCommit(null));
+
 		this.tableElem.addEventListener('dblclick', (e: MouseEvent) => {
 			if (e.target === null) return;
 			const eventTarget = <Element>e.target;
@@ -2495,6 +2594,8 @@ class GitGraphView {
 		}
 		if (isDocked) {
 			this.viewElem.style.bottom = '0px';
+			this.viewElem.style.right = '0px';
+			document.body.classList.remove(CLASS_CDV_DOCKED_RIGHT);
 		}
 		if (expandedCommit.commitElem !== null) {
 			expandedCommit.commitElem.classList.remove(CLASS_COMMIT_DETAILS_OPEN);
@@ -2648,7 +2749,7 @@ class GitGraphView {
 		if (elem === null) {
 			elem = document.createElement(isDocked ? 'div' : 'tr');
 			elem.id = 'cdv';
-			elem.className = isDocked ? 'docked' : 'inline';
+			elem.className = isDocked ? (this.isCdvDockedRight() ? 'docked right' : 'docked') : 'inline';
 			this.setCdvHeight(elem, isDocked);
 			if (isDocked) {
 				document.body.appendChild(elem);
@@ -2681,18 +2782,26 @@ class GitGraphView {
 								: escapedParent;
 						}).join(', ')
 						: t('None');
-					html += '<span class="cdvSummaryTop' + (expandedCommit.avatar !== null ? ' withAvatar' : '') + '"><span class="cdvSummaryTopRow"><span class="cdvSummaryKeyValues">'
-						+ '<b>' + t('Commit:') + ' </b>' + escapeHtml(commitDetails.hash) + '<br>'
-						+ '<b>' + t('Parents:') + ' </b>' + parents + '<br>'
-						+ '<b>' + t('Author:') + ' </b>' + escapeHtml(commitDetails.author) + (commitDetails.authorEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.authorEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.authorEmail) + '</a>&gt;' : '') + '<br>'
-						+ (commitDetails.authorDate !== commitDetails.committerDate ? '<b>' + t('Author Date:') + ' </b>' + formatLongDate(commitDetails.authorDate) + '<br>' : '')
-						+ '<b>' + t('Committer:') + ' </b>' + escapeHtml(commitDetails.committer) + (commitDetails.committerEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.committerEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.committerEmail) + '</a>&gt;' : '') + (commitDetails.signature !== null ? generateSignatureHtml(commitDetails.signature) : '') + '<br>'
-						+ '<b>' + (commitDetails.authorDate !== commitDetails.committerDate ? t('Committer Date:') : t('Date:')) + ' </b>' + formatLongDate(commitDetails.committerDate)
-						+ '</span>'
-						+ (expandedCommit.avatar !== null ? '<span class="cdvSummaryAvatar"><img src="' + expandedCommit.avatar + '"></span>' : '')
-						+ '</span></span><br><br>' + textFormatter.format(commitDetails.body);
+					const subjectEnd = commitDetails.body.indexOf('\n');
+					const subject = subjectEnd > -1 ? commitDetails.body.substring(0, subjectEnd) : commitDetails.body;
+					const body = subjectEnd > -1 ? commitDetails.body.substring(subjectEnd + 1).trim() : '';
+					const detail = (key: string, value: string) => '<span class="cdvSummaryKey">' + key + '</span><span class="cdvSummaryValue">' + value + '</span>';
+					html += '<div class="cdvSummaryHeader">'
+						+ (expandedCommit.avatar !== null ? '<span class="cdvSummaryAvatar"><img src="' + expandedCommit.avatar + '"></span>' : generateAuthorInitialHtml(commitDetails.author))
+						+ '<span class="cdvSummaryHeaderText"><span class="cdvSummaryAuthor">' + escapeHtml(commitDetails.author) + '</span><span class="cdvSummaryDate" title="' + escapeHtml(formatLongDate(commitDetails.authorDate)) + '">' + formatShortDate(commitDetails.authorDate).formatted + '</span></span>'
+						+ '</div>'
+						+ '<div class="cdvSummarySubject">' + textFormatter.format(subject) + '</div>'
+						+ (body !== '' ? '<div class="cdvSummaryBody">' + textFormatter.format(body) + '</div>' : '')
+						+ '<div class="cdvSummaryDetails">'
+						+ detail(t('Commit:'), '<span class="cdvSummaryHash">' + escapeHtml(commitDetails.hash) + '</span>')
+						+ detail(t('Parents:'), parents)
+						+ detail(t('Author:'), escapeHtml(commitDetails.author) + (commitDetails.authorEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.authorEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.authorEmail) + '</a>&gt;' : ''))
+						+ (commitDetails.authorDate !== commitDetails.committerDate ? detail(t('Author Date:'), formatLongDate(commitDetails.authorDate)) : '')
+						+ detail(t('Committer:'), escapeHtml(commitDetails.committer) + (commitDetails.committerEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.committerEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.committerEmail) + '</a>&gt;' : '') + (commitDetails.signature !== null ? generateSignatureHtml(commitDetails.signature) : ''))
+						+ detail(commitDetails.authorDate !== commitDetails.committerDate ? t('Committer Date:') : t('Date:'), formatLongDate(commitDetails.committerDate))
+						+ '</div><div id="cdvActions"></div>';
 				} else {
-					html += t('Displaying all uncommitted changes.');
+					html += t('Displaying all uncommitted changes.') + '<div id="cdvActions"></div>';
 				}
 			} else {
 				// Commit comparison should be shown
@@ -2712,24 +2821,24 @@ class GitGraphView {
 
 		if (!refresh) {
 			if (isDocked) {
-				let elemTop = this.controlsElem.clientHeight + expandedCommit.commitElem.offsetTop;
-				if (elemTop - 8 < this.viewElem.scrollTop) {
-					// Commit is above what is visible on screen
-					this.viewElem.scroll(0, elemTop - 8);
+				const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + expandedCommit.commitElem.offsetTop;
+				if (elemTop - 8 < this.viewElem.scrollTop + headerHeight) {
+					// Commit is above what is visible on screen (below the sticky controls)
+					this.viewElem.scroll(0, elemTop - headerHeight - 8);
 				} else if (elemTop - this.viewElem.clientHeight + 32 > this.viewElem.scrollTop) {
 					// Commit is below what is visible on screen
 					this.viewElem.scroll(0, elemTop - this.viewElem.clientHeight + 32);
 				}
 			} else {
-				let elemTop = this.controlsElem.clientHeight + elem.offsetTop, cdvHeight = this.gitRepos[this.currentRepo].cdvHeight;
+				const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + elem.offsetTop, cdvHeight = this.gitRepos[this.currentRepo].cdvHeight;
 				if (this.config.commitDetailsView.autoCenter) {
-					// Center Commit Detail View setting is enabled
-					// elemTop - commit height [24px] + (commit details view height + commit height [24px]) / 2 - (view height) / 2
-					this.viewElem.scroll(0, elemTop - 12 + (cdvHeight - this.viewElem.clientHeight) / 2);
-				} else if (elemTop - 32 < this.viewElem.scrollTop) {
-					// Commit Detail View is opening above what is visible on screen
-					// elemTop - commit height [24px] - desired gap from top [8px] < view scroll offset
-					this.viewElem.scroll(0, elemTop - 32);
+					// Center Commit Detail View setting is enabled (in the area below the sticky controls)
+					// elemTop - commit height [24px] + (commit details view height + commit height [24px]) / 2 - (view height + controls height) / 2
+					this.viewElem.scroll(0, elemTop - 12 + (cdvHeight - this.viewElem.clientHeight - headerHeight) / 2);
+				} else if (elemTop - 32 < this.viewElem.scrollTop + headerHeight) {
+					// Commit Detail View is opening above what is visible on screen (below the sticky controls)
+					// elemTop - commit height [24px] - desired gap from top [8px] < view scroll offset + controls height
+					this.viewElem.scroll(0, elemTop - headerHeight - 32);
 				} else if (elemTop + cdvHeight - this.viewElem.clientHeight + 8 > this.viewElem.scrollTop) {
 					// Commit Detail View is opening below what is visible on screen
 					// elemTop + commit details view height + desired gap from bottom [8px] - view height > view scroll offset
@@ -2745,6 +2854,7 @@ class GitGraphView {
 
 		if (!expandedCommit.loading) {
 			this.makeCdvFileViewInteractive();
+			this.renderCdvActions();
 			this.renderCdvFileViewTypeBtns();
 			this.renderCdvExternalDiffBtn();
 			this.makeCdvDividerDraggable();
@@ -2817,7 +2927,56 @@ class GitGraphView {
 		}
 	}
 
+	/**
+	 * Render the buttons of the most common actions (and a button that opens all of the actions) for the commit shown in the Commit Details View.
+	 */
+	private renderCdvActions() {
+		const expandedCommit = this.expandedCommit, actionsElem = document.getElementById('cdvActions');
+		if (expandedCommit === null || expandedCommit.commitElem === null || actionsElem === null) return;
+		const commit = this.commits[this.commitLookup[expandedCommit.commitHash]];
+		if (typeof commit === 'undefined') return;
+
+		const target: ContextMenuTarget & DialogTarget & CommitTarget = {
+			type: TargetType.Commit,
+			hash: commit.hash,
+			index: parseInt(expandedCommit.commitElem.dataset.id!),
+			elem: expandedCommit.commitElem
+		};
+		let actions: ContextMenuActions, primary: ContextMenuAction[];
+		if (commit.hash === UNCOMMITTED) {
+			actions = this.getUncommittedChangesContextMenuActions(target);
+			primary = actions.reduce<ContextMenuAction[]>((all, group) => all.concat(group), []);
+		} else if (commit.stash !== null) {
+			target.ref = commit.stash.selector;
+			actions = this.getStashContextMenuActions(<RefTarget>target);
+			primary = actions.reduce<ContextMenuAction[]>((all, group) => all.concat(group), []);
+		} else {
+			actions = this.getCommitContextMenuActions(target);
+			primary = [actions[1][0], actions[0][1], actions[1][1]]; // Checkout, Create Branch & Cherry Pick
+		}
+		primary = primary.filter((action) => action.visible).slice(0, 3);
+
+		actionsElem.innerHTML = primary.map((action, i) => '<button type="button" class="cdvActionBtn' + (i === 0 ? ' primary' : '') + '" data-index="' + i + '" tabindex="-1">' + action.title + '</button>').join('')
+			+ '<button type="button" id="cdvMoreActions" class="cdvActionBtn" title="' + t('More Actions') + '" tabindex="-1">&#183;&#183;&#183;</button>';
+		actionsElem.querySelectorAll('.cdvActionBtn[data-index]').forEach((elem) => {
+			elem.addEventListener('click', () => primary[parseInt((<HTMLElement>elem).dataset.index!)].onClick());
+		});
+		document.getElementById('cdvMoreActions')!.addEventListener('click', (e) => {
+			handledEvent(e); // Don't let the click propagate to the document, which closes context menus
+			contextMenu.show(actions, false, target, <MouseEvent>e, this.isCdvDocked() ? document.body : this.viewElem);
+		});
+	}
+
 	private setCdvHeight(elem: HTMLElement, isDocked: boolean) {
+		if (isDocked && this.isCdvDockedRight()) {
+			const width = this.getCdvWidth(), widthPx = width + 'px';
+			elem.style.width = widthPx;
+			this.viewElem.style.right = widthPx;
+			document.body.classList.add(CLASS_CDV_DOCKED_RIGHT);
+			document.body.style.setProperty('--git-graph-cdvWidth', widthPx);
+			return;
+		}
+
 		let height = this.gitRepos[this.currentRepo].cdvHeight, windowHeight = window.innerHeight;
 		if (height > windowHeight - 40) {
 			height = Math.max(windowHeight - 40, 100);
@@ -2835,13 +2994,48 @@ class GitGraphView {
 	private setCdvDivider() {
 		let percent = (this.gitRepos[this.currentRepo].cdvDivider * 100).toFixed(2) + '%';
 		let summaryElem = document.getElementById('cdvSummary'), dividerElem = document.getElementById('cdvDivider'), filesElem = document.getElementById('cdvFiles');
-		if (summaryElem !== null) summaryElem.style.width = percent;
-		if (dividerElem !== null) dividerElem.style.left = percent;
-		if (filesElem !== null) filesElem.style.left = percent;
+		if (this.isCdvDocked() && this.isCdvDockedRight()) {
+			// The summary is above the files
+			if (summaryElem !== null) summaryElem.style.height = percent;
+			if (dividerElem !== null) dividerElem.style.top = percent;
+			if (filesElem !== null) filesElem.style.top = percent;
+		} else {
+			if (summaryElem !== null) summaryElem.style.width = percent;
+			if (dividerElem !== null) dividerElem.style.left = percent;
+			if (filesElem !== null) filesElem.style.left = percent;
+		}
+	}
+
+	/**
+	 * Get the width of the Commit Details View when it's docked to the right, limited to the width of the Webview.
+	 * @returns The width (in pixels).
+	 */
+	private getCdvWidth() {
+		const maxWidth = Math.max(window.innerWidth - 240, CDV_MIN_WIDTH);
+		return Math.min(Math.max(this.gitRepos[this.currentRepo].cdvWidth || CDV_DEFAULT_WIDTH, CDV_MIN_WIDTH), maxWidth);
 	}
 
 	private makeCdvResizable() {
-		let prevY = -1;
+		let prevY = -1, prevX = -1;
+
+		const processResizingCdvWidth: EventListener = (e) => {
+			if (prevX < 0) return;
+			const delta = (<MouseEvent>e).pageX - prevX;
+			prevX = (<MouseEvent>e).pageX;
+			const width = Math.min(Math.max(this.getCdvWidth() - delta, CDV_MIN_WIDTH), Math.max(window.innerWidth - 240, CDV_MIN_WIDTH));
+			if (this.gitRepos[this.currentRepo].cdvWidth !== width) {
+				this.gitRepos[this.currentRepo].cdvWidth = width;
+				const elem = document.getElementById('cdv');
+				if (elem !== null) this.setCdvHeight(elem, true);
+			}
+		};
+		const stopResizingCdvWidth: EventListener = (e) => {
+			if (prevX < 0) return;
+			processResizingCdvWidth(e);
+			this.saveRepoState();
+			prevX = -1;
+			eventOverlay.remove();
+		};
 
 		const processResizingCdvHeight: EventListener = (e) => {
 			if (prevY < 0) return;
@@ -2868,17 +3062,22 @@ class GitGraphView {
 		};
 
 		addListenerToClass('cdvHeightResize', 'mousedown', (e) => {
-			prevY = (<MouseEvent>e).pageY;
-			eventOverlay.create('rowResize', processResizingCdvHeight, stopResizingCdvHeight);
+			if (this.isCdvDocked() && this.isCdvDockedRight()) {
+				prevX = (<MouseEvent>e).pageX;
+				eventOverlay.create('colResize', processResizingCdvWidth, stopResizingCdvWidth);
+			} else {
+				prevY = (<MouseEvent>e).pageY;
+				eventOverlay.create('rowResize', processResizingCdvHeight, stopResizingCdvHeight);
+			}
 		});
 	}
 
 	private makeCdvDividerDraggable() {
-		let minX = -1, width = -1;
+		let minX = -1, width = -1, vertical = false;
 
 		const processDraggingCdvDivider: EventListener = (e) => {
 			if (minX < 0) return;
-			let percent = ((<MouseEvent>e).clientX - minX) / width;
+			let percent = ((vertical ? (<MouseEvent>e).clientY : (<MouseEvent>e).clientX) - minX) / width;
 			if (percent < 0.2) percent = 0.2;
 			else if (percent > 0.8) percent = 0.8;
 
@@ -2900,9 +3099,10 @@ class GitGraphView {
 			if (contentElem === null) return;
 
 			const bounds = contentElem.getBoundingClientRect();
-			minX = bounds.left;
-			width = bounds.width;
-			eventOverlay.create('colResize', processDraggingCdvDivider, stopDraggingCdvDivider);
+			vertical = this.isCdvDocked() && this.isCdvDockedRight();
+			minX = vertical ? bounds.top : bounds.left;
+			width = vertical ? bounds.height : bounds.width;
+			eventOverlay.create(vertical ? 'rowResize' : 'colResize', processDraggingCdvDivider, stopDraggingCdvDivider);
 		});
 	}
 
@@ -2958,7 +3158,11 @@ class GitGraphView {
 	}
 
 	private isCdvDocked() {
-		return this.config.commitDetailsView.location === GG.CommitDetailsViewLocation.DockedToBottom;
+		return this.config.commitDetailsView.location !== GG.CommitDetailsViewLocation.Inline;
+	}
+
+	private isCdvDockedRight() {
+		return this.config.commitDetailsView.location === GG.CommitDetailsViewLocation.DockedToRight;
 	}
 
 	public isCdvOpen(commitHash: string, compareWithHash: string | null) {
@@ -4094,6 +4298,20 @@ function generateSignatureHtml(signature: GG.GitSignature) {
 				? SVG_ICONS.failed
 				: SVG_ICONS.inconclusive)
 		+ '</span>';
+}
+
+/**
+ * Generate the HTML of a circle containing the initial of an author's name, coloured by the name (used when avatars aren't fetched).
+ * @param name The name of the author.
+ * @returns The HTML.
+ */
+function generateAuthorInitialHtml(name: string) {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = (hash * 31 + name.charCodeAt(i)) % 360;
+	}
+	const initial = name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : '?';
+	return '<span class="authorInitial" style="background-color:hsl(' + hash + ',45%,40%)">' + escapeHtml(initial) + '</span>';
 }
 
 function closeDialogAndContextMenu() {

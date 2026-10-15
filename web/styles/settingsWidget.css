@@ -3,12 +3,15 @@
 	position:fixed;
 	top:-158px;
 	right:28px;
-	width:400px;
+	width:420px;
 	min-height:146px;
-	padding:0 10px 4px 10px;
+	padding:0 12px 8px 12px;
 	z-index:31;
 	background-color:var(--vscode-editorWidget-background);
-	box-shadow:0 2px 8px var(--vscode-widget-shadow);
+	border:1px solid var(--vscode-widget-border, transparent);
+	border-top:none;
+	border-radius:0 0 10px 10px;
+	box-shadow:0 12px 32px var(--vscode-widget-shadow);
 	line-height:17px;
 	font-size:13px;
 	color:var(--vscode-editorSuggestWidget-foreground);
@@ -49,9 +52,12 @@
 
 .settingsSection h3{
 	position:relative;
-	margin:5px 0;
+	margin:6px 0;
 	padding:0;
-	font-size:15px;
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+	font-weight:700;
+	letter-spacing:0.04em;
 	line-height:20px;
 	text-align:center;
 }
@@ -168,8 +174,16 @@
 .settingsSectionButtons > div{
 	display:inline-block;
 	line-height:24px;
+	margin:2px 3px;
+	padding-right:8px;
+	border:1px solid var(--vscode-button-border, rgba(128,128,128,0.35));
+	border-radius:6px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.1));
+	color:var(--vscode-button-secondaryForeground, inherit);
 	cursor:pointer;
-	padding-right:6px;
+}
+.settingsSectionButtons > div:hover{
+	background-color:var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,0.2));
 }
 
 .settingsSection label{
@@ -262,4 +276,7 @@
 	margin-top:-2px;
 	margin-left:5px;
 	vertical-align:middle;
+}
+#settingsWidget:not(.active){
+	box-shadow:none;
 }

@@ -1,5 +1,5 @@
 {
-	"date": "2026-10-15T11:10:23.420Z",
+	"date": "2026-10-15T14:01:04.403Z",
 	"vscodeVersion": "1.142.0",
 	"gitVersion": "git version 2.56.0",
 	"platform": "darwin arm64",
@@ -10,7 +10,7 @@
 			"title": "Git Graph activates in this version of Visual Studio Code (onStartupFinished)",
 			"pass": true,
 			"details": "Visual Studio Code 1.142.0, engines.vscode ^1.85.0",
-			"durationMs": 0
+			"durationMs": 1
 		},
 		{
 			"id": "#903",
@@ -24,14 +24,14 @@
 			"title": "The Status Bar Item displays the Git Graph icon and / or text, as configured by git-graph.statusBarItemDisplay",
 			"pass": true,
 			"details": "{\"Icon\":\"$(git-graph-logo)\",\"Text\":\"Git Graph\",\"Icon & Text\":\"$(git-graph-logo) Git Graph\"}",
-			"durationMs": 180
+			"durationMs": 166
 		},
 		{
 			"id": "#794",
 			"title": "The \"View Git Graph\" command opens the view when invoked with a null argument",
 			"pass": true,
 			"details": "Webview requests: loadRepoInfo, loadCommits, setRepoState, loadConfig",
-			"durationMs": 308
+			"durationMs": 207
 		},
 		{
 			"id": "webview-csp",
@@ -44,14 +44,14 @@
 			"id": "#668",
 			"title": "Repositories, submodules and worktrees in the workspace are all discovered",
 			"pass": true,
-			"details": "Repositories: main, wt, main/sub",
-			"durationMs": 1
+			"details": "Repositories: wt, main, main/sub",
+			"durationMs": 0
 		},
 		{
 			"id": "#935",
 			"title": "Commits after a commit whose subject contains a raw CR character are loaded (from the Webview)",
 			"pass": true,
-			"details": "Loaded 5 commits, including 0a9f4d98 (before the CR commit)",
+			"details": "Loaded 5 commits, including a9813228 (before the CR commit)",
 			"durationMs": 0
 		},
 		{
@@ -59,168 +59,203 @@
 			"title": "Commits can be filtered by author (a name containing regular expression characters is matched literally)",
 			"pass": true,
 			"details": "All authors: 5 commits, \"Dr. Q+A (Second)\": 1 commit",
-			"durationMs": 54
+			"durationMs": 43
 		},
 		{
 			"id": "#940",
 			"title": "Interactive rebase on a branch whose name contains shell syntax does not execute it",
 			"pass": true,
 			"details": "Rebase completed in the terminal, and the marker file was not created",
-			"durationMs": 2022
+			"durationMs": 2031
 		},
 		{
 			"id": "#708",
 			"title": "Tags & branches that share a name can be deleted from and pushed to a remote",
 			"pass": true,
 			"details": "",
-			"durationMs": 320
+			"durationMs": 213
 		},
 		{
 			"id": "#932",
 			"title": "An externally configured GIT_ASKPASS is used for authentication instead of Git Graph's",
 			"pass": true,
-			"details": "External Askpass prompts: Username for 'http://127.0.0.1:49242':  | Password for 'http://e2e-user@127.0.0.1:49242':",
-			"durationMs": 2958
+			"details": "External Askpass prompts: Username for 'http://127.0.0.1:54479':  | Password for 'http://e2e-user@127.0.0.1:54479':",
+			"durationMs": 221
 		},
 		{
 			"id": "#789",
 			"title": "The view refreshes when a commit is made in a submodule from outside of Visual Studio Code",
 			"pass": true,
-			"details": "Refreshed, and loaded the new commit 8ac2dd50",
-			"durationMs": 3545
+			"details": "Refreshed, and loaded the new commit b4583810",
+			"durationMs": 3542
 		},
 		{
 			"id": "#668-watch",
 			"title": "The view refreshes when a commit is made in a worktree from outside of Visual Studio Code",
 			"pass": true,
-			"details": "Refreshed, and loaded the new commit c1d2c5b8",
-			"durationMs": 3656
+			"details": "Refreshed, and loaded the new commit 3dc759db",
+			"durationMs": 3561
 		},
 		{
 			"id": "#775",
 			"title": "Selecting a graph colour preset re-renders the open Git Graph View with the preset's colours",
 			"pass": true,
 			"details": "Tokyo Subway → --git-graph-color0: #f62e36, Default → #0085d9",
-			"durationMs": 56
+			"durationMs": 39
 		},
 		{
 			"id": "#857",
 			"title": "[Webview UI] \"Scroll to HEAD\" loads more commits until HEAD is loaded",
 			"pass": true,
 			"details": "Requested maxCommits 10 → 25",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#892",
 			"title": "[Webview UI] The second keypress of a keybinding chord (e.g. Ctrl+K Ctrl+H) is left to Visual Studio Code",
 			"pass": true,
 			"details": "",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#928",
 			"title": "[Webview UI] Tooltips are shown for elements with a title (e.g. the (i) icons)",
 			"pass": true,
 			"details": "",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#852",
 			"title": "[Webview UI] The mouse back / forward buttons navigate the editor history",
 			"pass": true,
 			"details": "",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#723",
 			"title": "[Webview UI] Renamed files show their original name in the Commit Details View",
 			"pass": true,
 			"details": "← lib/moved.ts, ← old-name.ts",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#792",
 			"title": "[Webview UI] Issue links using a custom URL scheme are opened (via the extension)",
 			"pass": true,
 			"details": "Opened gitgraph-e2e://issue/12",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#864",
 			"title": "[Webview UI] The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard",
 			"pass": true,
 			"details": "",
-			"durationMs": 813
+			"durationMs": 2055
+		},
+		{
+			"id": "ui-toolbar",
+			"title": "[Webview UI] [Redesign] The control bar is sticky, has its labels inside the dropdowns, and a Jump to HEAD button",
+			"pass": true,
+			"details": "Labels: Repo:, Branches:, Authors:",
+			"durationMs": 2055
+		},
+		{
+			"id": "ui-cdv",
+			"title": "[Webview UI] [Redesign] The Commit Details View is docked to the right, with buttons for the most common commit actions",
+			"pass": true,
+			"details": "Width: 380px, actions: Checkout… | Create Branch… | Cherry Pick… | ···",
+			"durationMs": 2055
+		},
+		{
+			"id": "ui-branch-highlight",
+			"title": "[Webview UI] [GitLens] Hovering over a commit highlights the branch it is on in the graph",
+			"pass": true,
+			"details": "1 line(s) & 25 vertices highlighted",
+			"durationMs": 2055
+		},
+		{
+			"id": "ui-minimap",
+			"title": "[Webview UI] [GitLens] The minimap shows the activity of the loaded commits, where HEAD & branches are, and the visible commits",
+			"pass": true,
+			"details": "30 days, 2 with commits (25 commits)",
+			"durationMs": 2055
 		},
 		{
 			"id": "#856",
 			"title": "[Webview UI] Pasting a branch name with the mouse enables the \"Create Branch\" button",
 			"pass": true,
 			"details": "",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#652",
 			"title": "[Webview UI] The dialog buttons can be focused with Tab (after the inputs), and activated with Enter",
 			"pass": true,
 			"details": "Tab order: inputs 1, 2 → buttons 3, 4",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#707",
 			"title": "[Webview UI] Adding Issue Linking prefills the Issue URL of the repository's GitHub remote (not an example URL)",
 			"pass": true,
 			"details": "Prefilled: #(\\d+) → https://github.com/e2e-owner/e2e-repo/issues/$1",
-			"durationMs": 813
+			"durationMs": 2055
 		},
 		{
 			"id": "#171",
 			"title": "[Webview UI] Commits can be filtered by selecting authors in the Authors dropdown",
 			"pass": true,
 			"details": "Options: Show All, E2E Author, Second Author → requested authors [\"Second Author\"]",
-			"durationMs": 813
+			"durationMs": 2055
+		},
+		{
+			"id": "ui-find-operators",
+			"title": "[Webview UI] [GitLens] The Find Widget supports the author:, message: & commit: search operators, shown alongside the scrollbar",
+			"pass": true,
+			"details": "{\"author:\\\"Second Author\\\" Commit\":\"1 of 2\",\"@:second\":\"1 of 3\",\"message:Resolve =:#10\":\"1 of 4\",\"commit:0000000000000000000000000000000000000005\":\"1 of 1\"}, the view isn't scrollable (no scrollbar markers)",
+			"durationMs": 2055
 		},
 		{
 			"id": "l10n",
 			"title": "Setting git-graph.language to Simplified Chinese re-renders the open Git Graph View & Status Bar Item in Simplified Chinese",
 			"pass": true,
-			"details": "355 contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: View Git Graph → 查看 Git Graph",
-			"durationMs": 226
+			"details": "357 contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: View Git Graph → 查看 Git Graph",
+			"durationMs": 234
 		},
 		{
 			"id": "l10n-view",
 			"title": "[Webview UI, 简体中文] The control bar, column headers, dates & tooltips are displayed in Simplified Chinese",
 			"pass": true,
-			"details": "Columns: 图形 | 说明 | 日期 | 作者 | 提交, date: 2026年10月15日 19:10",
-			"durationMs": 1423
+			"details": "Columns: 图形 | 说明 | 日期 | 作者 | 提交, date: 2026年10月15日 22:01",
+			"durationMs": 104
 		},
 		{
 			"id": "l10n-menu-dialog",
 			"title": "[Webview UI, 简体中文] Context menus and dialogs are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Commit context menu: 添加标签… | 创建分支… | 签出… | 拣选… | 还原… | 合并到当前分支… | 将当前分支变基到此提交… | 将当前分支重置到此提交… | 复制提交哈希到剪贴板 | 复制提交标题到剪贴板; branch context menu: 9 items; dialog buttons: 创建分支 / 取消",
-			"durationMs": 1423
+			"durationMs": 104
 		},
 		{
 			"id": "l10n-cdv",
 			"title": "[Webview UI, 简体中文] The Commit Details View and the Authors dropdown are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Author options: 全部, E2E Author, Second Author",
-			"durationMs": 1423
+			"durationMs": 104
 		},
 		{
 			"id": "l10n-settings",
 			"title": "[Webview UI, 简体中文] The Repository Settings Widget and its dialogs are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Sections: 常规, 用户信息, 远程仓库配置, Issue 链接, 拉取请求创建, Git Graph 配置; Issue Linking dialog buttons: 保存 / 取消",
-			"durationMs": 1423
+			"durationMs": 104
 		},
 		{
 			"id": "l10n-reset",
 			"title": "Resetting git-graph.language re-renders the open Git Graph View in the display language of Visual Studio Code (English)",
 			"pass": true,
 			"details": "vscode.env.language: en",
-			"durationMs": 49
+			"durationMs": 28
 		}
 	]
 }

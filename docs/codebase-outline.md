@@ -27,6 +27,7 @@ Git Graph has two parts that communicate with messages: the extension (`src/`, r
 |---|---|
 | `main.ts` | The `GitGraphView` class: the control bar, commit table, Commit Details View, and the actions on context menus & dialogs. |
 | `graph.ts` | Lays out and renders the graph (SVG). |
+| `minimap.ts` | The Minimap (activity of the loaded commits) at the top of the view, and the markers alongside the scrollbar. |
 | `contextMenu.ts`, `dialog.ts`, `dropdown.ts`, `findWidget.ts`, `settingsWidget.ts` | UI components (`settingsWidget.ts` is the Repository Settings). |
 | `textFormatter.ts` | Formats commit messages (Markdown, emoji shortcodes, Issue Linking & URLs). |
 | `utils.ts` | Shared helpers (dates, HTML escaping, tooltips, messaging). |

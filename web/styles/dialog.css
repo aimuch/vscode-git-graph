@@ -1,17 +1,17 @@
 .dialog{
 	display:block;
 	position:fixed;
-	background-color:var(--vscode-menu-background);
-	color:var(--vscode-menu-foreground);
+	background-color:var(--vscode-editorWidget-background, var(--vscode-menu-background));
+	color:var(--vscode-editorWidget-foreground, var(--vscode-menu-foreground));
 	left:50%;
 	transform:translateX(-50%);
-	border:1px solid rgba(128,128,128,0.5);
-	border-radius:5px;
+	border:1px solid var(--vscode-widget-border, rgba(128,128,128,0.35));
+	border-radius:10px;
 	text-align:center;
 	font-size:13px;
-	line-height:17px;
+	line-height:18px;
 	z-index:41;
-	box-shadow:0 0 30px 5px var(--vscode-widget-shadow);
+	box-shadow:0 12px 32px var(--vscode-widget-shadow);
 }
 body.vscode-high-contrast .dialog{
 	border-color:var(--vscode-menu-border, rgba(128,128,128,0.5));
@@ -20,8 +20,8 @@ body.vscode-high-contrast .dialog{
 .dialogContent{
 	display:block;
 	overflow-y:auto;
-	padding:10px;
-	max-width:360px;
+	padding:16px 18px 14px;
+	max-width:380px;
 }
 
 .dialogContent > table.dialogForm{
@@ -88,13 +88,13 @@ body.vscode-high-contrast .dialog{
 	padding:4px 6px;
 	box-sizing:border-box;
 	outline-style:none;
-	background-color:rgba(128,128,128,0.1);
-	border:1px solid rgba(128,128,128,0.5);
-	border-radius:4px;
-	color:var(--vscode-menu-foreground);
+	background-color:var(--vscode-input-background, rgba(128,128,128,0.1));
+	border:1px solid var(--vscode-input-border, rgba(128,128,128,0.5));
+	border-radius:6px;
+	color:var(--vscode-input-foreground, var(--vscode-menu-foreground));
 	font-family:var(--vscode-font-family);
 	font-size:13px;
-	line-height:17px;
+	line-height:18px;
 }
 .dialogContent > table.dialogForm input[type=text]:focus, .dialogContent .dialogFormCheckbox > label > input[type=checkbox]:focus ~ .customCheckbox, .dialogContent .dialogFormRadio > label > input[type=radio]:focus ~ .customRadio{
 	border-color:var(--vscode-focusBorder);
@@ -106,14 +106,14 @@ body.vscode-high-contrast .dialog{
 
 .dialog .roundedBtn{
 	display:inline-block;
-	line-height:22px;
-	padding:0 15px;
-	margin:10px 6px 0 6px;
-	border-radius:11px;
+	line-height:26px;
+	padding:0 14px;
+	margin:14px 4px 0 4px;
+	border-radius:6px;
 }
 .dialog .roundedBtn:focus{
-	outline:none;
-	border-color:var(--vscode-focusBorder);
+	outline:2px solid var(--vscode-focusBorder);
+	outline-offset:2px;
 }
 
 .dialog .messageContent{
@@ -131,17 +131,17 @@ body.vscode-high-contrast .dialog{
 }
 
 .dialog #dialogAction{
-	background-color:rgba(128,128,128,0.15);
-	border-color:rgba(128,128,128,0.8);
-	box-shadow:0 0 1px 1px rgba(128,128,128,0.2);
+	background-color:var(--vscode-button-background, rgba(128,128,128,0.15));
+	border-color:var(--vscode-button-border, transparent);
+	color:var(--vscode-button-foreground, inherit);
+	font-weight:600;
 }
 
 .dialog #dialogAction:hover{
-	background-color:rgba(128,128,128,0.25);
+	background-color:var(--vscode-button-hoverBackground, rgba(128,128,128,0.25));
 }
 
 .dialog.noInput #dialogAction, .dialog.inputInvalid #dialogAction{
-	background-color:rgba(128,128,128,0.2);
 	opacity:0.5;
 }
 
@@ -212,11 +212,11 @@ body.vscode-high-contrast .dialog{
 	bottom:0;
 	padding:4px 22px 4px 6px;
 	box-sizing:border-box;
-	background-color:rgba(128,128,128,0.1);
-	border:1px solid rgba(128,128,128,0.5);
-	border-radius:4px;
+	background-color:var(--vscode-dropdown-background, rgba(128,128,128,0.1));
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.5));
+	border-radius:6px;
 	outline-style:none;
-	color:var(--vscode-menu-foreground);
+	color:var(--vscode-dropdown-foreground, var(--vscode-menu-foreground));
 	line-height:17px;
 	text-overflow:ellipsis;
 	white-space:nowrap;
