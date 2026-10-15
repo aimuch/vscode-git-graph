@@ -135,7 +135,7 @@ describe('AvatarManager', () => {
 				}, expect.anything());
 				expect(spyOnHttpsGet).toHaveBeenCalledWith({
 					hostname: 'avatar-url',
-					path: '/&size=162',
+					path: '/?size=162',
 					headers: { 'User-Agent': 'vscode-git-graph' },
 					agent: false,
 					timeout: 15000
@@ -185,7 +185,7 @@ describe('AvatarManager', () => {
 				}, expect.anything());
 				expect(spyOnHttpsGet).toHaveBeenCalledWith({
 					hostname: 'avatar-url',
-					path: '/&size=162',
+					path: '/?size=162',
 					headers: { 'User-Agent': 'vscode-git-graph' },
 					agent: false,
 					timeout: 15000
@@ -304,7 +304,7 @@ describe('AvatarManager', () => {
 				}, expect.anything());
 				expect(spyOnHttpsGet).toHaveBeenCalledWith({
 					hostname: 'avatar-url',
-					path: '/&size=162',
+					path: '/?size=162',
 					headers: { 'User-Agent': 'vscode-git-graph' },
 					agent: false,
 					timeout: 15000

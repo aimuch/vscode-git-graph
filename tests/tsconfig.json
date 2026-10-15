@@ -2,9 +2,10 @@
 	"compilerOptions": {
 		"declaration": true,
 		"lib": [
-			"es6"
+			"es2020"
 		],
 		"module": "commonjs",
+		"moduleResolution": "node",
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitAny": true,
 		"noUnusedLocals": true,
@@ -12,12 +13,11 @@
 		"removeComments": true,
 		"sourceMap": true,
 		"strict": true,
-		"target": "es6",
+		"target": "es2020",
 		"types": [
 			"jest",
 			"node",
-			"vscode",
-			"../src/utils/@types/node"
+			"vscode"
 		]
 	}
 }

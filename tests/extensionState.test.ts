@@ -725,7 +725,7 @@ describe('ExtensionState', () => {
 		it('Should return TRUE if the avatar storage folder existed on startup', () => {
 			// Setup
 			const spyOnStat = jest.spyOn(fs, 'stat');
-			spyOnStat.mockImplementationOnce((_, callback) => callback(null, {} as fs.Stats));
+			spyOnStat.mockImplementationOnce((_: fs.PathLike, callback: any) => callback(null, {} as fs.Stats));
 			const extensionState = new ExtensionState(extensionContext, onDidChangeGitExecutable.subscribe);
 
 			// Run
@@ -741,7 +741,7 @@ describe('ExtensionState', () => {
 
 		it('Should return TRUE if the avatar storage folder was successfully created', () => {
 			// Setup
-			jest.spyOn(fs, 'stat').mockImplementationOnce((_, callback) => callback(new Error(), {} as fs.Stats));
+			jest.spyOn(fs, 'stat').mockImplementationOnce((_: fs.PathLike, callback: any) => callback(new Error(), {} as fs.Stats));
 			const spyOnMkdir = jest.spyOn(fs, 'mkdir');
 			spyOnMkdir.mockImplementation((_, callback) => callback(null));
 			const extensionState = new ExtensionState(extensionContext, onDidChangeGitExecutable.subscribe);
@@ -760,7 +760,7 @@ describe('ExtensionState', () => {
 
 		it('Should return TRUE if the avatar storage folder was created after the initial stat check', () => {
 			// Setup
-			jest.spyOn(fs, 'stat').mockImplementationOnce((_, callback) => callback(new Error(), {} as fs.Stats));
+			jest.spyOn(fs, 'stat').mockImplementationOnce((_: fs.PathLike, callback: any) => callback(new Error(), {} as fs.Stats));
 			const spyOnMkdir = jest.spyOn(fs, 'mkdir');
 			spyOnMkdir.mockImplementation((_, callback) => callback({ code: 'EEXIST' } as NodeJS.ErrnoException));
 			const extensionState = new ExtensionState(extensionContext, onDidChangeGitExecutable.subscribe);
@@ -779,7 +779,7 @@ describe('ExtensionState', () => {
 
 		it('Should return FALSE if the avatar storage folder could not be created', () => {
 			// Setup
-			jest.spyOn(fs, 'stat').mockImplementationOnce((_, callback) => callback(new Error(), {} as fs.Stats));
+			jest.spyOn(fs, 'stat').mockImplementationOnce((_: fs.PathLike, callback: any) => callback(new Error(), {} as fs.Stats));
 			const spyOnMkdir = jest.spyOn(fs, 'mkdir');
 			spyOnMkdir.mockImplementation((_, callback) => callback({} as NodeJS.ErrnoException));
 			const extensionState = new ExtensionState(extensionContext, onDidChangeGitExecutable.subscribe);
@@ -877,9 +877,9 @@ describe('ExtensionState', () => {
 		it('Should clear all avatars from the cache and delete all avatars that are currently stored on the file system', async () => {
 			// Setup
 			extensionContext.globalState.update.mockResolvedValueOnce(null);
-			spyOnReaddir.mockImplementationOnce((_, callback) => callback(null, ['file1.jpg', 'file2.jpg']));
-			spyOnUnlink.mockImplementationOnce((_, callback) => callback(null));
-			spyOnUnlink.mockImplementationOnce((_, callback) => callback(null));
+			spyOnReaddir.mockImplementationOnce((_: fs.PathLike, callback: any) => callback(null, ['file1.jpg', 'file2.jpg']));
+			spyOnUnlink.mockImplementationOnce((_: fs.PathLike, callback: any) => callback(null));
+			spyOnUnlink.mockImplementationOnce((_: fs.PathLike, callback: any) => callback(null));
 
 			// Run
 			const result = await extensionState.clearAvatarCache();
@@ -897,7 +897,7 @@ describe('ExtensionState', () => {
 		it('Should skip deleting avatars on the file system if they could not be listed from the file system', async () => {
 			// Setup
 			extensionContext.globalState.update.mockResolvedValueOnce(null);
-			spyOnReaddir.mockImplementationOnce((_, callback) => callback(new Error(), ['file1.jpg', 'file2.jpg']));
+			spyOnReaddir.mockImplementationOnce((_: fs.PathLike, callback: any) => callback(new Error(), ['file1.jpg', 'file2.jpg']));
 
 			// Run
 			const result = await extensionState.clearAvatarCache();

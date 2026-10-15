@@ -132,7 +132,7 @@ describe('DiffDocProvider', () => {
 
 		// Assert
 		expect(docContents).toBe('');
-		expect(vscode.window.showErrorMessage).toBeCalledWith('Unable to retrieve file: error-message');
+		expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Unable to retrieve file: error-message');
 
 		// Teardown
 		diffDocProvider.dispose();

@@ -535,7 +535,7 @@ describe('CommandManager', () => {
 			// Assert
 			await waitForExpect(() => {
 				expect(spyOnLog).toHaveBeenCalledWith('Command Invoked: git-graph.clearAvatarCache');
-				expect(spyOnClearCache).toBeCalledTimes(1);
+				expect(spyOnClearCache).toHaveBeenCalledTimes(1);
 				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('The Avatar Cache was successfully cleared.');
 			});
 		});
@@ -552,7 +552,7 @@ describe('CommandManager', () => {
 			// Assert
 			await waitForExpect(() => {
 				expect(spyOnLog).toHaveBeenCalledWith('Command Invoked: git-graph.clearAvatarCache');
-				expect(spyOnClearCache).toBeCalledTimes(1);
+				expect(spyOnClearCache).toHaveBeenCalledTimes(1);
 				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(errorMessage);
 			});
 		});
@@ -568,7 +568,7 @@ describe('CommandManager', () => {
 			// Assert
 			await waitForExpect(() => {
 				expect(spyOnLog).toHaveBeenCalledWith('Command Invoked: git-graph.clearAvatarCache');
-				expect(spyOnClearCache).toBeCalledTimes(1);
+				expect(spyOnClearCache).toHaveBeenCalledTimes(1);
 				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('An unexpected error occurred while running the command "Clear Avatar Cache".');
 			});
 		});
@@ -816,7 +816,7 @@ describe('CommandManager', () => {
 
 			// Assert
 			expect(spyOnLog).toHaveBeenCalledWith('Command Invoked: git-graph.endAllWorkspaceCodeReviews');
-			expect(spyOnEndAllWorkspaceCodeReviews).toBeCalledTimes(1);
+			expect(spyOnEndAllWorkspaceCodeReviews).toHaveBeenCalledTimes(1);
 			expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Ended All Code Reviews in Workspace');
 		});
 	});

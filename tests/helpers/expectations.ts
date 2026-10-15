@@ -1,12 +1,12 @@
 import { mocks } from '../mocks/vscode';
 
 export function expectRenamedExtensionSettingToHaveBeenCalled(newSection: string, oldSection: string) {
-	expect(mocks.workspaceConfiguration.inspect).toBeCalledWith(newSection);
-	expect(mocks.workspaceConfiguration.inspect).toBeCalledWith(oldSection);
+	expect(mocks.workspaceConfiguration.inspect).toHaveBeenCalledWith(newSection);
+	expect(mocks.workspaceConfiguration.inspect).toHaveBeenCalledWith(oldSection);
 }
 
 export function waitForExpect(expect: () => void) {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		let attempts = 0;
 		const testInterval = setInterval(() => {
 			try {

@@ -261,7 +261,7 @@ describe('Config', () => {
 			const value = config.contextMenuActionsVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('contextMenuActionsVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('contextMenuActionsVisibility', {});
 			expect(value).toStrictEqual({
 				branch: {
 					checkout: true,
@@ -343,7 +343,7 @@ describe('Config', () => {
 			const value = config.contextMenuActionsVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('contextMenuActionsVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('contextMenuActionsVisibility', {});
 			expect(value).toStrictEqual({
 				branch: {
 					checkout: true,
@@ -443,7 +443,7 @@ describe('Config', () => {
 			const value = config.contextMenuActionsVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('contextMenuActionsVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('contextMenuActionsVisibility', {});
 			expect(value).toStrictEqual({
 				branch: {
 					checkout: true,
@@ -535,7 +535,7 @@ describe('Config', () => {
 			const value = config.customBranchGlobPatterns;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customBranchGlobPatterns', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customBranchGlobPatterns', []);
 			expect(value).toHaveLength(3);
 			expect(value[0]).toStrictEqual({ name: 'Name 1', glob: '--glob=glob1' });
 			expect(value[1]).toStrictEqual({ name: 'Name 2', glob: '--glob=glob2' });
@@ -547,7 +547,7 @@ describe('Config', () => {
 			const value = config.customBranchGlobPatterns;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customBranchGlobPatterns', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customBranchGlobPatterns', []);
 			expect(value).toHaveLength(0);
 		});
 	});
@@ -566,7 +566,7 @@ describe('Config', () => {
 			const value = config.customEmojiShortcodeMappings;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customEmojiShortcodeMappings', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customEmojiShortcodeMappings', []);
 			expect(value).toStrictEqual([
 				{ shortcode: 'dog', emoji: '🍎' },
 				{ shortcode: 'cat', emoji: '🎨' },
@@ -579,7 +579,7 @@ describe('Config', () => {
 			const value = config.customEmojiShortcodeMappings;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customEmojiShortcodeMappings', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customEmojiShortcodeMappings', []);
 			expect(value).toHaveLength(0);
 		});
 	});
@@ -599,7 +599,7 @@ describe('Config', () => {
 			const value = config.customPullRequestProviders;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customPullRequestProviders', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customPullRequestProviders', []);
 			expect(value).toStrictEqual([
 				{ name: 'dog', templateUrl: '$1/$2' },
 				{ name: 'cat', templateUrl: '$1/$3' },
@@ -615,7 +615,7 @@ describe('Config', () => {
 			const value = config.customPullRequestProviders;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customPullRequestProviders', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customPullRequestProviders', []);
 			expect(value).toHaveLength(0);
 		});
 
@@ -624,7 +624,7 @@ describe('Config', () => {
 			const value = config.customPullRequestProviders;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('customPullRequestProviders', []);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('customPullRequestProviders', []);
 			expect(value).toHaveLength(0);
 		});
 	});
@@ -768,7 +768,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: false, author: true, commit: true });
 		});
 
@@ -780,7 +780,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: false, commit: true });
 		});
 
@@ -792,7 +792,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: true, commit: false });
 		});
 
@@ -804,7 +804,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: true, commit: true });
 		});
 
@@ -816,7 +816,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: true, commit: true });
 		});
 
@@ -828,7 +828,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: true, commit: true });
 		});
 
@@ -837,7 +837,7 @@ describe('Config', () => {
 			const value = config.defaultColumnVisibility;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('defaultColumnVisibility', {});
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('defaultColumnVisibility', {});
 			expect(value).toStrictEqual({ date: true, author: true, commit: true });
 		});
 	});
@@ -870,28 +870,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: true,
@@ -975,28 +975,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: false,
@@ -1080,28 +1080,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: true,
@@ -1185,28 +1185,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: false,
@@ -1275,28 +1275,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: false,
@@ -1358,28 +1358,28 @@ describe('Config', () => {
 			const value = config.dialogDefaults;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.pushToRemote', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.addTag.type', 'Annotated');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.applyStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.cherryPick.recordOrigin', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.createBranch.checkOut', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.deleteBranch.forceDelete', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.prune', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.fetchRemote.pruneTags', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noCommit', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.noFastForward', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.popStash.reinstateIndex', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.noFastForward', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashCommits', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.ignoreDate', true);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.rebase.launchInteractiveRebase', false);
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.pushToRemote', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.addTag.type', 'Annotated');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.applyStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.cherryPick.recordOrigin', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.createBranch.checkOut', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.deleteBranch.forceDelete', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchIntoLocalBranch.forceFetch', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.prune', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.fetchRemote.pruneTags', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.general.referenceInputSpaceSubstitution', 'None');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noCommit', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.noFastForward', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.popStash.reinstateIndex', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.noFastForward', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashCommits', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.ignoreDate', true);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.rebase.launchInteractiveRebase', false);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetCurrentBranchToCommit.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.resetUncommittedChanges.mode', 'Mixed');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.stashUncommittedChanges.includeUntracked', true);
 			expect(value).toStrictEqual({
 				addTag: {
 					pushToRemote: false,
@@ -1575,7 +1575,7 @@ describe('Config', () => {
 			const value = config.squashMergeMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 
@@ -1587,7 +1587,7 @@ describe('Config', () => {
 			const value = config.squashMergeMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.GitSquashMsg);
 		});
 
@@ -1599,7 +1599,7 @@ describe('Config', () => {
 			const value = config.squashMergeMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 
@@ -1608,7 +1608,7 @@ describe('Config', () => {
 			const value = config.squashMergeMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.merge.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.merge.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 	});
@@ -1622,7 +1622,7 @@ describe('Config', () => {
 			const value = config.squashPullMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 
@@ -1634,7 +1634,7 @@ describe('Config', () => {
 			const value = config.squashPullMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.GitSquashMsg);
 		});
 
@@ -1646,7 +1646,7 @@ describe('Config', () => {
 			const value = config.squashPullMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 
@@ -1655,7 +1655,7 @@ describe('Config', () => {
 			const value = config.squashPullMessageFormat;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('dialog.pullBranch.squashMessageFormat', 'Default');
 			expect(value).toBe(SquashMessageFormat.Default);
 		});
 	});
@@ -1670,7 +1670,7 @@ describe('Config', () => {
 			// Run
 			const value = config.fileEncoding;
 
-			expect(workspaceConfiguration.get).toBeCalledWith('fileEncoding', 'utf8');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('fileEncoding', 'utf8');
 			expect(value).toBe('file-encoding');
 		});
 
@@ -1679,7 +1679,7 @@ describe('Config', () => {
 			const value = config.fileEncoding;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('fileEncoding', 'utf8');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('fileEncoding', 'utf8');
 			expect(value).toBe('utf8');
 		});
 	});
@@ -1791,7 +1791,7 @@ describe('Config', () => {
 				const value = config.graph.uncommittedChanges;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
 				expect(value).toBe(GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges);
 			});
 
@@ -1803,7 +1803,7 @@ describe('Config', () => {
 				const value = config.graph.uncommittedChanges;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
 				expect(value).toBe(GraphUncommittedChangesStyle.OpenCircleAtTheCheckedOutCommit);
 			});
 
@@ -1815,7 +1815,7 @@ describe('Config', () => {
 				const value = config.graph.uncommittedChanges;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
 				expect(value).toBe(GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges);
 			});
 
@@ -1824,7 +1824,7 @@ describe('Config', () => {
 				const value = config.graph.uncommittedChanges;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes');
 				expect(value).toBe(GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges);
 			});
 		});
@@ -1839,7 +1839,7 @@ describe('Config', () => {
 			const value = config.integratedTerminalShell;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('integratedTerminalShell', '');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('integratedTerminalShell', '');
 			expect(value).toBe('/path/to/shell');
 		});
 
@@ -1848,7 +1848,7 @@ describe('Config', () => {
 			const value = config.integratedTerminalShell;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('integratedTerminalShell', '');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('integratedTerminalShell', '');
 			expect(value).toBe('');
 		});
 	});
@@ -1863,7 +1863,7 @@ describe('Config', () => {
 				const value = config.keybindings.find;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.find');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.find');
 				expect(value).toBe('a');
 			});
 
@@ -1875,7 +1875,7 @@ describe('Config', () => {
 				const value = config.keybindings.find;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.find');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.find');
 				expect(value).toBeNull();
 			});
 
@@ -1887,7 +1887,7 @@ describe('Config', () => {
 				const value = config.keybindings.find;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.find');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.find');
 				expect(value).toBe('f');
 			});
 
@@ -1899,7 +1899,7 @@ describe('Config', () => {
 				const value = config.keybindings.find;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.find');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.find');
 				expect(value).toBe('f');
 			});
 
@@ -1908,7 +1908,7 @@ describe('Config', () => {
 				const value = config.keybindings.find;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.find');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.find');
 				expect(value).toBe('f');
 			});
 		});
@@ -1922,7 +1922,7 @@ describe('Config', () => {
 				const value = config.keybindings.refresh;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.refresh');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.refresh');
 				expect(value).toBe('a');
 			});
 
@@ -1934,7 +1934,7 @@ describe('Config', () => {
 				const value = config.keybindings.refresh;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.refresh');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.refresh');
 				expect(value).toBeNull();
 			});
 
@@ -1946,7 +1946,7 @@ describe('Config', () => {
 				const value = config.keybindings.refresh;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.refresh');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.refresh');
 				expect(value).toBe('r');
 			});
 
@@ -1958,7 +1958,7 @@ describe('Config', () => {
 				const value = config.keybindings.refresh;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.refresh');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.refresh');
 				expect(value).toBe('r');
 			});
 
@@ -1967,7 +1967,7 @@ describe('Config', () => {
 				const value = config.keybindings.refresh;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.refresh');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.refresh');
 				expect(value).toBe('r');
 			});
 		});
@@ -1981,7 +1981,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToHead;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToHead');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToHead');
 				expect(value).toBe('a');
 			});
 
@@ -1993,7 +1993,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToHead;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToHead');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToHead');
 				expect(value).toBeNull();
 			});
 
@@ -2005,7 +2005,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToHead;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToHead');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToHead');
 				expect(value).toBe('h');
 			});
 
@@ -2017,7 +2017,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToHead;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToHead');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToHead');
 				expect(value).toBe('h');
 			});
 
@@ -2026,7 +2026,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToHead;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToHead');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToHead');
 				expect(value).toBe('h');
 			});
 		});
@@ -2040,7 +2040,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToStash;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToStash');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToStash');
 				expect(value).toBe('a');
 			});
 
@@ -2052,7 +2052,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToStash;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToStash');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToStash');
 				expect(value).toBeNull();
 			});
 
@@ -2064,7 +2064,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToStash;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToStash');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToStash');
 				expect(value).toBe('s');
 			});
 
@@ -2076,7 +2076,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToStash;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToStash');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToStash');
 				expect(value).toBe('s');
 			});
 
@@ -2085,7 +2085,7 @@ describe('Config', () => {
 				const value = config.keybindings.scrollToStash;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('keyboardShortcut.scrollToStash');
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('keyboardShortcut.scrollToStash');
 				expect(value).toBe('s');
 			});
 		});
@@ -2102,7 +2102,7 @@ describe('Config', () => {
 			const value = config.maxDepthOfRepoSearch;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('maxDepthOfRepoSearch', 0);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('maxDepthOfRepoSearch', 0);
 			expect(value).toBe(5);
 		});
 
@@ -2111,7 +2111,7 @@ describe('Config', () => {
 			const value = config.maxDepthOfRepoSearch;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('maxDepthOfRepoSearch', 0);
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('maxDepthOfRepoSearch', 0);
 			expect(value).toBe(0);
 		});
 	});
@@ -2761,7 +2761,7 @@ describe('Config', () => {
 				const value = config.onRepoLoad.showSpecificBranches;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
 				expect(value).toStrictEqual(['master', 'develop']);
 			});
 
@@ -2773,7 +2773,7 @@ describe('Config', () => {
 				const value = config.onRepoLoad.showSpecificBranches;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
 				expect(value).toStrictEqual(['master', 'develop']);
 			});
 
@@ -2785,7 +2785,7 @@ describe('Config', () => {
 				const value = config.onRepoLoad.showSpecificBranches;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
 				expect(value).toStrictEqual([]);
 			});
 
@@ -2794,7 +2794,7 @@ describe('Config', () => {
 				const value = config.onRepoLoad.showSpecificBranches;
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith('repository.onLoad.showSpecificBranches', expect.anything());
 				expect(value).toStrictEqual([]);
 			});
 		});
@@ -2833,7 +2833,7 @@ describe('Config', () => {
 			const value = config.repoDropdownOrder;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
 			expect(value).toBe(RepoDropdownOrder.Name);
 		});
 
@@ -2845,7 +2845,7 @@ describe('Config', () => {
 			const value = config.repoDropdownOrder;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
 			expect(value).toBe(RepoDropdownOrder.FullPath);
 		});
 
@@ -2857,7 +2857,7 @@ describe('Config', () => {
 			const value = config.repoDropdownOrder;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
 			expect(value).toBe(RepoDropdownOrder.WorkspaceFullPath);
 		});
 
@@ -2869,7 +2869,7 @@ describe('Config', () => {
 			const value = config.repoDropdownOrder;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
 			expect(value).toBe(RepoDropdownOrder.WorkspaceFullPath);
 		});
 
@@ -2878,7 +2878,7 @@ describe('Config', () => {
 			const value = config.repoDropdownOrder;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('repositoryDropdownOrder', 'Workspace Full Path');
 			expect(value).toBe(RepoDropdownOrder.WorkspaceFullPath);
 		});
 	});
@@ -2896,7 +2896,7 @@ describe('Config', () => {
 			const value = config.tabIconColourTheme;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('tabIconColourTheme', 'colour');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('tabIconColourTheme', 'colour');
 			expect(value).toBe(TabIconColourTheme.Colour);
 		});
 
@@ -2908,7 +2908,7 @@ describe('Config', () => {
 			const value = config.tabIconColourTheme;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('tabIconColourTheme', 'colour');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('tabIconColourTheme', 'colour');
 			expect(value).toBe(TabIconColourTheme.Grey);
 		});
 
@@ -2920,7 +2920,7 @@ describe('Config', () => {
 			const value = config.tabIconColourTheme;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('tabIconColourTheme', 'colour');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('tabIconColourTheme', 'colour');
 			expect(value).toBe(TabIconColourTheme.Colour);
 		});
 
@@ -2929,7 +2929,7 @@ describe('Config', () => {
 			const value = config.tabIconColourTheme;
 
 			// Assert
-			expect(workspaceConfiguration.get).toBeCalledWith('tabIconColourTheme', 'colour');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('tabIconColourTheme', 'colour');
 			expect(value).toBe(TabIconColourTheme.Colour);
 		});
 	});
@@ -2943,8 +2943,8 @@ describe('Config', () => {
 			const value = config.gitPaths;
 
 			// Assert
-			expect(vscode.workspace.getConfiguration).toBeCalledWith('git');
-			expect(workspaceConfiguration.get).toBeCalledWith('path', null);
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('path', null);
 			expect(value).toStrictEqual(['/path/to/git']);
 		});
 
@@ -2956,8 +2956,8 @@ describe('Config', () => {
 			const value = config.gitPaths;
 
 			// Assert
-			expect(vscode.workspace.getConfiguration).toBeCalledWith('git');
-			expect(workspaceConfiguration.get).toBeCalledWith('path', null);
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('path', null);
 			expect(value).toStrictEqual(['/path/to/first/git', '/path/to/second/git', '/path/to/third/git']);
 		});
 
@@ -2969,8 +2969,8 @@ describe('Config', () => {
 			const value = config.gitPaths;
 
 			// Assert
-			expect(vscode.workspace.getConfiguration).toBeCalledWith('git');
-			expect(workspaceConfiguration.get).toBeCalledWith('path', null);
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('path', null);
 			expect(value).toStrictEqual([]);
 		});
 
@@ -2982,8 +2982,8 @@ describe('Config', () => {
 			const value = config.gitPaths;
 
 			// Assert
-			expect(vscode.workspace.getConfiguration).toBeCalledWith('git');
-			expect(workspaceConfiguration.get).toBeCalledWith('path', null);
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('path', null);
 			expect(value).toStrictEqual([]);
 		});
 
@@ -2992,8 +2992,8 @@ describe('Config', () => {
 			const value = config.gitPaths;
 
 			// Assert
-			expect(vscode.workspace.getConfiguration).toBeCalledWith('git');
-			expect(workspaceConfiguration.get).toBeCalledWith('path', null);
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git');
+			expect(workspaceConfiguration.get).toHaveBeenCalledWith('path', null);
 			expect(value).toStrictEqual([]);
 		});
 	});
@@ -3100,7 +3100,7 @@ describe('Config', () => {
 				const value = config[configKey];
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith(section, defaultValue);
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith(section, defaultValue);
 				expect(value).toBe(true);
 			});
 
@@ -3112,7 +3112,7 @@ describe('Config', () => {
 				const value = config[configKey];
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith(section, defaultValue);
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith(section, defaultValue);
 				expect(value).toBe(false);
 			});
 
@@ -3124,7 +3124,7 @@ describe('Config', () => {
 				const value = config[configKey];
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith(section, defaultValue);
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith(section, defaultValue);
 				expect(value).toBe(true);
 			});
 
@@ -3136,7 +3136,7 @@ describe('Config', () => {
 				const value = config[configKey];
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith(section, defaultValue);
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith(section, defaultValue);
 				expect(value).toBe(false);
 			});
 
@@ -3145,7 +3145,7 @@ describe('Config', () => {
 				const value = config[configKey];
 
 				// Assert
-				expect(workspaceConfiguration.get).toBeCalledWith(section, defaultValue);
+				expect(workspaceConfiguration.get).toHaveBeenCalledWith(section, defaultValue);
 				expect(value).toBe(defaultValue);
 			});
 		};

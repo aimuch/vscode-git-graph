@@ -42,14 +42,14 @@ console.log('Packaging JS files: ' + packageJsFiles.join(', '));
 // Combine the JS files into an IIFE, with a single "use strict" directive
 let jsFileContents = '';
 packageJsFiles.forEach((fileName) => {
-	jsFileContents += fs.readFileSync(fileName).toString().replace('"use strict";\r\n', '') + '\r\n';
+	jsFileContents += fs.readFileSync(fileName).toString().replace(/^"use strict";\r?\n/, '') + '\r\n';
 	fs.unlinkSync(fileName);
 });
 fs.writeFileSync(path.join(MEDIA_DIRECTORY, OUTPUT_TMP_JS_FILE), '"use strict";\r\n(function(document, window){\r\n' + jsFileContents + '})(document, window);\r\n');
 
 
-// Run uglifyjs with the required arguments
-cp.exec('uglifyjs ' + path.join(MEDIA_DIRECTORY, OUTPUT_TMP_JS_FILE) + ' ' + (DEBUG ? '-b' : '--mangle') + ' --output ' + path.join(MEDIA_DIRECTORY, OUTPUT_MIN_JS_FILE), (err, stdout, stderr) => {
+// Run uglifyjs with the required arguments (resolved from node_modules, so this script also works outside of npm scripts)
+cp.execFile(process.execPath, [require.resolve('uglify-js/bin/uglifyjs'), path.join(MEDIA_DIRECTORY, OUTPUT_TMP_JS_FILE), DEBUG ? '-b' : '--mangle', '--output', path.join(MEDIA_DIRECTORY, OUTPUT_MIN_JS_FILE)], (err, stdout, stderr) => {
 	if (err) {
 		console.log('ERROR:');
 		console.log(err);

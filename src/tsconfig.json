@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"declaration": true,
 		"lib": [
-			"es6"
+			"es2020"
 		],
 		"module": "commonjs",
 		"moduleResolution": "node",
@@ -14,11 +14,10 @@
 		"removeComments": true,
 		"sourceMap": true,
 		"strict": true,
-		"target": "es6",
+		"target": "es2020",
 		"types": [
 			"node",
-			"vscode",
-			"./utils/@types/node"
+			"vscode"
 		]
 	}
 }

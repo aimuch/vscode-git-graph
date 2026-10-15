@@ -1,7 +1,6 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as https from 'https';
-import * as url from 'url';
 import { DataSource } from './dataSource';
 import { ExtensionState } from './extensionState';
 import { Logger } from './logger';
@@ -21,7 +20,7 @@ export class AvatarManager extends Disposable {
 	private avatars: AvatarCache;
 	private queue: AvatarRequestQueue;
 	private remoteSourceCache: { [repo: string]: RemoteSource } = {};
-	private interval: NodeJS.Timer | null = null;
+	private interval: NodeJS.Timeout | null = null;
 
 	private githubTimeout: number = 0;
 	private gitLabTimeout: number = 0;
@@ -243,7 +242,7 @@ export class AvatarManager extends Disposable {
 				if (res.statusCode === 200) { // Success
 					let commit: any = JSON.parse(respBody);
 					if (commit.author && commit.author.avatar_url) { // Avatar url found
-						let img = await this.downloadAvatarImage(avatarRequest.email, commit.author.avatar_url + '&size=162');
+						let img = await this.downloadAvatarImage(avatarRequest.email, commit.author.avatar_url + (commit.author.avatar_url.includes('?') ? '&' : '?') + 'size=162');
 						if (img !== null) {
 							this.saveAvatar(avatarRequest.email, img, false);
 						} else {
@@ -367,7 +366,7 @@ export class AvatarManager extends Disposable {
 	private downloadAvatarImage(email: string, imageUrl: string) {
 		return (new Promise<string | null>((resolve) => {
 			const hash = crypto.createHash('md5').update(email).digest('hex');
-			const imgUrl = url.parse(imageUrl);
+			const imgUrl = new URL(imageUrl);
 
 			let completed = false;
 			const complete = (fileName: string | null = null) => {
@@ -378,7 +377,7 @@ export class AvatarManager extends Disposable {
 			};
 
 			https.get({
-				hostname: imgUrl.hostname, path: imgUrl.path,
+				hostname: imgUrl.hostname, path: imgUrl.pathname + imgUrl.search,
 				headers: { 'User-Agent': 'vscode-git-graph' },
 				agent: false, timeout: 15000
 			}, (res) => {
