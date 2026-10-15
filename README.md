@@ -1,8 +1,8 @@
-# Git Graph extension for Visual Studio Code
+# Git Map
 
 View a Git Graph of your repository, and easily perform Git actions from the graph. Configurable to look the way you want!
 
-> This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-graph`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
+> This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-map`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
 
 ![Recording of Git Graph](resources/demo.gif)
 
@@ -71,7 +71,7 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
 
 ## Extension Settings
 
-Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-graph`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md).
+Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md).
 
 A summary of the Git Graph extension settings are:
 * **Commit Details View**:
@@ -169,10 +169,10 @@ Detailed Release Notes are available [here](CHANGELOG.md).
 ## Installation
 
 This fork isn't published on the Visual Studio Marketplace. Get the VSIX (offline installation package) in one of the following ways:
-* Download `git-graph-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository: the `dev` pre-release is the latest build of the main branch (updated on every push), and each tagged version has its own release. Every [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run also has the VSIX as its `git-graph-vsix` artifact.
-* Build it: run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
+* Download `git-map-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository: the `dev` pre-release is the latest build of the main branch (updated on every push), and each tagged version has its own release. Every [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run also has the VSIX as its `git-graph-vsix` artifact.
+* Build it: run `npm install`, then `npm run package` to create `git-map-<version>.vsix`.
 
-Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
+Install the VSIX, either with `code --install-extension git-map-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
 
 Uninstall the original Git Graph extension (`mhutchie.git-graph`) first if it's installed, as both extensions register the same commands and settings. Settings in `settings.json` (`git-graph.*`) are kept, however Git Graph's per-repository state (e.g. column widths, hidden remotes, Issue Linking & Pull Request configuration) is stored per extension, and starts empty. Use "Export Repository Configuration" in the original extension's Repository Settings to keep a repository's configuration.
 

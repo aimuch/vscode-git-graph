@@ -1,6 +1,6 @@
 # Extension Settings
 
-Every Git Graph setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-graph`), and summarised in the [README](../README.md#extension-settings). This page documents the settings that need more explanation than fits in a description.
+Every Git Graph setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and summarised in the [README](../README.md#extension-settings). This page documents the settings that need more explanation than fits in a description.
 
 ## Context Menu Actions Visibility
 

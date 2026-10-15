@@ -1,6 +1,6 @@
 {
-	"name": "git-graph",
-	"displayName": "Git Graph",
+	"name": "git-map",
+	"displayName": "Git Map",
 	"version": "2.0.0",
 	"publisher": "aimdev",
 	"author": {
