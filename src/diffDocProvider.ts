@@ -4,6 +4,7 @@ import { DataSource } from './dataSource';
 import { GitFileStatus } from './types';
 import { UNCOMMITTED, getPathFromStr, showErrorMessage } from './utils';
 import { Disposable, toDisposable } from './utils/disposable';
+import { t } from './l10n';
 
 export const enum DiffSide {
 	Old,
@@ -65,7 +66,7 @@ export class DiffDocProvider extends Disposable implements vscode.TextDocumentCo
 				return document.value;
 			},
 			(errorMessage) => {
-				showErrorMessage('Unable to retrieve file: ' + errorMessage);
+				showErrorMessage(t('Unable to retrieve file: {0}', errorMessage));
 				return '';
 			}
 		);

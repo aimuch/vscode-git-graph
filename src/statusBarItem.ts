@@ -5,6 +5,7 @@ import { RepoChangeEvent } from './repoManager';
 import { StatusBarItemDisplay } from './types';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
+import { t } from './l10n';
 
 /**
  * Manages the Git Graph Status Bar Item, which allows users to open the Git Graph View from the Visual Studio Code Status Bar.
@@ -27,7 +28,7 @@ export class StatusBarItem extends Disposable {
 		const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
 		statusBarItem.name = 'Git Graph';
 		statusBarItem.text = getStatusBarItemText();
-		statusBarItem.tooltip = 'View Git Graph';
+		statusBarItem.tooltip = t('View Git Graph');
 		statusBarItem.command = 'git-graph.view';
 		this.statusBarItem = statusBarItem;
 
@@ -41,6 +42,9 @@ export class StatusBarItem extends Disposable {
 				}
 				if (event.affectsConfiguration('git-graph.statusBarItemDisplay')) {
 					this.statusBarItem.text = getStatusBarItemText();
+				}
+				if (event.affectsConfiguration('git-graph.language')) {
+					this.statusBarItem.tooltip = t('View Git Graph');
 				}
 			}),
 			statusBarItem

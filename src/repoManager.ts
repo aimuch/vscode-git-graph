@@ -10,6 +10,7 @@ import { evalPromises, getPathFromStr, getPathFromUri, getRepoName, pathWithTrai
 import { BufferedQueue } from './utils/bufferedQueue';
 import { Disposable, toDisposable } from './utils/disposable';
 import { Event, EventEmitter } from './utils/event';
+import { t } from './l10n';
 
 export interface RepoChangeEvent {
 	readonly repos: GitRepoSet;
@@ -189,9 +190,9 @@ export class RepoManager extends Disposable {
 		return new Promise<{ root: string | null, error: string | null }>(async resolve => {
 			let root = await this.dataSource.repoRoot(path);
 			if (root === null) {
-				resolve({ root: null, error: 'The folder "' + path + '" is not a Git repository.' });
+				resolve({ root: null, error: t('The folder "{0}" is not a Git repository.', path) });
 			} else if (typeof this.repos[root] !== 'undefined') {
-				resolve({ root: null, error: 'The folder "' + path + '" is contained within the known repository "' + root + '".' });
+				resolve({ root: null, error: t('The folder "{0}" is contained within the known repository "{1}".', path, root) });
 			} else {
 				if (this.ignoredRepos.includes(root)) {
 					this.ignoredRepos.splice(this.ignoredRepos.indexOf(root), 1);
@@ -647,21 +648,21 @@ export class RepoManager extends Disposable {
 			if (state && file !== null && typeof file.exportedAt === 'number' && file.exportedAt > state.lastImportAt) {
 				const validationError = validateExternalConfigFile(file);
 				if (validationError === null) {
-					const action = isRepoNew ? 'Yes' : await vscode.window.showInformationMessage('A newer Git Graph Repository Configuration File has been detected for the repository "' + (state.name || getRepoName(repo)) + '". Would you like to override your current repository configuration with the new changes?', 'Yes', 'No');
+					const yes = t('Yes'), action = isRepoNew ? yes : await vscode.window.showInformationMessage(t('A newer Git Graph Repository Configuration File has been detected for the repository "{0}". Would you like to override your current repository configuration with the new changes?', state.name || getRepoName(repo)), yes, t('No'));
 					if (this.isKnownRepo(repo) && action) {
 						const state = this.repos[repo];
-						if (action === 'Yes') {
+						if (action === yes) {
 							applyExternalConfigFile(file, state);
 						}
 						state.lastImportAt = file.exportedAt;
 						this.extensionState.saveRepos(this.repos);
-						if (!isRepoNew && action === 'Yes') {
-							showInformationMessage('Git Graph Repository Configuration was successfully imported for the repository "' + (state.name || getRepoName(repo)) + '".');
+						if (!isRepoNew && action === yes) {
+							showInformationMessage(t('Git Graph Repository Configuration was successfully imported for the repository "{0}".', state.name || getRepoName(repo)));
 						}
 						return true;
 					}
 				} else {
-					showErrorMessage('The value for "' + validationError + '" in the configuration file "' + getPathFromStr(path.join(repo, '.vscode', 'vscode-git-graph.json')) + '" is invalid.');
+					showErrorMessage(t('The value for "{0}" in the configuration file "{1}" is invalid.', validationError, getPathFromStr(path.join(repo, '.vscode', 'vscode-git-graph.json'))));
 				}
 			}
 		} catch (_) { }
@@ -832,13 +833,13 @@ function writeExternalConfigFile(repo: string, file: ExternalRepoConfig.File) {
 				const configPath = path.join(vscodePath, 'vscode-git-graph.json');
 				fs.writeFile(configPath, JSON.stringify(file, null, 4), (err) => {
 					if (err) {
-						reject('Failed to write the Git Graph Repository Configuration File to "' + getPathFromStr(configPath) + '".');
+						reject(t('Failed to write the Git Graph Repository Configuration File to "{0}".', getPathFromStr(configPath)));
 					} else {
-						resolve('Successfully exported the Git Graph Repository Configuration to "' + getPathFromStr(configPath) + '".');
+						resolve(t('Successfully exported the Git Graph Repository Configuration to "{0}".', getPathFromStr(configPath)));
 					}
 				});
 			} else {
-				reject('An unexpected error occurred while checking if the "' + getPathFromStr(vscodePath) + '" directory exists. This directory is used to store the Git Graph Repository Configuration file.');
+				reject(t('An unexpected error occurred while checking if the "{0}" directory exists. This directory is used to store the Git Graph Repository Configuration file.', getPathFromStr(vscodePath)));
 			}
 		});
 	});

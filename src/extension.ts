@@ -10,6 +10,7 @@ import { RepoManager } from './repoManager';
 import { StatusBarItem } from './statusBarItem';
 import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, findGit, getGitExecutableFromPaths, showErrorMessage, showInformationMessage } from './utils';
 import { EventEmitter } from './utils/event';
+import { t } from './l10n';
 
 /**
  * Activate Git Graph.
@@ -31,7 +32,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		logger.log('Using ' + gitExecutable.path + ' (version: ' + gitExecutable.version + ')');
 	} catch (_) {
 		gitExecutable = null;
-		showErrorMessage(UNABLE_TO_FIND_GIT_MSG);
+		showErrorMessage(t(UNABLE_TO_FIND_GIT_MSG));
 		logger.logError(UNABLE_TO_FIND_GIT_MSG);
 	}
 
@@ -56,13 +57,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
 				getGitExecutableFromPaths(paths).then((gitExecutable) => {
 					gitExecutableEmitter.emit(gitExecutable);
-					const msg = 'Git Graph is now using ' + gitExecutable.path + ' (version: ' + gitExecutable.version + ')';
-					showInformationMessage(msg);
-					logger.log(msg);
+					showInformationMessage(t('Git Graph is now using {0} (version: {1})', gitExecutable.path, gitExecutable.version));
+					logger.log('Git Graph is now using ' + gitExecutable.path + ' (version: ' + gitExecutable.version + ')');
 					repoManager.searchWorkspaceForRepos();
 				}, () => {
 					const msg = 'The new value of "git.path" ("' + paths.join('", "') + '") does not ' + (paths.length > 1 ? 'contain a string that matches' : 'match') + ' the path and filename of a valid Git executable.';
-					showErrorMessage(msg);
+					showErrorMessage(paths.length > 1
+						? t('The new value of "git.path" ("{0}") does not contain a string that matches the path and filename of a valid Git executable.', paths.join('", "'))
+						: t('The new value of "git.path" ("{0}") does not match the path and filename of a valid Git executable.', paths.join('", "')));
 					logger.logError(msg);
 				});
 			}

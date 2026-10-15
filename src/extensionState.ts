@@ -6,6 +6,7 @@ import { BooleanOverride, CodeReview, ErrorInfo, FileViewType, GitGraphViewGloba
 import { GitExecutable, getPathFromStr } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
+import { t } from './l10n';
 
 const AVATAR_STORAGE_FOLDER = '/avatars';
 const AVATAR_CACHE = 'avatarCache';
@@ -377,7 +378,7 @@ export class ExtensionState extends Disposable {
 		const reviews = this.getCodeReviews();
 
 		if (typeof reviews[repo] === 'undefined' || typeof reviews[repo][id] === 'undefined') {
-			return Promise.resolve('The Code Review could not be found.');
+			return Promise.resolve(t('The Code Review could not be found.'));
 		}
 
 		if (remainingFiles.length > 0) {
@@ -445,7 +446,7 @@ export class ExtensionState extends Disposable {
 	private updateGlobalState(key: string, value: any): Thenable<ErrorInfo> {
 		return this.globalState.update(key, value).then(
 			() => null,
-			() => 'Visual Studio Code was unable to save the Git Graph Global State Memento.'
+			() => t('Visual Studio Code was unable to save the Git Graph Global State Memento.')
 		);
 	}
 
@@ -458,7 +459,7 @@ export class ExtensionState extends Disposable {
 	private updateWorkspaceState(key: string, value: any): Thenable<ErrorInfo> {
 		return this.workspaceState.update(key, value).then(
 			() => null,
-			() => 'Visual Studio Code was unable to save the Git Graph Workspace State Memento.'
+			() => t('Visual Studio Code was unable to save the Git Graph Workspace State Memento.')
 		);
 	}
 }

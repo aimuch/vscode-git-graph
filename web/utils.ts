@@ -253,9 +253,21 @@ function unescapeHtml(str: string) {
 function formatCommaSeparatedList(items: string[]) {
 	let str = '';
 	for (let i = 0; i < items.length; i++) {
-		str += (i > 0 ? (i < items.length - 1 ? ', ' : ' & ') : '') + items[i];
+		str += (i > 0 ? (i < items.length - 1 ? t(', ') : t(' & ')) : '') + items[i];
 	}
 	return str;
+}
+
+/**
+ * Translate a message into the language of the Git Graph View.
+ * @param message The message (in English), which is also the key of its translations. It can contain placeholders ({0}, {1}, etc.) for the arguments.
+ * @param args The arguments substituted into the message's placeholders.
+ * @returns The translated message.
+ */
+function t(message: string, ...args: (string | number)[]) {
+	const bundle = initialState.l10n;
+	const translated = bundle !== null && typeof bundle[message] === 'string' ? bundle[message] : message;
+	return args.length === 0 ? translated : translated.replace(/\{(\d+)\}/g, (placeholder, index) => index < args.length ? String(args[parseInt(index)]) : placeholder);
 }
 
 /**
@@ -267,7 +279,7 @@ function formatShortDate(unixTimestamp: number) {
 	const date = new Date(unixTimestamp * 1000), format = initialState.config.dateFormat;
 	let dateStr = format.iso
 		? date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate())
-		: date.getDate() + ' ' + MONTHS[date.getMonth()] + ' ' + date.getFullYear();
+		: t('{0} {1} {2}', date.getDate(), t(MONTHS[date.getMonth()]), date.getFullYear()); // Day Month Year
 	let hourMinsStr = pad2(date.getHours()) + ':' + pad2(date.getMinutes());
 	let formatted;
 
@@ -299,7 +311,7 @@ function formatShortDate(unixTimestamp: number) {
 			diff /= 31557600;
 		}
 		diff = Math.round(diff);
-		formatted = diff + ' ' + unit + (diff !== 1 ? 's' : '') + ' ago';
+		formatted = t('{0} ' + unit + (diff !== 1 ? 's' : '') + ' ago', diff); // e.g. "{0} days ago"
 	}
 	return {
 		title: dateStr + ' ' + hourMinsStr + ':' + pad2(date.getSeconds()),
@@ -320,7 +332,7 @@ function formatLongDate(unixTimestamp: number) {
 		let timezone = timezoneOffset === 0 ? 'Z' : ' ' + (timezoneOffset < 0 ? '+' : '-') + pad2(Math.floor(absoluteTimezoneOffset / 60)) + pad2(absoluteTimezoneOffset % 60);
 		return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate()) + ' ' + pad2(date.getHours()) + ':' + pad2(date.getMinutes()) + ':' + pad2(date.getSeconds()) + timezone;
 	} else {
-		return date.toString();
+		return initialState.l10n !== null ? date.toLocaleString(document.documentElement.lang, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' }) : date.toString();
 	}
 }
 

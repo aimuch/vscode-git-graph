@@ -387,6 +387,14 @@ class Config {
 
 
 	/**
+	 * Get the value of the `git-graph.language` Extension Setting.
+	 */
+	get language() {
+		const language = this.config.get<string>('language', 'Auto');
+		return language === 'English' || language === 'Simplified Chinese' ? language : 'Auto';
+	}
+
+	/**
 	 * Get the value of the `git-graph.repository.commits.loadMore` Extension Setting.
 	 */
 	get loadMoreCommits() {

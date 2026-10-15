@@ -2,7 +2,7 @@
 
 - 基线：上游 `develop@d7f43f4`（v1.30.0），作为本仓库首个提交 `Import upstream ...` 导入，上游历史未保留。
 - 范围：2026-10-15 时上游仍为 open、标签为 `bug` / `vscode-bug` 的 74 个 issue（另有 136 个 feature request、61 个 improvement 未纳入本轮）。
-- 验证：每个已修复项都有对应的端到端检查（`npm run compile && npm run test-e2e`），在本机真实的 VS Code 1.141.2 中运行，结果写入 `e2e/.artifacts/report.json`。同一套检查跑在未修改的上游代码上全部失败（见文末「基线对比」）。
+- 验证：每个已修复项都有对应的端到端检查（`npm run compile && npm run test-e2e`），在本机真实的 VS Code 中运行（基线对比在 1.141.2 上完成，后续功能的完整回归在 1.142.0 上通过，报告见 [`docs/e2e/report-latest.json`](e2e/report-latest.json)），结果写入 `e2e/.artifacts/report.json`。同一套检查跑在未修改的上游代码上全部失败（见文末「基线对比」）。
 
 ## 1. 已修复（19 组共 24 个 issue，外加 VS Code 适配）
 

@@ -10,6 +10,7 @@ import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionP
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
+import { t } from './l10n';
 
 const DRIVE_LETTER_PATH_REGEX = /^[a-z]:\//;
 const EOL_REGEX = /\r\n|\r|\n/g;
@@ -192,7 +193,7 @@ export class DataSource extends Disposable {
 					if (refData.head === commits[i].hash) {
 						const numUncommittedChanges = await this.getUncommittedChanges(repo);
 						if (numUncommittedChanges > 0) {
-							commits.unshift({ hash: UNCOMMITTED, parents: [refData.head], author: '*', email: '', date: Math.round((new Date()).getTime() / 1000), message: 'Uncommitted Changes (' + numUncommittedChanges + ')' });
+							commits.unshift({ hash: UNCOMMITTED, parents: [refData.head], author: '*', email: '', date: Math.round((new Date()).getTime() / 1000), message: t('Uncommitted Changes ({0})', numUncommittedChanges) });
 						}
 						break;
 					}
@@ -502,7 +503,7 @@ export class DataSource extends Disposable {
 	 */
 	public getTagDetails(repo: string, tagName: string): Promise<GitTagDetailsData> {
 		if (this.gitExecutable !== null && !doesVersionMeetRequirement(this.gitExecutable.version, GitVersionRequirement.TagDetails)) {
-			return Promise.resolve({ details: null, error: constructIncompatibleGitVersionMessage(this.gitExecutable, GitVersionRequirement.TagDetails, 'retrieving Tag Details') });
+			return Promise.resolve({ details: null, error: constructIncompatibleGitVersionMessage(this.gitExecutable, GitVersionRequirement.TagDetails, t('retrieving Tag Details')) });
 		}
 
 		const ref = 'refs/tags/' + tagName;
@@ -755,9 +756,9 @@ export class DataSource extends Disposable {
 		}
 		if (pruneTags) {
 			if (!prune) {
-				return Promise.resolve('In order to Prune Tags, pruning must also be enabled when fetching from ' + (remote !== null ? 'a remote' : 'remote(s)') + '.');
+				return Promise.resolve(remote !== null ? t('In order to Prune Tags, pruning must also be enabled when fetching from a remote.') : t('In order to Prune Tags, pruning must also be enabled when fetching from remote(s).'));
 			} else if (this.gitExecutable !== null && !doesVersionMeetRequirement(this.gitExecutable.version, GitVersionRequirement.FetchAndPruneTags)) {
-				return Promise.resolve(constructIncompatibleGitVersionMessage(this.gitExecutable, GitVersionRequirement.FetchAndPruneTags, 'pruning tags when fetching'));
+				return Promise.resolve(constructIncompatibleGitVersionMessage(this.gitExecutable, GitVersionRequirement.FetchAndPruneTags, t('pruning tags when fetching')));
 			}
 			args.push('--prune-tags');
 		}
@@ -794,7 +795,7 @@ export class DataSource extends Disposable {
 	 */
 	public async pushBranchToMultipleRemotes(repo: string, branchName: string, remotes: string[], setUpstream: boolean, mode: GitPushBranchMode): Promise<ErrorInfo[]> {
 		if (remotes.length === 0) {
-			return ['No remote(s) were specified to push the branch ' + branchName + ' to.'];
+			return [t('No remote(s) were specified to push the branch {0} to.', branchName)];
 		}
 
 		const results: ErrorInfo[] = [];
@@ -817,7 +818,7 @@ export class DataSource extends Disposable {
 	 */
 	public async pushTag(repo: string, tagName: string, remotes: string[], commitHash: string, skipRemoteCheck: boolean): Promise<ErrorInfo[]> {
 		if (remotes.length === 0) {
-			return ['No remote(s) were specified to push the tag ' + tagName + ' to.'];
+			return [t('No remote(s) were specified to push the tag {0} to.', tagName)];
 		}
 
 		if (!skipRemoteCheck) {
@@ -905,7 +906,7 @@ export class DataSource extends Disposable {
 		let remoteStatus = await this.runGitCommand(['push', remote, '--delete', 'refs/heads/' + branchName], repo);
 		if (remoteStatus !== null && (new RegExp('remote ref does not exist', 'i')).test(remoteStatus)) {
 			let trackingBranchStatus = await this.runGitCommand(['branch', '-d', '-r', remote + '/' + branchName], repo);
-			return trackingBranchStatus === null ? null : 'Branch does not exist on the remote, deleting the remote tracking branch ' + remote + '/' + branchName + '.\n' + trackingBranchStatus;
+			return trackingBranchStatus === null ? null : t('Branch does not exist on the remote, deleting the remote tracking branch {0}.', remote + '/' + branchName) + '\n' + trackingBranchStatus;
 		}
 		return remoteStatus;
 	}
@@ -1013,7 +1014,7 @@ export class DataSource extends Disposable {
 			return this.resolveCommitHash(repo, obj).then((commitHash) => this.openGitTerminal(
 				repo,
 				'rebase --interactive ' + (getConfig().signCommits ? '-S ' : '') + commitHash,
-				'Rebase on "' + (actionOn === RebaseActionOn.Branch ? obj : abbrevCommit(obj)) + '"'
+				t('Rebase on "{0}"', actionOn === RebaseActionOn.Branch ? obj : abbrevCommit(obj))
 			), (errorMessage: string) => errorMessage);
 		} else {
 			const args = ['rebase', obj];
@@ -1298,7 +1299,7 @@ export class DataSource extends Disposable {
 						}
 					});
 				} else {
-					openGitTerminal(repo, this.gitExecutable.path, args.join(' '), 'Open External Directory Diff');
+					openGitTerminal(repo, this.gitExecutable.path, args.join(' '), t('Open External Directory Diff'));
 				}
 				setTimeout(() => resolve(null), 1500);
 			}
@@ -1312,7 +1313,7 @@ export class DataSource extends Disposable {
 	 * @returns A promise resolving to the commit hash, or rejecting with an error message.
 	 */
 	private resolveCommitHash(repo: string, obj: string): Promise<string> {
-		const errorMessage = 'Unable to resolve "' + obj + '" to a commit.';
+		const errorMessage = t('Unable to resolve "{0}" to a commit.', obj);
 		return this.spawnGit(['rev-parse', '--verify', '--quiet', obj + '^{commit}'], repo, (stdout) => stdout.trim()).then(
 			(commitHash) => COMMIT_HASH_REGEXP.test(commitHash) ? commitHash : Promise.reject(errorMessage),
 			() => Promise.reject(this.gitExecutable !== null ? errorMessage : UNABLE_TO_FIND_GIT_MSG)
@@ -1436,7 +1437,7 @@ export class DataSource extends Disposable {
 					return {};
 				}
 			} else {
-				errorMessage = 'An unexpected error occurred while spawning the Git child process.';
+				errorMessage = t('An unexpected error occurred while spawning the Git child process.');
 			}
 			throw errorMessage;
 		});

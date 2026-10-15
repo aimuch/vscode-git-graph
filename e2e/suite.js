@@ -307,11 +307,9 @@ async function run() {
 	});
 
 	// Webview UI checks: run ./webview-harness.js inside a copy of the Git Graph View's HTML, in a real Webview of this version of Visual Studio Code
-	await (async () => {
+	const runWebviewHarness = async (html, titlePrefix) => {
 		const start = Date.now();
 		try {
-			await getView();
-			const html = await waitFor('the Webview HTML', () => record.html.slice().reverse().find((html) => html.includes('id="view"')));
 			const nonce = html.match(/<script nonce="([^"]+)"/)[1];
 			const harness = fs.readFileSync(path.join(__dirname, 'webview-harness.js'), 'utf8');
 			const harnessHtml = html.replace(/<script nonce="[^"]+" src=/, (match) => '<script nonce="' + nonce + '">' + harness + '</script>' + match);
@@ -325,12 +323,60 @@ async function run() {
 			}));
 			panel.webview.html = harnessHtml;
 			const uiResults = await withTimeout(harnessResults, 90000, 'the Webview UI harness to report its results');
-			uiResults.forEach((result) => results.push(Object.assign({}, result, { title: '[Webview UI] ' + result.title, durationMs: Date.now() - start })));
+			uiResults.forEach((result) => results.push(Object.assign({}, result, { title: titlePrefix + result.title, durationMs: Date.now() - start })));
 			panel.dispose();
 		} catch (err) {
-			results.push({ id: 'webview-harness', title: '[Webview UI] The Webview UI harness ran', pass: false, details: err && err.stack ? err.stack : String(err), durationMs: Date.now() - start });
+			results.push({ id: 'webview-harness', title: titlePrefix + 'The Webview UI harness ran', pass: false, details: err && err.stack ? err.stack : String(err), durationMs: Date.now() - start });
 		}
-	})();
+	};
+	await getView();
+	await runWebviewHarness(await waitFor('the Webview HTML', () => record.html.slice().reverse().find((html) => html.includes('id="view"'))), '[Webview UI] ');
+
+	// Display the Git Graph View, Status Bar Item & Webview UI in Simplified Chinese (git-graph.language), as a user who has set it would see them
+	let chineseHtml = null;
+	await check('l10n', 'Setting git-graph.language to Simplified Chinese re-renders the open Git Graph View & Status Bar Item in Simplified Chinese', async () => {
+		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
+		const nlsKeys = (file) => Object.keys(JSON.parse(fs.readFileSync(path.join(extension.extensionPath, file), 'utf8')));
+		const placeholders = Array.from(new Set(JSON.stringify(packageJson.contributes).match(/"%[^"%]+%"/g).map((key) => key.slice(2, -2))));
+		const missingNls = ['package.nls.json', 'package.nls.zh-cn.json'].flatMap((file) => placeholders.filter((key) => !nlsKeys(file).includes(key)).map((key) => file + ': ' + key));
+		assert(missingNls.length === 0, 'The contributions are missing descriptions: ' + missingNls.join(', '));
+
+		const { StatusBarItem } = require(path.join(extension.extensionPath, 'out', 'statusBarItem.js'));
+		const { EventEmitter } = require(path.join(extension.extensionPath, 'out', 'utils', 'event.js'));
+		const { Logger } = require(path.join(extension.extensionPath, 'out', 'logger.js'));
+		const onDidChangeRepos = new EventEmitter(), onDidChangeConfiguration = new EventEmitter(), logger = new Logger();
+		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
+		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
+		await waitFor('the Git Graph View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
+		try {
+			const tooltipBefore = statusBarItem.statusBarItem.tooltip;
+			const renders = record.html.length;
+			await vscode.workspace.getConfiguration('git-graph').update('language', 'Simplified Chinese', vscode.ConfigurationTarget.Global);
+			onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-graph' || section === 'git-graph.language' });
+			chineseHtml = await waitFor('the view to be re-rendered', () => record.html.slice(renders).find((html) => html.includes('id="view"')));
+			assert(tooltipBefore === 'View Git Graph' && statusBarItem.statusBarItem.tooltip === '查看 Git Graph', 'Unexpected Status Bar Item tooltips: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip);
+			assert(chineseHtml.includes('<html lang="zh-CN">'), 'The view isn\'t marked as Simplified Chinese');
+			assert(chineseHtml.includes('仓库：') && chineseHtml.includes('"l10n":{'), 'The view wasn\'t rendered with the Simplified Chinese translations');
+			return placeholders.length + ' contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip;
+		} finally {
+			statusBarItem.dispose();
+			logger.dispose();
+		}
+	});
+	if (chineseHtml !== null) {
+		await runWebviewHarness(chineseHtml, '[Webview UI, 简体中文] ');
+	}
+	await check('l10n-reset', 'Resetting git-graph.language re-renders the open Git Graph View in the display language of Visual Studio Code (English)', async () => {
+		await getView();
+		const renders = record.html.length;
+		await vscode.workspace.getConfiguration('git-graph').update('language', undefined, vscode.ConfigurationTarget.Global);
+		// The view can also be re-rendered (in the previous language) when it becomes visible again after the harness' Webview is closed
+		const html = await waitFor('the view to be re-rendered in English', () => record.html.slice(renders).find((html) => html.includes('<html lang="en">'))).catch((err) => {
+			throw new Error(err.message + '. Rendered: ' + record.html.slice(renders).map((html) => (html.match(/<html lang="([^"]+)">/) || [])[1]).join(', '));
+		});
+		assert(html.includes('Repo:') && html.includes('"l10n":null'), 'The view wasn\'t re-rendered in English');
+		return 'vscode.env.language: ' + vscode.env.language;
+	});
 
 	const report = {
 		date: new Date().toISOString(),

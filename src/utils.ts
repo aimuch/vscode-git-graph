@@ -7,6 +7,7 @@ import { DataSource } from './dataSource';
 import { DiffSide, encodeDiffDocUri } from './diffDocProvider';
 import { ExtensionState } from './extensionState';
 import { ErrorInfo, GitFileStatus, GitRepoSet, PullRequestConfig, PullRequestProvider, RepoDropdownOrder } from './types';
+import { t } from './l10n';
 
 export const UNCOMMITTED = '*';
 export const UNABLE_TO_FIND_GIT_MSG = 'Unable to find a Git executable. Either: Set the Visual Studio Code Setting "git.path" to the path and filename of an existing Git executable, or install Git and restart Visual Studio Code.';
@@ -167,7 +168,7 @@ export function getRelativeTimeDiff(unixTimestamp: number) {
 		diff /= 31557600;
 	}
 	diff = Math.round(diff);
-	return diff + ' ' + unit + (diff !== 1 ? 's' : '') + ' ago';
+	return t('{0} ' + unit + (diff !== 1 ? 's' : '') + ' ago', diff); // e.g. "{0} days ago"
 }
 
 /**
@@ -258,8 +259,8 @@ export function getSortedRepositoryPaths(repos: GitRepoSet, order: RepoDropdownO
 export function archive(repo: string, ref: string, dataSource: DataSource): Thenable<ErrorInfo> {
 	return vscode.window.showSaveDialog({
 		defaultUri: vscode.Uri.file(repo),
-		saveLabel: 'Create Archive',
-		filters: { 'TAR Archive': ['tar'], 'ZIP Archive': ['zip'] }
+		saveLabel: t('Create Archive'),
+		filters: { [t('TAR Archive')]: ['tar'], [t('ZIP Archive')]: ['zip'] }
 	}).then(
 		(uri) => {
 			if (uri) {
@@ -267,13 +268,13 @@ export function archive(repo: string, ref: string, dataSource: DataSource): Then
 				if (extension === 'tar' || extension === 'zip') {
 					return dataSource.archive(repo, ref, uri.fsPath, extension);
 				} else {
-					return 'Invalid file extension "*.' + extension + '". The archive file must have a *.tar or *.zip extension.';
+					return t('Invalid file extension "*.{0}". The archive file must have a *.tar or *.zip extension.', extension);
 				}
 			} else {
-				return 'No file name was provided for the archive.';
+				return t('No file name was provided for the archive.');
 			}
 		},
-		() => 'Visual Studio Code was unable to display the save dialog.'
+		() => t('Visual Studio Code was unable to display the save dialog.')
 	);
 }
 
@@ -297,7 +298,7 @@ export function copyFilePathToClipboard(repo: string, filePath: string, absolute
 export function copyToClipboard(text: string): Thenable<ErrorInfo> {
 	return vscode.env.clipboard.writeText(text).then(
 		() => null,
-		() => 'Visual Studio Code was unable to write to the Clipboard.'
+		() => t('Visual Studio Code was unable to write to the Clipboard.')
 	);
 }
 
@@ -335,7 +336,7 @@ export function createPullRequest(config: PullRequestConfig, sourceOwner: string
 
 	const url = templateUrl.replace(/\$([1-8])/g, (_, index) => urlFieldValues[parseInt(index) - 1]);
 
-	return openExternalUrl(url, 'Pull Request URL');
+	return openExternalUrl(url, t('Pull Request URL'));
 }
 
 /**
@@ -345,7 +346,7 @@ export function createPullRequest(config: PullRequestConfig, sourceOwner: string
 export function openExtensionSettings(): Thenable<ErrorInfo> {
 	return vscode.commands.executeCommand('workbench.action.openSettings', '@ext:Andy.git-graph').then(
 		() => null,
-		() => 'Visual Studio Code was unable to open the Git Graph Extension Settings.'
+		() => t('Visual Studio Code was unable to open the Git Graph Extension Settings.')
 	);
 }
 
@@ -355,8 +356,8 @@ export function openExtensionSettings(): Thenable<ErrorInfo> {
  * @param type The type of URL being opened (defaults to "External URL").
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
-export function openExternalUrl(url: string, type: string = 'External URL'): Thenable<ErrorInfo> {
-	const getErrorMessage = () => 'Visual Studio Code was unable to open the ' + type + ': ' + url;
+export function openExternalUrl(url: string, type: string = t('External URL')): Thenable<ErrorInfo> {
+	const getErrorMessage = () => t('Visual Studio Code was unable to open the {0}: {1}', type, url);
 	try {
 		return vscode.env.openExternal(vscode.Uri.parse(url)).then(
 			(success) => success ? null : getErrorMessage(),
@@ -398,10 +399,10 @@ export async function openFile(repo: string, filePath: string, hash: string | nu
 			viewColumn: viewColumn === null ? getConfig().openNewTabEditorGroup : viewColumn
 		}).then(
 			() => null,
-			() => 'Visual Studio Code was unable to open ' + newFilePath + '.'
+			() => t('Visual Studio Code was unable to open {0}.', newFilePath)
 		);
 	} else {
-		return 'The file ' + newFilePath + ' doesn\'t currently exist in this repository.';
+		return t('The file {0} doesn\'t currently exist in this repository.', newFilePath);
 	}
 }
 
@@ -417,12 +418,12 @@ export async function openFile(repo: string, filePath: string, hash: string | nu
  */
 export function viewDiff(repo: string, fromHash: string, toHash: string, oldFilePath: string, newFilePath: string, type: GitFileStatus) {
 	if (type !== GitFileStatus.Untracked) {
-		let abbrevFromHash = abbrevCommit(fromHash), abbrevToHash = toHash !== UNCOMMITTED ? abbrevCommit(toHash) : 'Present', pathComponents = newFilePath.split('/');
+		let abbrevFromHash = abbrevCommit(fromHash), abbrevToHash = toHash !== UNCOMMITTED ? abbrevCommit(toHash) : t('Present'), pathComponents = newFilePath.split('/');
 		let desc = fromHash === toHash
 			? fromHash === UNCOMMITTED
-				? 'Uncommitted'
-				: (type === GitFileStatus.Added ? 'Added in ' + abbrevToHash : type === GitFileStatus.Deleted ? 'Deleted in ' + abbrevToHash : abbrevFromHash + '^ ↔ ' + abbrevToHash)
-			: (type === GitFileStatus.Added ? 'Added between ' + abbrevFromHash + ' & ' + abbrevToHash : type === GitFileStatus.Deleted ? 'Deleted between ' + abbrevFromHash + ' & ' + abbrevToHash : abbrevFromHash + ' ↔ ' + abbrevToHash);
+				? t('Uncommitted')
+				: (type === GitFileStatus.Added ? t('Added in {0}', abbrevToHash) : type === GitFileStatus.Deleted ? t('Deleted in {0}', abbrevToHash) : abbrevFromHash + '^ ↔ ' + abbrevToHash)
+			: (type === GitFileStatus.Added ? t('Added between {0} & {1}', abbrevFromHash, abbrevToHash) : type === GitFileStatus.Deleted ? t('Deleted between {0} & {1}', abbrevFromHash, abbrevToHash) : abbrevFromHash + ' ↔ ' + abbrevToHash);
 		let title = pathComponents[pathComponents.length - 1] + ' (' + desc + ')';
 		if (fromHash === UNCOMMITTED) fromHash = 'HEAD';
 
@@ -431,7 +432,7 @@ export function viewDiff(repo: string, fromHash: string, toHash: string, oldFile
 			viewColumn: getConfig().openNewTabEditorGroup
 		}).then(
 			() => null,
-			() => 'Visual Studio Code was unable to load the diff editor for ' + newFilePath + '.'
+			() => t('Visual Studio Code was unable to load the diff editor for {0}.', newFilePath)
 		);
 	} else {
 		return openFile(repo, newFilePath);
@@ -482,7 +483,7 @@ export function viewFileAtRevision(repo: string, hash: string, filePath: string)
 		viewColumn: getConfig().openNewTabEditorGroup
 	}).then(
 		() => null,
-		() => 'Visual Studio Code was unable to open ' + filePath + ' at commit ' + abbrevCommit(hash) + '.'
+		() => t('Visual Studio Code was unable to open {0} at commit {1}.', filePath, abbrevCommit(hash))
 	);
 }
 
@@ -493,7 +494,7 @@ export function viewFileAtRevision(repo: string, hash: string, filePath: string)
 export function viewScm(): Thenable<ErrorInfo> {
 	return vscode.commands.executeCommand('workbench.view.scm').then(
 		() => null,
-		() => 'Visual Studio Code was unable to open the Source Control View.'
+		() => t('Visual Studio Code was unable to open the Source Control View.')
 	);
 }
 
@@ -840,5 +841,5 @@ function parseVersion(version: string) {
  * @returns The message for the user.
  */
 export function constructIncompatibleGitVersionMessage(executable: GitExecutable, version: GitVersionRequirement, feature?: string) {
-	return 'A newer version of Git (>= ' + version + ') is required for ' + (feature ? feature : 'this feature') + '. Git ' + executable.version + ' is currently installed. Please install a newer version of Git to use this feature.';
+	return t('A newer version of Git (>= {0}) is required for {1}. Git {2} is currently installed. Please install a newer version of Git to use this feature.', version, feature ? feature : t('this feature'), executable.version);
 }

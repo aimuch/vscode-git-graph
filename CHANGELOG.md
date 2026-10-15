@@ -1,7 +1,7 @@
 # Change Log
 
 ## 1.31.0 - Unreleased
-This release continues development from the last upstream release (1.30.0), adapting Git Graph to the latest versions of Visual Studio Code, and fixing reported issues. All fixes are covered by the new end-to-end test suite (`npm run test-e2e`), which runs Git Graph in a real instance of Visual Studio Code (verified with Visual Studio Code 1.141.2).
+This release continues development from the last upstream release (1.30.0), adapting Git Graph to the latest versions of Visual Studio Code, and fixing reported issues. All fixes are covered by the new end-to-end test suite (`npm run test-e2e`), which runs Git Graph in a real instance of Visual Studio Code (verified with Visual Studio Code 1.141.2 & 1.142.0).
 * Visual Studio Code compatibility:
     * #903, #871 The "View Git Graph" action is contributed to the new `scm/repository` menu, so that it's displayed on each repository in the Source Control Repositories View again.
     * Git Graph is activated once Visual Studio Code has finished starting up (`onStartupFinished`), instead of on every startup event (`*`).
@@ -25,6 +25,7 @@ This release continues development from the last upstream release (1.30.0), adap
 * #864 The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard.
 * #171, #727 New "Authors" dropdown on the Git Graph View, to only show the commits of the selected author(s). The dropdown lists the authors of the commits loaded in the repository.
 * #775 New `git-graph.graph.colourPreset` setting & "Git Graph: Select Graph Colour Preset..." command, to choose the colours of the graph from presets: Default (`git-graph.graph.colours`), Pastel, Vivid, High Contrast, Colour Blind Safe and Tokyo Subway. The open Git Graph View is re-rendered immediately when the colours change.
+* Simplified Chinese: Git Graph is displayed in Simplified Chinese when it's the display language of Visual Studio Code, or when it's selected with the new `git-graph.language` setting (Auto, English or Simplified Chinese). This includes the Git Graph View (control bar, columns, dates, context menus, dialogs, Commit Details View & Repository Settings), messages & prompts, the Status Bar Item, and the descriptions of commands & settings (`package.nls.zh-cn.json`, which follows the display language of Visual Studio Code). The open Git Graph View is re-rendered immediately when the language changes. `npm run lint` checks that every message has a translation.
 * New `git-graph.statusBarItemDisplay` setting, to display the Git Graph icon and "Git Graph" (default), only the icon, or only the text on the Status Bar Item. The icon is the Git Graph logo (contributed as the `git-graph-logo` product icon).
 * #719 Development: The project builds again on current Node.js versions: TypeScript 5.9, ESLint 10 (flat config), Jest 30, and `@vscode/vsce` (installed as a dev dependency).
 * This fork is maintained at [aimuch/vscode-git-graph](https://github.com/aimuch/vscode-git-graph), and is published as `Andy.git-graph`: the publisher, author, repository & issue links refer to it, and installation instructions replace the Visual Studio Marketplace link. Uninstall the original extension (`mhutchie.git-graph`) before installing it. The demo recording is now included in the package, so it's displayed on the extension's details page.

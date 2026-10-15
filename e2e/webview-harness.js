@@ -138,7 +138,81 @@
 
 	/* Checks */
 
+	// Run when the Git Graph View is displayed in Simplified Chinese (git-graph.language)
+	const runL10n = async () => {
+		await waitFor('the commits to be rendered', () => document.querySelectorAll('#commitTable tr.commit').length === 10, 10000);
+
+		await check('l10n-view', 'The control bar, column headers, dates & tooltips are displayed in Simplified Chinese', async () => {
+			assert(document.documentElement.lang === 'zh-CN', 'Unexpected lang: ' + document.documentElement.lang);
+			const controls = document.getElementById('controls').textContent;
+			['仓库：', '分支：', '作者：', '显示远程分支'].forEach((text) => assert(controls.includes(text), 'The control bar doesn\'t include "' + text + '": ' + controls));
+			const headers = Array.from(document.querySelectorAll('#tableColHeaders th')).map((elem) => elem.textContent.trim());
+			assert(JSON.stringify(headers) === JSON.stringify(['图形', '说明', '日期', '作者', '提交']), 'Unexpected column headers: ' + JSON.stringify(headers));
+			const date = commitRow(0).querySelector('.dateCol');
+			assert(/^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/.test(date.textContent), 'Unexpected date: ' + date.textContent);
+			assert(date.title.includes('年'), 'Unexpected date tooltip: ' + date.title);
+			assert(document.getElementById('findBtn').title === '查找', 'Unexpected Find tooltip: ' + document.getElementById('findBtn').title);
+			return 'Columns: ' + headers.join(' | ') + ', date: ' + date.textContent;
+		});
+
+		await check('l10n-menu-dialog', 'Context menus and dialogs are displayed in Simplified Chinese', async () => {
+			const openContextMenu = async (target) => {
+				mouse(target, 'contextmenu', { button: 2 });
+				const items = await waitFor('the context menu to open', () => {
+					const elems = document.querySelectorAll('.contextMenu .contextMenuItem');
+					return elems.length > 0 ? Array.from(elems) : null;
+				});
+				const untranslated = items.filter((elem) => !/[一-鿿]/.test(elem.textContent));
+				assert(untranslated.length === 0, 'Untranslated context menu items: ' + untranslated.map((elem) => elem.textContent).join(' | '));
+				return items;
+			};
+			const branchItems = await openContextMenu(commitRow(0).querySelector('.gitRef.head'));
+			key(document.body, 'Escape');
+			await waitFor('the context menu to close', () => document.querySelector('.contextMenu') === null);
+
+			const items = await openContextMenu(commitRow(1));
+			const createBranchItem = items.find((elem) => elem.textContent.startsWith('创建分支'));
+			assert(createBranchItem, 'Unexpected context menu: ' + items.map((elem) => elem.textContent).join(' | '));
+			mouse(createBranchItem, 'click');
+			const dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+			const action = document.getElementById('dialogAction').textContent, cancel = document.getElementById('dialogSecondaryAction').textContent;
+			assert(dialogElem.textContent.includes('上创建分支：') && action === '创建分支' && cancel === '取消', 'Unexpected dialog: ' + dialogElem.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+			return 'Commit context menu: ' + items.map((elem) => elem.textContent).join(' | ') + '; branch context menu: ' + branchItems.length + ' items; dialog buttons: ' + action + ' / ' + cancel;
+		});
+
+		await check('l10n-cdv', 'The Commit Details View and the Authors dropdown are displayed in Simplified Chinese', async () => {
+			mouse(commitRow(0), 'click');
+			const cdv = await waitFor('the Commit Details View to load', () => document.querySelector('#cdv .fileTreeFileRecord') ? document.getElementById('cdv') : null);
+			['提交：', '父提交：', '作者：', '提交者：', '日期：'].forEach((text) => assert(cdv.textContent.includes(text), 'The Commit Details View doesn\'t include "' + text + '"'));
+			const dropdown = document.getElementById('authorDropdown');
+			mouse(dropdown.querySelector('.dropdownCurrentValue'), 'click');
+			const options = await waitFor('the author options', () => {
+				const elems = dropdown.querySelectorAll('.dropdownOption');
+				return elems.length > 0 ? Array.from(elems).map((elem) => elem.textContent.trim()) : null;
+			});
+			assert(options[0] === '全部', 'Unexpected author options: ' + JSON.stringify(options));
+			key(document.body, 'Escape');
+			return 'Author options: ' + options.join(', ');
+		});
+
+		await check('l10n-settings', 'The Repository Settings Widget and its dialogs are displayed in Simplified Chinese', async () => {
+			mouse(document.getElementById('settingsBtn'), 'click');
+			const widget = await waitFor('the Repository Settings Widget to load', () => document.getElementById('editIssueLinking') ? document.getElementById('settingsWidget') : null);
+			const sections = Array.from(widget.querySelectorAll('h3')).map((elem) => elem.textContent.trim());
+			['常规', '用户信息', '远程仓库配置', 'Issue 链接'].forEach((text) => assert(sections.includes(text), 'Unexpected sections: ' + JSON.stringify(sections)));
+			mouse(document.getElementById('editIssueLinking'), 'click');
+			await waitFor('the Issue Linking dialog', () => document.getElementById('dialogInput1'));
+			const action = document.getElementById('dialogAction').textContent, cancel = document.getElementById('dialogSecondaryAction').textContent;
+			assert(action === '保存' && cancel === '取消', 'Unexpected dialog buttons: ' + action + ' / ' + cancel);
+			key(document.body, 'Escape');
+			return 'Sections: ' + sections.join(', ') + '; Issue Linking dialog buttons: ' + action + ' / ' + cancel;
+		});
+	};
+
 	const run = async () => {
+		if (initialState.l10n !== null) return runL10n();
 		const keybindings = initialState.config.keybindings;
 		await waitFor('the commits to be rendered', () => document.querySelectorAll('#commitTable tr.commit').length === 10, 10000);
 

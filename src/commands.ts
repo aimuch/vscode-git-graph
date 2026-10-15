@@ -11,6 +11,7 @@ import { RepoManager } from './repoManager';
 import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, VsCodeVersionRequirement, abbrevCommit, abbrevText, copyToClipboard, doesVersionMeetRequirement, getExtensionVersion, getPathFromUri, getRelativeTimeDiff, getRepoName, getSortedRepositoryPaths, isPathInWorkspace, openFile, resolveToSymbolicPath, showErrorMessage, showInformationMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
+import { t } from './l10n';
 
 /**
  * Manages the registration and execution of Git Graph Commands.
@@ -129,7 +130,7 @@ export class CommandManager extends Disposable {
 	 */
 	private addGitRepository() {
 		if (this.gitExecutable === null) {
-			showErrorMessage(UNABLE_TO_FIND_GIT_MSG);
+			showErrorMessage(t(UNABLE_TO_FIND_GIT_MSG));
 			return;
 		}
 
@@ -139,13 +140,13 @@ export class CommandManager extends Disposable {
 				if (isPathInWorkspace(path)) {
 					this.repoManager.registerRepo(path, false).then(status => {
 						if (status.error === null) {
-							showInformationMessage('The repository "' + status.root! + '" was added to Git Graph.');
+							showInformationMessage(t('The repository "{0}" was added to Git Graph.', status.root!));
 						} else {
-							showErrorMessage(status.error + ' Therefore it could not be added to Git Graph.');
+							showErrorMessage(t('{0} Therefore it could not be added to Git Graph.', status.error));
 						}
 					});
 				} else {
-					showErrorMessage('The folder "' + path + '" is not within the opened Visual Studio Code workspace, and therefore could not be added to Git Graph.');
+					showErrorMessage(t('The folder "{0}" is not within the opened Visual Studio Code workspace, and therefore could not be added to Git Graph.', path));
 				}
 			}
 		}, () => { });
@@ -156,7 +157,7 @@ export class CommandManager extends Disposable {
 	 */
 	private removeGitRepository() {
 		if (this.gitExecutable === null) {
-			showErrorMessage(UNABLE_TO_FIND_GIT_MSG);
+			showErrorMessage(t(UNABLE_TO_FIND_GIT_MSG));
 			return;
 		}
 
@@ -167,14 +168,14 @@ export class CommandManager extends Disposable {
 		}));
 
 		vscode.window.showQuickPick(items, {
-			placeHolder: 'Select a repository to remove from Git Graph:',
+			placeHolder: t('Select a repository to remove from Git Graph:'),
 			canPickMany: false
 		}).then((item) => {
 			if (item && item.description !== undefined) {
 				if (this.repoManager.ignoreRepo(item.description)) {
-					showInformationMessage('The repository "' + item.label + '" was removed from Git Graph.');
+					showInformationMessage(t('The repository "{0}" was removed from Git Graph.', item.label));
 				} else {
-					showErrorMessage('The repository "' + item.label + '" is not known to Git Graph.');
+					showErrorMessage(t('The repository "{0}" is not known to Git Graph.', item.label));
 				}
 			}
 		}, () => { });
@@ -186,12 +187,12 @@ export class CommandManager extends Disposable {
 	private clearAvatarCache() {
 		this.avatarManager.clearCache().then((errorInfo) => {
 			if (errorInfo === null) {
-				showInformationMessage('The Avatar Cache was successfully cleared.');
+				showInformationMessage(t('The Avatar Cache was successfully cleared.'));
 			} else {
 				showErrorMessage(errorInfo);
 			}
 		}, () => {
-			showErrorMessage('An unexpected error occurred while running the command "Clear Avatar Cache".');
+			showErrorMessage(t('An unexpected error occurred while running the command "{0}".', t('Clear Avatar Cache')));
 		});
 	}
 
@@ -218,7 +219,7 @@ export class CommandManager extends Disposable {
 			}
 
 			vscode.window.showQuickPick(items, {
-				placeHolder: 'Select the repository you want to open in Git Graph, and fetch from remote(s):',
+				placeHolder: t('Select the repository you want to open in Git Graph, and fetch from remote(s):'),
 				canPickMany: false
 			}).then((item) => {
 				if (item && item.description) {
@@ -228,7 +229,7 @@ export class CommandManager extends Disposable {
 					});
 				}
 			}, () => {
-				showErrorMessage('An unexpected error occurred while running the command "Fetch from Remote(s)".');
+				showErrorMessage(t('An unexpected error occurred while running the command "{0}".', t('Fetch from Remote(s)')));
 			});
 		} else if (repoPaths.length === 1) {
 			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, {
@@ -245,7 +246,7 @@ export class CommandManager extends Disposable {
 	 */
 	private endAllWorkspaceCodeReviews() {
 		this.extensionState.endAllWorkspaceCodeReviews();
-		showInformationMessage('Ended All Code Reviews in Workspace');
+		showInformationMessage(t('Ended All Code Reviews in Workspace'));
 	}
 
 	/**
@@ -254,25 +255,25 @@ export class CommandManager extends Disposable {
 	private endSpecificWorkspaceCodeReview() {
 		const codeReviews = this.extensionState.getCodeReviews();
 		if (Object.keys(codeReviews).length === 0) {
-			showErrorMessage('There are no Code Reviews in progress within the current workspace.');
+			showErrorMessage(t('There are no Code Reviews in progress within the current workspace.'));
 			return;
 		}
 
 		vscode.window.showQuickPick(this.getCodeReviewQuickPickItems(codeReviews), {
-			placeHolder: 'Select the Code Review you want to end:',
+			placeHolder: t('Select the Code Review you want to end:'),
 			canPickMany: false
 		}).then((item) => {
 			if (item) {
 				this.extensionState.endCodeReview(item.codeReviewRepo, item.codeReviewId).then((errorInfo) => {
 					if (errorInfo === null) {
-						showInformationMessage('Successfully ended Code Review "' + item.label + '".');
+						showInformationMessage(t('Successfully ended Code Review "{0}".', item.label));
 					} else {
 						showErrorMessage(errorInfo);
 					}
 				}, () => { });
 			}
 		}, () => {
-			showErrorMessage('An unexpected error occurred while running the command "End a specific Code Review in Workspace...".');
+			showErrorMessage(t('An unexpected error occurred while running the command "{0}".', t('End a specific Code Review in Workspace...')));
 		});
 	}
 
@@ -282,12 +283,12 @@ export class CommandManager extends Disposable {
 	private resumeWorkspaceCodeReview() {
 		const codeReviews = this.extensionState.getCodeReviews();
 		if (Object.keys(codeReviews).length === 0) {
-			showErrorMessage('There are no Code Reviews in progress within the current workspace.');
+			showErrorMessage(t('There are no Code Reviews in progress within the current workspace.'));
 			return;
 		}
 
 		vscode.window.showQuickPick(this.getCodeReviewQuickPickItems(codeReviews), {
-			placeHolder: 'Select the Code Review you want to resume:',
+			placeHolder: t('Select the Code Review you want to resume:'),
 			canPickMany: false
 		}).then((item) => {
 			if (item) {
@@ -301,7 +302,7 @@ export class CommandManager extends Disposable {
 				});
 			}
 		}, () => {
-			showErrorMessage('An unexpected error occurred while running the command "Resume a specific Code Review in Workspace...".');
+			showErrorMessage(t('An unexpected error occurred while running the command "{0}".', t('Resume a specific Code Review in Workspace...')));
 		});
 	}
 
@@ -314,17 +315,17 @@ export class CommandManager extends Disposable {
 	private async selectGraphColourPreset() {
 		const current = getConfig().graphColourPreset;
 		const items: (vscode.QuickPickItem & { preset: string })[] = GRAPH_COLOUR_PRESET_NAMES.map((preset) => ({
-			label: preset,
-			description: preset === current ? 'Current' : undefined,
-			detail: preset === 'Default' ? 'The colours specified by "git-graph.graph.colours"' : GRAPH_COLOUR_PRESETS[preset].join('  '),
+			label: t(preset),
+			description: preset === current ? t('Current') : undefined,
+			detail: preset === 'Default' ? t('The colours specified by "git-graph.graph.colours"') : GRAPH_COLOUR_PRESETS[preset].join('  '),
 			preset: preset
 		}));
-		const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select the preset of colours used on the graph', ignoreFocusOut: true });
+		const selected = await vscode.window.showQuickPick(items, { placeHolder: t('Select the preset of colours used on the graph'), ignoreFocusOut: true });
 		if (selected) {
 			try {
 				await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', selected.preset, vscode.ConfigurationTarget.Global);
 			} catch (_) {
-				showErrorMessage('Unable to save the Graph Colour Preset.');
+				showErrorMessage(t('Unable to save the Graph Colour Preset.'));
 			}
 		}
 	}
@@ -333,8 +334,8 @@ export class CommandManager extends Disposable {
 		try {
 			const gitGraphVersion = await getExtensionVersion(this.context);
 			const information = 'Git Graph: ' + gitGraphVersion + '\nVisual Studio Code: ' + vscode.version + '\nOS: ' + os.type() + ' ' + os.arch() + ' ' + os.release() + '\nGit: ' + (this.gitExecutable !== null ? this.gitExecutable.version : '(none)');
-			vscode.window.showInformationMessage(information, { modal: true }, 'Copy').then((selectedItem) => {
-				if (selectedItem === 'Copy') {
+			vscode.window.showInformationMessage(information, { modal: true }, t('Copy')).then((selectedItem) => {
+				if (selectedItem === t('Copy')) {
 					copyToClipboard(information).then((result) => {
 						if (result !== null) {
 							showErrorMessage(result);
@@ -343,7 +344,7 @@ export class CommandManager extends Disposable {
 				}
 			}, () => { });
 		} catch (_) {
-			showErrorMessage('An unexpected error occurred while retrieving version information.');
+			showErrorMessage(t('An unexpected error occurred while retrieving version information.'));
 		}
 	}
 
@@ -359,11 +360,11 @@ export class CommandManager extends Disposable {
 			const request = decodeDiffDocUri(uri);
 			return openFile(request.repo, request.filePath, request.commit, this.dataSource, vscode.ViewColumn.Active).then((errorInfo) => {
 				if (errorInfo !== null) {
-					return showErrorMessage('Unable to Open File: ' + errorInfo);
+					return showErrorMessage(t('Unable to Open File: {0}', errorInfo));
 				}
 			});
 		} else {
-			return showErrorMessage('Unable to Open File: The command was not called with the required arguments.');
+			return showErrorMessage(t('Unable to Open File: {0}', t('The command was not called with the required arguments.')));
 		}
 	}
 
