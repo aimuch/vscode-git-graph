@@ -29,6 +29,15 @@ import {
 	TagType
 } from './types';
 
+export const GRAPH_COLOUR_PRESETS: { readonly [name: string]: ReadonlyArray<string> } = {
+	'Pastel': ['#7aa6da', '#e29cc6', '#8fd19e', '#f2b880', '#b9a3e3', '#f28b82', '#7fd3cc', '#d7a6e0', '#c3e88d', '#f6c177', '#9ccfd8', '#ebbcba'],
+	'Vivid': ['#2979ff', '#ff1744', '#00e676', '#ffc400', '#d500f9', '#00e5ff', '#ff9100', '#76ff03', '#f50057', '#651fff', '#1de9b6', '#ffea00'],
+	'High Contrast': ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#469990', '#9a6324', '#808000', '#ffe119'],
+	'Colour Blind Safe': ['#0072b2', '#e69f00', '#009e73', '#cc79a7', '#56b4e9', '#d55e00', '#f0e442', '#999999'],
+	'Tokyo Subway': ['#f62e36', '#ff9500', '#009bbf', '#00bb85', '#8f76d6', '#c1a470', '#00ac9b', '#9c5e31', '#e85298', '#0079c2', '#6cbb5a', '#b6007a']
+};
+export const GRAPH_COLOUR_PRESET_NAMES: ReadonlyArray<string> = ['Default', 'Pastel', 'Vivid', 'High Contrast', 'Colour Blind Safe', 'Tokyo Subway'];
+
 const VIEW_COLUMN_MAPPING: { [column: string]: vscode.ViewColumn } = {
 	'Active': vscode.ViewColumn.Active,
 	'Beside': vscode.ViewColumn.Beside,
@@ -269,11 +278,14 @@ class Config {
 	 * Get the graph configuration from the Extension Settings.
 	 */
 	get graph(): GraphConfig {
+		const preset = GRAPH_COLOUR_PRESETS[this.graphColourPreset];
 		const colours = this.getRenamedExtensionSetting<string[]>('graph.colours', 'graphColours', []);
 		return {
-			colours: Array.isArray(colours) && colours.length > 0
-				? colours.filter((v) => v.match(/^\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\s*\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\))\s*$/) !== null)
-				: ['#0085d9', '#d9008f', '#00d90a', '#d98500', '#a300d9', '#ff0000', '#00d9cc', '#e138e8', '#85d900', '#dc5b23', '#6f24d6', '#ffcc00'],
+			colours: typeof preset !== 'undefined'
+				? preset.slice()
+				: Array.isArray(colours) && colours.length > 0
+					? colours.filter((v) => v.match(/^\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\s*\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\))\s*$/) !== null)
+					: ['#0085d9', '#d9008f', '#00d90a', '#d98500', '#a300d9', '#ff0000', '#00d9cc', '#e138e8', '#85d900', '#dc5b23', '#6f24d6', '#ffcc00'],
 			style: this.getRenamedExtensionSetting<string>('graph.style', 'graphStyle', 'rounded') === 'angular'
 				? GraphStyle.Angular
 				: GraphStyle.Rounded,
@@ -282,6 +294,14 @@ class Config {
 				? GraphUncommittedChangesStyle.OpenCircleAtTheCheckedOutCommit
 				: GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges
 		};
+	}
+
+	/**
+	 * Get the value of the `git-graph.graph.colourPreset` Extension Setting.
+	 */
+	get graphColourPreset() {
+		const preset = this.config.get<string>('graph.colourPreset', 'Default');
+		return GRAPH_COLOUR_PRESET_NAMES.includes(preset) ? preset : 'Default';
 	}
 
 	/**

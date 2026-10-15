@@ -287,6 +287,25 @@ async function run() {
 		});
 	}
 
+	await check('#775', 'Selecting a graph colour preset re-renders the open Git Graph View with the preset\'s colours', async () => {
+		const commands = await vscode.commands.getCommands(true);
+		assert(commands.includes('git-graph.selectGraphColourPreset'), 'The "Select Graph Colour Preset" command is not registered');
+		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
+		await waitFor('the Git Graph View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
+		const colourOf = (html) => (html.match(/--git-graph-color0:([^;]+);/) || [])[1];
+		try {
+			const renders = record.html.length;
+			await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', 'Tokyo Subway', vscode.ConfigurationTarget.Global);
+			const html = await waitFor('the view to be re-rendered', () => record.html.slice(renders).find((html) => html.includes('id="view"')));
+			assert(colourOf(html) === '#f62e36', 'Unexpected first graph colour: ' + colourOf(html));
+		} finally {
+			const renders = record.html.length;
+			await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', undefined, vscode.ConfigurationTarget.Global);
+			await waitFor('the view to be re-rendered with the default colours', () => record.html.slice(renders).some((html) => colourOf(html) === '#0085d9'));
+		}
+		return 'Tokyo Subway → --git-graph-color0: #f62e36, Default → #0085d9';
+	});
+
 	// Webview UI checks: run ./webview-harness.js inside a copy of the Git Graph View's HTML, in a real Webview of this version of Visual Studio Code
 	await (async () => {
 		const start = Date.now();

@@ -1,7 +1,7 @@
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { AvatarManager } from './avatarManager';
-import { getConfig } from './config';
+import { GRAPH_COLOUR_PRESETS, GRAPH_COLOUR_PRESET_NAMES, getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffDocProvider, decodeDiffDocUri } from './diffDocProvider';
 import { CodeReviewData, CodeReviews, ExtensionState } from './extensionState';
@@ -55,6 +55,7 @@ export class CommandManager extends Disposable {
 		this.registerCommand('git-graph.endSpecificWorkspaceCodeReview', () => this.endSpecificWorkspaceCodeReview());
 		this.registerCommand('git-graph.resumeWorkspaceCodeReview', () => this.resumeWorkspaceCodeReview());
 		this.registerCommand('git-graph.version', () => this.version());
+		this.registerCommand('git-graph.selectGraphColourPreset', () => this.selectGraphColourPreset());
 		this.registerCommand('git-graph.openFile', (arg) => this.openFile(arg));
 
 		this.registerDisposable(
@@ -307,6 +308,27 @@ export class CommandManager extends Disposable {
 	/**
 	 * The method run when the `git-graph.version` command is invoked.
 	 */
+	/**
+	 * The method run when the `git-graph.selectGraphColourPreset` command is invoked.
+	 */
+	private async selectGraphColourPreset() {
+		const current = getConfig().graphColourPreset;
+		const items: (vscode.QuickPickItem & { preset: string })[] = GRAPH_COLOUR_PRESET_NAMES.map((preset) => ({
+			label: preset,
+			description: preset === current ? 'Current' : undefined,
+			detail: preset === 'Default' ? 'The colours specified by "git-graph.graph.colours"' : GRAPH_COLOUR_PRESETS[preset].join('  '),
+			preset: preset
+		}));
+		const selected = await vscode.window.showQuickPick(items, { placeHolder: 'Select the preset of colours used on the graph', ignoreFocusOut: true });
+		if (selected) {
+			try {
+				await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', selected.preset, vscode.ConfigurationTarget.Global);
+			} catch (_) {
+				showErrorMessage('Unable to save the Graph Colour Preset.');
+			}
+		}
+	}
+
 	private async version() {
 		try {
 			const gitGraphVersion = await getExtensionVersion(this.context);

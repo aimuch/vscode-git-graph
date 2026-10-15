@@ -106,6 +106,11 @@
 			},
 			{
 				"category": "Git Graph",
+				"command": "git-graph.selectGraphColourPreset",
+				"title": "Select Graph Colour Preset..."
+			},
+			{
+				"category": "Git Graph",
 				"command": "git-graph.openFile",
 				"title": "Open File",
 				"icon": "$(go-to-file)",
@@ -735,6 +740,27 @@
 					"markdownDescription": "The character set encoding used when retrieving a specific version of repository files (e.g. in the Diff View). A list of all supported encodings can be found [here](https://github.com/ashtuchkin/iconv-lite/wiki/Supported-Encodings).",
 					"scope": "resource"
 				},
+				"git-graph.graph.colourPreset": {
+					"type": "string",
+					"enum": [
+						"Default",
+						"Pastel",
+						"Vivid",
+						"High Contrast",
+						"Colour Blind Safe",
+						"Tokyo Subway"
+					],
+					"enumDescriptions": [
+						"Use the colours specified by \"git-graph.graph.colours\" (the classic Git Graph colours, unless they have been customised).",
+						"Soft, muted colours.",
+						"Bright, saturated colours.",
+						"Colours chosen to be as distinct from each other as possible.",
+						"The Okabe-Ito palette, which is distinguishable with common forms of colour blindness.",
+						"The line colours of the Tokyo Metro & Toei Subway."
+					],
+					"default": "Default",
+					"description": "Specifies the preset of colours used on the graph. It can also be changed with the command \"Git Graph: Select Graph Colour Preset...\"."
+				},
 				"git-graph.graph.colours": {
 					"type": "array",
 					"items": {
@@ -756,7 +782,7 @@
 						"#6f24d6",
 						"#ffcc00"
 					],
-					"description": "Specifies the colours used on the graph."
+					"description": "Specifies the colours used on the graph (when \"git-graph.graph.colourPreset\" is \"Default\")."
 				},
 				"git-graph.graph.style": {
 					"type": "string",

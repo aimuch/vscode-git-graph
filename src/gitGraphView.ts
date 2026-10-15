@@ -122,6 +122,13 @@ export class GitGraphView extends Disposable {
 				}
 			}),
 
+			// Re-render the view when the appearance of the graph is changed
+			vscode.workspace.onDidChangeConfiguration((event) => {
+				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.style'))) {
+					this.update();
+				}
+			}),
+
 			// Subscribe to events triggered when a repository is added or deleted from Git Graph
 			repoManager.onDidChangeRepos((event) => {
 				if (!this.panel.visible) return;
