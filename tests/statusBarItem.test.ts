@@ -32,7 +32,7 @@ describe('StatusBarItem', () => {
 		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
 
 		// Assert
-		expect(vscodeStatusBarItem.text).toBe('Git Graph');
+		expect(vscodeStatusBarItem.text).toBe('$(git-graph-logo) Git Graph');
 		expect(vscodeStatusBarItem.tooltip).toBe('View Git Graph');
 		expect(vscodeStatusBarItem.command).toBe('git-graph.view');
 		expect(vscodeStatusBarItem.show).toHaveBeenCalledTimes(1);

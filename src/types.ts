@@ -548,6 +548,12 @@ export const enum SquashMessageFormat {
 	GitSquashMsg
 }
 
+export const enum StatusBarItemDisplay {
+	IconAndText,
+	Icon,
+	Text
+}
+
 export const enum TabIconColourTheme {
 	Colour,
 	Grey

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getConfig } from './config';
 import { Logger } from './logger';
 import { RepoChangeEvent } from './repoManager';
+import { StatusBarItemDisplay } from './types';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
 
@@ -24,7 +25,8 @@ export class StatusBarItem extends Disposable {
 		this.logger = logger;
 
 		const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
-		statusBarItem.text = 'Git Graph';
+		statusBarItem.name = 'Git Graph';
+		statusBarItem.text = getStatusBarItemText();
 		statusBarItem.tooltip = 'View Git Graph';
 		statusBarItem.command = 'git-graph.view';
 		this.statusBarItem = statusBarItem;
@@ -36,6 +38,9 @@ export class StatusBarItem extends Disposable {
 			onDidChangeConfiguration((event) => {
 				if (event.affectsConfiguration('git-graph.showStatusBarItem')) {
 					this.refresh();
+				}
+				if (event.affectsConfiguration('git-graph.statusBarItemDisplay')) {
+					this.statusBarItem.text = getStatusBarItemText();
 				}
 			}),
 			statusBarItem
@@ -68,5 +73,20 @@ export class StatusBarItem extends Disposable {
 			}
 			this.isVisible = shouldBeVisible;
 		}
+	}
+}
+
+/**
+ * Get the text of the Status Bar Item, according to the configured value of `git-graph.statusBarItemDisplay`.
+ * @returns The text, using the `git-graph-logo` icon contributed by Git Graph.
+ */
+function getStatusBarItemText() {
+	switch (getConfig().statusBarItemDisplay) {
+		case StatusBarItemDisplay.Icon:
+			return '$(git-graph-logo)';
+		case StatusBarItemDisplay.Text:
+			return 'Git Graph';
+		default:
+			return '$(git-graph-logo) Git Graph';
 	}
 }

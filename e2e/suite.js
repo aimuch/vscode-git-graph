@@ -132,6 +132,32 @@ async function run() {
 		assert(repositoryMenu.some((item) => item.command === 'git-graph.view' && item.group !== 'inline' && item.when.includes('\'More Actions\'')), 'No "More Actions" scm/repository menu item');
 	});
 
+	await check('status-bar', 'The Status Bar Item displays the Git Graph icon and / or text, as configured by git-graph.statusBarItemDisplay', async () => {
+		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
+		const icon = packageJson.contributes.icons['git-graph-logo'];
+		assert(icon && fs.statSync(path.join(extension.extensionPath, icon.default.fontPath)).size > 0, 'The git-graph-logo icon font is missing');
+
+		const { StatusBarItem } = require(path.join(extension.extensionPath, 'out', 'statusBarItem.js'));
+		const { EventEmitter } = require(path.join(extension.extensionPath, 'out', 'utils', 'event.js'));
+		const { Logger } = require(path.join(extension.extensionPath, 'out', 'logger.js'));
+		const onDidChangeRepos = new EventEmitter(), onDidChangeConfiguration = new EventEmitter(), logger = new Logger();
+		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
+		const texts = {};
+		try {
+			for (const display of ['Icon', 'Text', 'Icon & Text']) {
+				await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', display, vscode.ConfigurationTarget.Global);
+				onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-graph' || section === 'git-graph.statusBarItemDisplay' });
+				texts[display] = statusBarItem.statusBarItem.text;
+			}
+		} finally {
+			await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
+			statusBarItem.dispose();
+			logger.dispose();
+		}
+		assert(texts['Icon'] === '$(git-graph-logo)' && texts['Text'] === 'Git Graph' && texts['Icon & Text'] === '$(git-graph-logo) Git Graph', 'Unexpected texts: ' + JSON.stringify(texts));
+		return JSON.stringify(texts);
+	});
+
 	await check('#794', 'The "View Git Graph" command opens the view when invoked with a null argument', async () => {
 		const since = marker(record);
 		await vscode.commands.executeCommand('git-graph.view', null);

@@ -24,6 +24,7 @@ import {
 	ReferenceLabelsConfig,
 	RepoDropdownOrder,
 	SquashMessageFormat,
+	StatusBarItemDisplay,
 	TabIconColourTheme,
 	TagType
 } from './types';
@@ -544,6 +545,18 @@ class Config {
 	 */
 	get showStatusBarItem() {
 		return !!this.config.get('showStatusBarItem', true);
+	}
+
+	/**
+	 * Get the value of the `git-graph.statusBarItemDisplay` Extension Setting.
+	 */
+	get statusBarItemDisplay() {
+		const display = this.config.get<string>('statusBarItemDisplay', 'Icon & Text');
+		return display === 'Icon'
+			? StatusBarItemDisplay.Icon
+			: display === 'Text'
+				? StatusBarItemDisplay.Text
+				: StatusBarItemDisplay.IconAndText;
 	}
 
 	/**

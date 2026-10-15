@@ -45,6 +45,15 @@
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"icons": {
+			"git-graph-logo": {
+				"description": "Git Graph",
+				"default": {
+					"fontPath": "resources/git-graph-icons.woff",
+					"fontCharacter": "\\E000"
+				}
+			}
+		},
 		"commands": [
 			{
 				"category": "Git Graph",
@@ -1159,6 +1168,21 @@
 					],
 					"default": "Inline",
 					"description": "Specifies where the \"View Git Graph\" action appears on the title of SCM Providers."
+				},
+				"git-graph.statusBarItemDisplay": {
+					"type": "string",
+					"enum": [
+						"Icon & Text",
+						"Icon",
+						"Text"
+					],
+					"enumDescriptions": [
+						"Display the Git Graph icon and \"Git Graph\" on the Status Bar Item.",
+						"Only display the Git Graph icon on the Status Bar Item.",
+						"Only display \"Git Graph\" on the Status Bar Item."
+					],
+					"default": "Icon & Text",
+					"description": "Specifies what is displayed on the Git Graph Status Bar Item (when it's shown, see \"git-graph.showStatusBarItem\")."
 				},
 				"git-graph.tabIconColourTheme": {
 					"type": "string",
