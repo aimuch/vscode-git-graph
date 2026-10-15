@@ -12,6 +12,8 @@ class GitGraphView {
 	private onlyFollowFirstParent: boolean = false;
 	private avatars: AvatarImageCollection = {};
 	private currentBranches: string[] | null = null;
+	private currentAuthors: string[] | null = null;
+	private knownAuthors: string[] = [];
 
 	private currentRepo!: string;
 	private currentRepoLoading: boolean = true;
@@ -46,6 +48,7 @@ class GitGraphView {
 	private readonly settingsWidget: SettingsWidget;
 	private readonly repoDropdown: Dropdown;
 	private readonly branchDropdown: Dropdown;
+	private readonly authorDropdown: Dropdown;
 
 	private readonly viewElem: HTMLElement;
 	private readonly controlsElem: HTMLElement;
@@ -92,6 +95,14 @@ class GitGraphView {
 			this.requestLoadRepoInfoAndCommits(true, true);
 		});
 
+		this.authorDropdown = new Dropdown('authorDropdown', false, true, 'Authors', (values) => {
+			this.currentAuthors = values;
+			this.maxCommits = this.config.initialLoadCommits;
+			this.saveState();
+			this.clearCommits();
+			this.requestLoadRepoInfoAndCommits(true, true);
+		});
+
 		this.showRemoteBranchesElem = <HTMLInputElement>document.getElementById('showRemoteBranchesCheckbox')!;
 		this.showRemoteBranchesElem.addEventListener('change', () => {
 			this.saveRepoStateValue(this.currentRepo, 'showRemoteBranchesV2', this.showRemoteBranchesElem.checked ? GG.BooleanOverride.Enabled : GG.BooleanOverride.Disabled);
@@ -123,6 +134,8 @@ class GitGraphView {
 		if (prevState && !prevState.currentRepoLoading && typeof this.gitRepos[prevState.currentRepo] !== 'undefined') {
 			this.currentRepo = prevState.currentRepo;
 			this.currentBranches = prevState.currentBranches;
+			this.currentAuthors = prevState.currentAuthors || null;
+			this.knownAuthors = prevState.knownAuthors || [];
 			this.maxCommits = prevState.maxCommits;
 			this.expandedCommit = prevState.expandedCommit;
 			this.avatars = prevState.avatars;
@@ -217,6 +230,9 @@ class GitGraphView {
 		this.gitStashes = [];
 		this.gitTags = [];
 		this.currentBranches = null;
+		this.currentAuthors = null;
+		this.knownAuthors = [];
+		this.renderAuthorDropdown();
 		this.renderFetchButton();
 		this.closeCommitDetails(false);
 		this.settingsWidget.close();
@@ -377,6 +393,7 @@ class GitGraphView {
 
 		this.graph.loadCommits(this.commits, this.commitHead, this.commitLookup, this.onlyFollowFirstParent);
 		this.render();
+		this.updateKnownAuthors();
 
 		if (currentRepoLoading && this.config.onRepoLoad.scrollToHead && this.commitHead !== null) {
 			this.scrollToCommit(this.commitHead, true);
@@ -545,6 +562,33 @@ class GitGraphView {
 		return options;
 	}
 
+	/**
+	 * Add the authors of the loaded commits to the authors that can be selected in the Authors Dropdown (the authors of all commits loaded in the repository during this session are retained, so that the filter can be changed while it's active).
+	 */
+	private updateKnownAuthors() {
+		const authors = new Set(this.knownAuthors);
+		if (this.currentAuthors !== null) {
+			this.currentAuthors.forEach((author) => {
+				if (author !== SHOW_ALL_BRANCHES) authors.add(author);
+			});
+		}
+		this.commits.forEach((commit) => {
+			if (commit.hash !== UNCOMMITTED && commit.author !== '') authors.add(commit.author);
+		});
+		if (authors.size !== this.knownAuthors.length) {
+			this.knownAuthors = Array.from(authors).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+			this.saveState();
+		}
+		this.renderAuthorDropdown();
+	}
+
+	private renderAuthorDropdown() {
+		this.authorDropdown.setOptions(
+			[{ name: 'Show All', value: SHOW_ALL_BRANCHES }].concat(this.knownAuthors.map((author) => ({ name: author, value: author }))),
+			this.currentAuthors === null ? [SHOW_ALL_BRANCHES] : this.currentAuthors
+		);
+	}
+
 	public getCommitId(hash: string) {
 		return typeof this.commitLookup[hash] === 'number' ? this.commitLookup[hash] : null;
 	}
@@ -624,7 +668,8 @@ class GitGraphView {
 			commitOrdering: getCommitOrdering(repoState.commitOrdering),
 			remotes: this.gitRemotes,
 			hideRemotes: repoState.hideRemotes,
-			stashes: this.gitStashes
+			stashes: this.gitStashes,
+			authors: this.currentAuthors === null || this.currentAuthors.includes(SHOW_ALL_BRANCHES) ? null : this.currentAuthors
 		});
 	}
 
@@ -729,6 +774,8 @@ class GitGraphView {
 			commitHead: this.commitHead,
 			avatars: this.avatars,
 			currentBranches: this.currentBranches,
+			currentAuthors: this.currentAuthors,
+			knownAuthors: this.knownAuthors,
 			moreCommitsAvailable: this.moreCommitsAvailable,
 			maxCommits: this.maxCommits,
 			onlyFollowFirstParent: this.onlyFollowFirstParent,
@@ -2007,6 +2054,7 @@ class GitGraphView {
 				editorFontFamily = eff;
 				this.repoDropdown.refresh();
 				this.branchDropdown.refresh();
+				this.authorDropdown.refresh();
 			}
 			if (fmc !== findMatchColour) {
 				findMatchColour = fmc;
@@ -2143,6 +2191,9 @@ class GitGraphView {
 					handledEvent(e);
 				} else if (this.branchDropdown.isOpen()) {
 					this.branchDropdown.close();
+					handledEvent(e);
+				} else if (this.authorDropdown.isOpen()) {
+					this.authorDropdown.close();
 					handledEvent(e);
 				} else if (this.settingsWidget.isVisible()) {
 					this.settingsWidget.close();

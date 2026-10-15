@@ -198,6 +198,23 @@ async function run() {
 		return 'Loaded ' + hashes.length + ' commits, including ' + fixtures.firstCommit.substring(0, 8) + ' (before the CR commit)';
 	});
 
+	await check('#171', 'Commits can be filtered by author (a name containing regular expression characters is matched literally)', async () => {
+		const dataSource = (await getView()).dataSource;
+		const getHashes = async (authors) => {
+			const result = await dataSource.getCommits(main, null, 300, true, true, false, false, 'date', ['origin'], [], [], authors);
+			assert(result.error === null, 'Loading the commits failed: ' + result.error);
+			return result.commits.filter((commit) => commit.hash !== '*').map((commit) => commit.hash);
+		};
+		const all = await getHashes(null);
+		const secondAuthor = await getHashes([fixtures.secondAuthor]);
+		assert(secondAuthor.length === 1 && secondAuthor[0] === fixtures.secondAuthorCommit, 'Unexpected commits for "' + fixtures.secondAuthor + '": ' + JSON.stringify(secondAuthor));
+		const regexLike = await getHashes(['Dr. Q.A (Second)']); // "." must not match the "+" in the author's name
+		assert(regexLike.length === 0, 'The author name was matched as a regular expression: ' + JSON.stringify(regexLike));
+		const bothAuthors = await getHashes(['E2E Author', fixtures.secondAuthor]);
+		assert(bothAuthors.length === all.length, 'Selecting all authors returned ' + bothAuthors.length + ' of ' + all.length + ' commits');
+		return 'All authors: ' + all.length + ' commits, "' + fixtures.secondAuthor + '": 1 commit';
+	});
+
 	await check('#940', 'Interactive rebase on a branch whose name contains shell syntax does not execute it', async () => {
 		const dataSource = (await getView()).dataSource;
 		assert(!fs.existsSync(fixtures.injectionMarker), 'The marker exists before the rebase');

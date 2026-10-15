@@ -21,8 +21,8 @@
 			commits.push({
 				hash: hash(i + 1),
 				parents: i < count - 1 ? [hash(i + 2)] : [],
-				author: 'E2E Author',
-				email: 'author@example.com',
+				author: i % 3 === 1 ? 'Second Author' : 'E2E Author',
+				email: i % 3 === 1 ? 'second@example.com' : 'author@example.com',
 				date: NOW - i * 3600,
 				message: i === 0 ? 'Fix #12 and rename files' : (i % 2 === 0 ? 'Resolve #' + (100 + i) : 'Commit ' + i),
 				heads: i === 0 ? ['feature'] : i === HEAD_INDEX ? ['main'] : [],
@@ -273,6 +273,28 @@
 			assert(!document.querySelector('.dialog').textContent.includes('mhutchie'), 'The dialog still refers to the original author\'s repository');
 			key(document.body, 'Escape');
 			return 'Prefilled: ' + issueRegex + ' → ' + issueUrlInput.value;
+		});
+
+		await check('#171', 'Commits can be filtered by selecting authors in the Authors dropdown', async () => {
+			if (document.querySelector('.dialog') !== null) {
+				key(document.body, 'Escape');
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+			}
+			assert(requestsOf('loadCommits').every((msg) => msg.authors === null), 'Commits were filtered by author before an author was selected');
+			const dropdown = document.getElementById('authorDropdown');
+			const findOption = (name) => Array.from(dropdown.querySelectorAll('.dropdownOption')).find((elem) => elem.textContent.trim() === name);
+			mouse(dropdown.querySelector('.dropdownCurrentValue'), 'click');
+			const options = await waitFor('the author options', () => findOption('Second Author') && findOption('E2E Author') ? Array.from(dropdown.querySelectorAll('.dropdownOption')).map((elem) => elem.textContent.trim()) : null);
+
+			const loads = requestsOf('loadCommits').length;
+			mouse(findOption('Second Author'), 'click');
+			const filtered = await waitFor('the commits of the selected author to be requested', () => requestsOf('loadCommits').slice(loads).find((msg) => msg.authors !== null));
+			assert(JSON.stringify(filtered.authors) === '["Second Author"]', 'Unexpected authors: ' + JSON.stringify(filtered.authors));
+
+			mouse(findOption('Show All'), 'click');
+			await waitFor('the commits of all authors to be requested', () => requestsOf('loadCommits').slice(-1)[0].authors === null);
+			key(document.body, 'Escape');
+			return 'Options: ' + options.join(', ') + ' → requested authors ' + JSON.stringify(filtered.authors);
 		});
 	};
 

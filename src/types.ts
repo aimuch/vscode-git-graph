@@ -917,6 +917,7 @@ export interface RequestLoadCommits extends RepoRequest {
 	readonly remotes: ReadonlyArray<string>;
 	readonly hideRemotes: ReadonlyArray<string>;
 	readonly stashes: ReadonlyArray<GitStash>;
+	readonly authors: ReadonlyArray<string> | null; // null => Show All
 }
 export interface ResponseLoadCommits extends ResponseWithErrorInfo {
 	readonly command: 'loadCommits';

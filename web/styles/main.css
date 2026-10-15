@@ -812,12 +812,12 @@ body.tagLabelsRightAligned .gitRef.tag{
 	user-select:none;
 }
 
-#repoControl, #branchControl, #showRemoteBranchesControl{
+#repoControl, #branchControl, #authorControl, #showRemoteBranchesControl{
 	display:inline-block;
 	white-space:nowrap;
 	margin:0 10px;
 }
-#repoDropdown, #branchDropdown{
+#repoDropdown, #branchDropdown, #authorDropdown{
 	margin-left:3px;
 }
 #showRemoteBranchesControl > .customCheckbox{
@@ -829,6 +829,9 @@ body.tagLabelsRightAligned .gitRef.tag{
 }
 #controls.singleRepo #repoControl{
 	display:none;
+}
+#authorDropdown .dropdownCurrentValue{
+	max-width:20vw;
 }
 #controls.singleRepo .dropdownCurrentValue{
 	max-width:40vw;

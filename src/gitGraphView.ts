@@ -409,7 +409,7 @@ export class GitGraphView extends Disposable {
 					command: 'loadCommits',
 					refreshId: msg.refreshId,
 					onlyFollowFirstParent: msg.onlyFollowFirstParent,
-					...await this.dataSource.getCommits(msg.repo, msg.branches, msg.maxCommits, msg.showTags, msg.showRemoteBranches, msg.includeCommitsMentionedByReflogs, msg.onlyFollowFirstParent, msg.commitOrdering, msg.remotes, msg.hideRemotes, msg.stashes)
+					...await this.dataSource.getCommits(msg.repo, msg.branches, msg.maxCommits, msg.showTags, msg.showRemoteBranches, msg.includeCommitsMentionedByReflogs, msg.onlyFollowFirstParent, msg.commitOrdering, msg.remotes, msg.hideRemotes, msg.stashes, msg.authors)
 				});
 				break;
 			case 'loadConfig':
@@ -725,6 +725,7 @@ export class GitGraphView extends Disposable {
 				<div id="controls">
 					<span id="repoControl"><span class="unselectable">Repo: </span><div id="repoDropdown" class="dropdown"></div></span>
 					<span id="branchControl"><span class="unselectable">Branches: </span><div id="branchDropdown" class="dropdown"></div></span>
+					<span id="authorControl"><span class="unselectable">Authors: </span><div id="authorDropdown" class="dropdown"></div></span>
 					<label id="showRemoteBranchesControl"><input type="checkbox" id="showRemoteBranchesCheckbox" tabindex="-1"><span class="customCheckbox"></span>Show Remote Branches</label>
 					<div id="findBtn" title="Find"></div>
 					<div id="terminalBtn" title="Open a Terminal for this Repository"></div>

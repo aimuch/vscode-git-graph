@@ -87,6 +87,12 @@ function createFixtures(httpPort) {
 	fs.writeFileSync(path.join(main, 'file.txt'), 'three\n');
 	git(main, 'commit', '-q', '-a', '-m', 'Commit after the CR commit');
 
+	// A commit by another author, whose name contains regular expression characters (#171)
+	fixtures.secondAuthor = 'Dr. Q+A (Second)';
+	fs.writeFileSync(path.join(main, 'file.txt'), 'four\n');
+	cp.execFileSync('git', ['commit', '-q', '-a', '-m', 'Commit by the second author'], { cwd: main, env: Object.assign({}, GIT_ENV, { GIT_AUTHOR_NAME: fixtures.secondAuthor, GIT_AUTHOR_EMAIL: 'second@example.com' }) });
+	fixtures.secondAuthorCommit = git(main, 'rev-parse', 'HEAD');
+
 	git(main, '-c', 'protocol.file.allow=always', 'submodule', '--quiet', 'add', subSource, 'sub');
 	git(main, 'commit', '-q', '-m', 'Add submodule');
 	fixtures.headCommit = git(main, 'rev-parse', 'HEAD');

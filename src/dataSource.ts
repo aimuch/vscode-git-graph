@@ -15,6 +15,7 @@ const DRIVE_LETTER_PATH_REGEX = /^[a-z]:\//;
 const EOL_REGEX = /\r\n|\r|\n/g;
 const LF_REGEX = /\r?\n/g;
 const COMMIT_HASH_REGEXP = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+const EXTENDED_REGEXP_SPECIAL_CHARACTERS = /[.*+?^${}()|[\]\\]/g;
 const INVALID_BRANCH_REGEXP = /^\(.* .*\)$/;
 const REMOTE_HEAD_BRANCH_REGEXP = /^remotes\/.*\/HEAD$/;
 const GIT_LOG_SEPARATOR = 'XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb';
@@ -161,12 +162,13 @@ export class DataSource extends Disposable {
 	 * @param remotes An array of known remotes.
 	 * @param hideRemotes An array of hidden remotes.
 	 * @param stashes An array of all stashes in the repository.
+	 * @param authors The names of the authors whose commits are returned, or NULL (all authors).
 	 * @returns The commits in the repository.
 	 */
-	public getCommits(repo: string, branches: ReadonlyArray<string> | null, maxCommits: number, showTags: boolean, showRemoteBranches: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, commitOrdering: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>): Promise<GitCommitData> {
+	public getCommits(repo: string, branches: ReadonlyArray<string> | null, maxCommits: number, showTags: boolean, showRemoteBranches: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, commitOrdering: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>, authors: ReadonlyArray<string> | null = null): Promise<GitCommitData> {
 		const config = getConfig();
 		return Promise.all([
-			this.getLog(repo, branches, maxCommits + 1, showTags && config.showCommitsOnlyReferencedByTags, showRemoteBranches, includeCommitsMentionedByReflogs, onlyFollowFirstParent, commitOrdering, remotes, hideRemotes, stashes),
+			this.getLog(repo, branches, maxCommits + 1, showTags && config.showCommitsOnlyReferencedByTags, showRemoteBranches, includeCommitsMentionedByReflogs, onlyFollowFirstParent, commitOrdering, remotes, hideRemotes, stashes, authors),
 			this.getRefs(repo, showRemoteBranches, config.showRemoteHeads, hideRemotes).then((refData: GitRefData) => refData, (errorMessage: string) => errorMessage)
 		]).then(async (results) => {
 			let commits: GitCommitRecord[] = results[0], refData: GitRefData | string = results[1], i;
@@ -1511,12 +1513,19 @@ export class DataSource extends Disposable {
 	 * @param remotes An array of the known remotes.
 	 * @param hideRemotes An array of hidden remotes.
 	 * @param stashes An array of all stashes in the repository.
+	 * @param authors The names of the authors whose commits are returned, or NULL (all authors).
 	 * @returns An array of commits.
 	 */
-	private getLog(repo: string, branches: ReadonlyArray<string> | null, num: number, includeTags: boolean, includeRemotes: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, order: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>) {
+	private getLog(repo: string, branches: ReadonlyArray<string> | null, num: number, includeTags: boolean, includeRemotes: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, order: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>, authors: ReadonlyArray<string> | null = null) {
 		const args = ['-c', 'log.showSignature=false', 'log', '--max-count=' + num, '--format=' + this.gitFormatLog, '--' + order + '-order'];
 		if (onlyFollowFirstParent) {
 			args.push('--first-parent');
+		}
+		if (authors !== null && authors.length > 0) {
+			// Each pattern matches the author's name exactly (Git matches it against "Name <email> ..."), and commits by any of the authors are returned
+			args.push('--extended-regexp');
+			if (getConfig().useMailmap) args.push('--use-mailmap');
+			authors.forEach((author) => args.push('--author=^' + author.replace(EXTENDED_REGEXP_SPECIAL_CHARACTERS, '\\$&') + ' <'));
 		}
 		if (branches !== null) {
 			for (let i = 0; i < branches.length; i++) {
