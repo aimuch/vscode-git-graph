@@ -169,7 +169,7 @@ Detailed Release Notes are available [here](CHANGELOG.md).
 ## Installation
 
 This fork isn't published on the Visual Studio Marketplace. Get the VSIX (offline installation package) in one of the following ways:
-* Download `git-graph-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository (for tagged versions), or from the `git-graph-vsix` artifact of a [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run (for every push).
+* Download `git-graph-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository: the `dev` pre-release is the latest build of the main branch (updated on every push), and each tagged version has its own release. Every [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run also has the VSIX as its `git-graph-vsix` artifact.
 * Build it: run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
 
 Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).

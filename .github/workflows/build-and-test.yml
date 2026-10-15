@@ -45,6 +45,29 @@ jobs:
         path: '*.vsix'
         if-no-files-found: error
 
+  dev-release:
+    name: Publish Development Build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: dev-release
+      cancel-in-progress: true
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: git-graph-vsix
+    - name: Replace the dev pre-release with this build
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release delete dev --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+        gh release create dev *.vsix --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+          --title "Development build (main@${GITHUB_SHA::7})" \
+          --notes "The latest build of the main branch ($GITHUB_SHA). Install the VSIX with: code --install-extension <file> --force, or from the Extensions View (... > Install from VSIX...)."
+
   release:
     name: Publish GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
