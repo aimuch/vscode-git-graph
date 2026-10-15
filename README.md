@@ -2,7 +2,9 @@
 
 View a Git Graph of your repository, and easily perform Git actions from the graph. Configurable to look the way you want!
 
-![Recording of Git Graph](https://github.com/mhutchie/vscode-git-graph/raw/master/resources/demo.gif)
+> This is a fork of [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, and fixes a number of reported issues (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). It keeps the original extension identifier (`mhutchie.git-graph`), so installing it replaces the original extension. Links to the Git Graph wiki refer to the original project's documentation.
+
+![Recording of Git Graph](resources/demo.gif)
 
 ## Features
 
@@ -161,13 +163,17 @@ This extension contributes the following commands:
 
 Detailed Release Notes are available [here](CHANGELOG.md).
 
-## Visual Studio Marketplace
+## Installation
 
-This extension is available on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph) for Visual Studio Code.
+This fork isn't published on the Visual Studio Marketplace. To build and install it:
+1. Run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
+2. Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
+
+As the extension identifier is unchanged, the VSIX replaces the original Git Graph extension if it's installed. Disable "Auto Update" for Git Graph in the Extensions View, so that it isn't replaced by a version from the Visual Studio Marketplace.
 
 ## Acknowledgements
 
-Thank you to all of the contributors that help with the development of Git Graph!
+Git Graph was created by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), and this fork is based on its 1.30.0 release. It's subject to the terms of the original [LICENSE](LICENSE). Thank you to all of the contributors that helped with the development of Git Graph!
 
 Some of the icons used in Git Graph are from the following sources, please support them for their excellent work!
 - [GitHub Octicons](https://octicons.github.com/) ([License](https://github.com/primer/octicons/blob/master/LICENSE))
