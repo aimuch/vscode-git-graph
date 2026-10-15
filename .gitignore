@@ -5,3 +5,4 @@ out
 *.vsix
 .vscode-test
 e2e/.artifacts
+.DS_Store
