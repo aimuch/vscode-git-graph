@@ -76,11 +76,11 @@
 
 `webview-csp` 和 `#668`（仓库发现）在上游也通过：它们是守护性检查，用来确认 Webview 资源在 VS Code 1.141 下能加载、以及 worktree / 子模块能被发现，上游在 macOS 上本来就没问题。
 
-原始报告（路径已脱敏）：[`docs/e2e/report-upstream-1.30.0.json`](e2e/report-upstream-1.30.0.json)、[`docs/e2e/report-1.31.0.json`](e2e/report-1.31.0.json)。
+原始报告（路径已脱敏）：[`docs/e2e/report-upstream-1.30.0.json`](e2e/report-upstream-1.30.0.json)、[`docs/e2e/report-2.0.0.json`](e2e/report-2.0.0.json)。
 
 Visual Studio Code 1.141.2（扩展宿主 Node v24.21.0），git version 2.56.0，darwin arm64。
 
-| 检查 | 内容 | 上游 v1.30.0 | 本版本 1.31.0 | 上游失败原因 |
+| 检查 | 内容 | 上游 v1.30.0 | 本版本 2.0.0 | 上游失败原因 |
 |---|---|---|---|---|
 | `activation` | Git Graph activates in this version of Visual Studio Code (onStartupFinished) | FAIL | PASS | Unexpected activation events: ["*"] |
 | `#903` | "View Git Graph" is contributed to the scm/repository menu (Source Control Repositories view) | FAIL | PASS | No inline scm/repository menu item |

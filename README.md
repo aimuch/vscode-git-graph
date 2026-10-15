@@ -2,7 +2,7 @@
 
 View a Git Graph of your repository, and easily perform Git actions from the graph. Configurable to look the way you want!
 
-> This is a fork of [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, and fixes a number of reported issues (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `Andy.git-graph`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. Links to the Git Graph wiki refer to the original project's documentation.
+> This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-graph`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
 
 ![Recording of Git Graph](resources/demo.gif)
 
@@ -49,7 +49,7 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
         * Configure "Issue Linking" - Converts issue numbers in commit messages into hyperlinks, that open the issue in your issue tracking system.
         * Configure "Pull Request Creation" - Automates the opening and pre-filling of a Pull Request form, directly from a branches context menu.
             * Support for the publicly hosted Bitbucket, GitHub and GitLab Pull Request providers is built-in.
-            * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/mhutchie/vscode-git-graph/wiki/Configuring-a-custom-Pull-Request-Provider).
+            * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
         * Export your Git Graph Repository Configuration to a file that can be committed in the repository. It allows others working in the same repository to automatically use the same Git Graph configuration.
     * Keyboard Shortcuts (available in the Git Graph View):
         * `CTRL/CMD + F`: Open the Find Widget.
@@ -71,7 +71,7 @@ View a Git Graph of your repository, and easily perform Git actions from the gra
 
 ## Extension Settings
 
-Detailed information of all Git Graph settings is available [here](https://github.com/mhutchie/vscode-git-graph/wiki/Extension-Settings), including: descriptions, screenshots, default values and types.
+Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-graph`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md).
 
 A summary of the Git Graph extension settings are:
 * **Commit Details View**:
@@ -81,10 +81,10 @@ A summary of the Git Graph extension settings are:
             * **Compact Folders**: Render the File Tree in the Commit Details View in a compacted form, such that folders with a single child folder are compressed into a single combined folder element.
         * **Type**: Sets the default type of File View used in the Commit Details View.
     * **Location**: Specifies where the Commit Details View is rendered in the Git Graph View.
-* **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/mhutchie/vscode-git-graph/wiki/Extension-Settings#context-menu-actions-visibility).
+* **Context Menu Actions Visibility**: Customise which context menu actions are visible. For more information, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#context-menu-actions-visibility).
 * **Custom Branch Glob Patterns**: An array of Custom Glob Patterns to be shown in the "Branches" dropdown. Example: `[{"name":"Feature Requests", "glob":"heads/feature/*"}]`
 * **Custom Emoji Shortcode Mappings**: An array of custom Emoji Shortcode mappings. Example: `[{"shortcode": ":sparkles:", "emoji":"✨"}]`
-* **Custom Pull Request Providers**: An array of custom Pull Request providers that can be used in the "Pull Request Creation" Integration. For information on how to configure this setting, see the documentation [here](https://github.com/mhutchie/vscode-git-graph/wiki/Configuring-a-custom-Pull-Request-Provider).
+* **Custom Pull Request Providers**: An array of custom Pull Request providers that can be used in the "Pull Request Creation" Integration. For information on how to configure this setting, see the documentation [here](https://github.com/aimuch/vscode-git-graph/blob/main/docs/extension-settings.md#custom-pull-request-providers).
 * **Date**:
     * **Format**: Specifies the date format to be used in the "Date" column on the Git Graph View.
     * **Type**: Specifies the date type to be displayed in the "Date" column on the Git Graph View, either the author or commit date.
@@ -168,16 +168,21 @@ Detailed Release Notes are available [here](CHANGELOG.md).
 
 ## Installation
 
-This fork isn't published on the Visual Studio Marketplace. To build and install it:
-1. Run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
-2. Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
+This fork isn't published on the Visual Studio Marketplace. Get the VSIX (offline installation package) in one of the following ways:
+* Download `git-graph-<version>.vsix` from the [GitHub Releases](https://github.com/aimuch/vscode-git-graph/releases) of the repository (for tagged versions), or from the `git-graph-vsix` artifact of a [Build & Test](https://github.com/aimuch/vscode-git-graph/actions/workflows/build-and-test.yml) workflow run (for every push).
+* Build it: run `npm install`, then `npm run package` to create `git-graph-<version>.vsix`.
+
+Install the VSIX, either with `code --install-extension git-graph-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
 
 Uninstall the original Git Graph extension (`mhutchie.git-graph`) first if it's installed, as both extensions register the same commands and settings. Settings in `settings.json` (`git-graph.*`) are kept, however Git Graph's per-repository state (e.g. column widths, hidden remotes, Issue Linking & Pull Request configuration) is stored per extension, and starts empty. Use "Export Repository Configuration" in the original extension's Repository Settings to keep a repository's configuration.
 
 ## Acknowledgements
 
-Git Graph was created by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)), and this fork is based on its 1.30.0 release. It's subject to the terms of the original [LICENSE](LICENSE). Thank you to all of the contributors that helped with the development of Git Graph!
+This extension is based on, includes, or takes ideas from the following projects. Thank you to their authors and contributors for their excellent work!
 
-Some of the icons used in Git Graph are from the following sources, please support them for their excellent work!
-- [GitHub Octicons](https://octicons.github.com/) ([License](https://github.com/primer/octicons/blob/master/LICENSE))
-- [Icons8](https://icons8.com/icon/pack/free-icons/ios11) ([License](https://icons8.com/license))
+* [Git Graph](https://github.com/mhutchie/vscode-git-graph) by Michael Hutchison ([@mhutchie](https://github.com/mhutchie)): The original extension. This fork is based on its 1.30.0 release, and is subject to the terms of its [LICENSE](LICENSE).
+* [GitLens](https://github.com/gitkraken/vscode-gitlens) by GitKraken (created by Eric Amodio): Ideas for features & the design of the user interface. No GitLens code is included.
+* [Visual Studio Code](https://github.com/microsoft/vscode) by Microsoft: Its Git extension is the base of Git Graph's integrated Askpass ([License](licenses/LICENSE_MICROSOFT)).
+* [GitHub Octicons](https://github.com/primer/octicons): Icons ([License](licenses/LICENSE_OCTICONS)).
+* [Icons8](https://icons8.com/icon/pack/free-icons/ios11): Icons ([License](https://icons8.com/license)).
+* [iconv-lite](https://github.com/pillarjs/iconv-lite): Decoding of files in character set encodings other than UTF-8 ([License](https://github.com/pillarjs/iconv-lite/blob/master/LICENSE)).

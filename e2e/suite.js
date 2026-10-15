@@ -105,7 +105,7 @@ function marker(record) {
 }
 
 async function run() {
-	const extension = vscode.extensions.getExtension('Andy.git-graph');
+	const extension = vscode.extensions.getExtension('aimdev.git-graph');
 	assert(extension, 'The Git Graph extension is not loaded');
 	const { GitGraphView, record } = instrumentGitGraphView(extension.extensionPath);
 	await extension.activate();

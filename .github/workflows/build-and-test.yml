@@ -5,19 +5,58 @@ on:
     branches:
       - main
       - develop
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
       - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build, Test & Package
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
         node-version: '22.x'
+        cache: npm
+    - name: Check that the tag matches the version in package.json
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        VERSION="v$(node -p "require('./package.json').version")"
+        if [ "$VERSION" != "$GITHUB_REF_NAME" ]; then
+          echo "::error::The tag $GITHUB_REF_NAME doesn't match the version in package.json ($VERSION)"
+          exit 1
+        fi
     - run: npm ci
     - run: npm run compile
     - run: npm run test
+    - name: Package the extension (VSIX)
+      run: npm run package
+    - uses: actions/upload-artifact@v4
+      with:
+        name: git-graph-vsix
+        path: '*.vsix'
+        if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: git-graph-vsix
+    - name: Create the release with the VSIX attached
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release create "$GITHUB_REF_NAME" *.vsix --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

@@ -59,7 +59,7 @@ Step 1: To set up your development environment, please follow these steps:
 5. Install the [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) extension if it is not already installed.
 6. Create and checkout a branch for the issue you're going to work on.
 
-Step 2: Review the [Codebase Outline](https://github.com/mhutchie/vscode-git-graph/wiki/Codebase-Outline) (in the original project's wiki), so you have a general understanding of the structure of the codebase.
+Step 2: Review the [Codebase Outline](docs/codebase-outline.md), so you have a general understanding of the structure of the codebase.
 
 Step 3: To compile the code, run the appropriate npm script in the Visual Studio Code terminal as follows:
 * `npm run compile`: Compiles both front and backend code
