@@ -508,9 +508,19 @@ async function run() {
 			const invalidValue = await send('statusBarItemDisplay', 'Huge');
 			const invalidKey = await send('repository.commits.initialLoad', '1');
 			assert(invalidValue.error !== null && invalidKey.error !== null && vscode.workspace.getConfiguration('git-graph').inspect('repository.commits.initialLoad').globalValue === undefined, 'An invalid setting was updated');
-			return 'Valid: updated; invalid value: "' + invalidValue.error + '"; other setting: "' + invalidKey.error + '"';
+			// The settings that freeze the column headers & footer are booleans (a string isn't accepted)
+			const freeze = await send('graph.freezeFooter', false);
+			const freezeString = await send('graph.freezeColumnHeaders', 'false');
+			const config = vscode.workspace.getConfiguration('git-graph');
+			assert(freeze.error === null && config.inspect('graph.freezeFooter').globalValue === false && freezeString.error !== null && config.inspect('graph.freezeColumnHeaders').globalValue === undefined, 'Unexpected boolean settings: ' + freeze.error + ' / ' + freezeString.error);
+			return 'Valid: updated; invalid value: "' + invalidValue.error + '"; other setting: "' + invalidKey.error + '"; boolean: updated, as a string: "' + freezeString.error + '"';
 		} finally {
 			await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
+			// Changing the setting re-renders the open view, which must happen before the next check waits for the view to be re-rendered
+			const renders = record.html.length;
+			await vscode.workspace.getConfiguration('git-graph').update('graph.freezeFooter', undefined, vscode.ConfigurationTarget.Global);
+			await waitFor('the view to be re-rendered', () => record.html.length > renders, 5000).catch(() => null);
+			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
 	});
 

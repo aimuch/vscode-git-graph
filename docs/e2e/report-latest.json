@@ -1,5 +1,5 @@
 {
-	"date": "2026-10-16T09:19:39.407Z",
+	"date": "2026-10-16T10:54:29.667Z",
 	"vscodeVersion": "1.142.0",
 	"gitVersion": "git version 2.56.0",
 	"platform": "darwin arm64",
@@ -17,21 +17,21 @@
 			"title": "\"View Git Map\" is contributed to the scm/repository menu (Source Control Repositories view)",
 			"pass": true,
 			"details": "",
-			"durationMs": 1
+			"durationMs": 0
 		},
 		{
 			"id": "status-bar",
 			"title": "The Status Bar Item displays the Git Map icon and / or text, as configured by git-graph.statusBarItemDisplay",
 			"pass": true,
 			"details": "{\"Icon\":\"$(git-graph-logo)\",\"Text\":\"Git Map\",\"Icon & Text\":\"$(git-graph-logo) Git Map\"}",
-			"durationMs": 215
+			"durationMs": 135
 		},
 		{
 			"id": "#794",
 			"title": "The \"View Git Map\" command opens the view when invoked with a null argument",
 			"pass": true,
-			"details": "Webview requests: loadRepoInfo, loadFileIconTheme, loadCommits",
-			"durationMs": 204
+			"details": "Webview requests: loadRepoInfo, loadFileIconTheme, loadCommits, setRepoState, loadCommitStats, loadConfig",
+			"durationMs": 205
 		},
 		{
 			"id": "webview-csp",
@@ -58,309 +58,330 @@
 			"id": "#935",
 			"title": "Commits after a commit whose subject contains a raw CR character are loaded (from the Webview)",
 			"pass": true,
-			"details": "Loaded 5 commits, including 6f051539 (before the CR commit)",
-			"durationMs": 102
+			"details": "Loaded 5 commits, including ebfa9636 (before the CR commit)",
+			"durationMs": 0
 		},
 		{
 			"id": "#171",
 			"title": "Commits can be filtered by author (a name containing regular expression characters is matched literally)",
 			"pass": true,
 			"details": "All authors: 5 commits, \"Dr. Q+A (Second)\": 1 commit",
-			"durationMs": 53
+			"durationMs": 51
 		},
 		{
 			"id": "ui-sync-search",
 			"title": "[Redesign] The repository info includes how far each branch is behind / ahead of its upstream, and commits can be searched by the files they change (file:) and the lines they add or remove (change:)",
 			"pass": true,
 			"details": "e2e-behind: 3 behind origin/main, e2e-gone: gone; file: 4 commits, change: 1 commit, t.o: 0 literal / 2 regex",
-			"durationMs": 100
+			"durationMs": 71
 		},
 		{
 			"id": "ui-commit-stats",
 			"title": "[Redesign] The files & lines changed by commits (merge commits compared to their first parent) and the uncommitted changes are loaded for the Changes column",
 			"pass": true,
 			"details": "{\"files\":1,\"additions\":1,\"deletions\":1}, merge: {\"files\":1,\"additions\":3,\"deletions\":0}",
-			"durationMs": 123
+			"durationMs": 135
 		},
 		{
 			"id": "ui-stash-stats",
 			"title": "[Redesign] The stats of a stash (the files it changes, lines added & deleted, and untracked files it includes) are loaded for the list of stashes",
 			"pass": true,
 			"details": "refs/stash@{0}: {\"files\":2,\"additions\":2,\"deletions\":0,\"untrackedFiles\":1}",
-			"durationMs": 69
+			"durationMs": 64
 		},
 		{
 			"id": "ui-file-history",
 			"title": "[Redesign] The history of a file follows it through renames, with the parents of its commits rewritten (so the graph is connected), the changes to the file in each commit, and its diff",
 			"pass": true,
 			"details": "4 commits, renamed from dir/old.txt, diff of the rename: 13 lines",
-			"durationMs": 212
+			"durationMs": 160
 		},
 		{
 			"id": "ui-file-history-command",
 			"title": "[Redesign] The \"View File History in Git Map\" command opens the view showing the history of the file (relative to its repository)",
 			"pass": true,
 			"details": "file.txt: 4 commits",
-			"durationMs": 203
+			"durationMs": 206
 		},
 		{
 			"id": "#940",
 			"title": "Interactive rebase on a branch whose name contains shell syntax does not execute it",
 			"pass": true,
 			"details": "Rebase completed in the terminal, and the marker file was not created",
-			"durationMs": 2036
+			"durationMs": 2034
 		},
 		{
 			"id": "#708",
 			"title": "Tags & branches that share a name can be deleted from and pushed to a remote",
 			"pass": true,
 			"details": "",
-			"durationMs": 286
+			"durationMs": 227
 		},
 		{
 			"id": "#932",
 			"title": "An externally configured GIT_ASKPASS is used for authentication instead of Git Map's",
 			"pass": true,
-			"details": "External Askpass prompts: Username for 'http://127.0.0.1:58768':  | Password for 'http://e2e-user@127.0.0.1:58768':",
-			"durationMs": 1536
+			"details": "External Askpass prompts: Username for 'http://127.0.0.1:55107':  | Password for 'http://e2e-user@127.0.0.1:55107':",
+			"durationMs": 580
 		},
 		{
 			"id": "#789",
 			"title": "The view refreshes when a commit is made in a submodule from outside of Visual Studio Code",
 			"pass": true,
-			"details": "Refreshed, and loaded the new commit 17582cb0",
-			"durationMs": 3555
+			"details": "Refreshed, and loaded the new commit 7fd29139",
+			"durationMs": 3548
 		},
 		{
 			"id": "#668-watch",
 			"title": "The view refreshes when a commit is made in a worktree from outside of Visual Studio Code",
 			"pass": true,
-			"details": "Refreshed, and loaded the new commit 2892d78a",
-			"durationMs": 3565
+			"details": "Refreshed, and loaded the new commit 7468216d",
+			"durationMs": 3671
 		},
 		{
 			"id": "#775",
 			"title": "Selecting a graph colour preset re-renders the open Git Map View with the preset's colours",
 			"pass": true,
 			"details": "Tokyo Subway → --git-graph-color0: #f62e36, Default → #0085d9",
-			"durationMs": 66
+			"durationMs": 72
 		},
 		{
 			"id": "#857",
 			"title": "[Webview UI] \"Scroll to HEAD\" loads more commits until HEAD is loaded",
 			"pass": true,
 			"details": "Requested maxCommits 10 → 25",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#892",
 			"title": "[Webview UI] The second keypress of a keybinding chord (e.g. Ctrl+K Ctrl+H) is left to Visual Studio Code",
 			"pass": true,
 			"details": "",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#928",
 			"title": "[Webview UI] Tooltips are shown for elements with a title (e.g. the (i) icons)",
 			"pass": true,
 			"details": "",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#852",
 			"title": "[Webview UI] The mouse back / forward buttons navigate the editor history",
 			"pass": true,
 			"details": "",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#723",
 			"title": "[Webview UI] Renamed files show their original name in the Commit Details View",
 			"pass": true,
 			"details": "← lib/moved.ts, ← old-name.ts",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#792",
 			"title": "[Webview UI] Issue links using a custom URL scheme are opened (via the extension)",
 			"pass": true,
 			"details": "Opened gitgraph-e2e://issue/12",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#864",
 			"title": "[Webview UI] The Menu key / Shift+F10 opens the context menu of the commit selected with the keyboard",
 			"pass": true,
 			"details": "",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-toolbar",
 			"title": "[Webview UI] [Redesign] The control bar is sticky, has its labels inside the dropdowns, and a Jump to HEAD button",
 			"pass": true,
 			"details": "Labels: Repo, Branches, Authors; sync: Pull1, Push2",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-cdv",
 			"title": "[Webview UI] [Redesign] The Commit Details View is docked to the right, with buttons for the most common commit actions",
 			"pass": true,
 			"details": "Width: 380px, actions: Checkout… | Create Branch… | Cherry Pick… | ···",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-cdv-panel",
 			"title": "[Webview UI] [Redesign] The Commit Details View has a header with previous / next buttons, chips to copy the hash / open on the remote / compare, the branches containing the commit, and tabs of the changed files & commit message",
 			"pass": true,
 			"details": "Chips: 00000000 | Open on Remote | Compare with…; branches: feature; stats: 3 files+3−2; files: R bar, R bar, M bar; icons: README.md=M, moved.ts=F, new-name.ts=F",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-commit-list",
 			"title": "[Webview UI] [Redesign] The commits have a Branches / Tags column (with how far branches are ahead / behind their upstream) and a Changes column (loaded on demand, which can be hidden), and a footer",
 			"pass": true,
 			"details": "Columns: Branches / Tags | Graph | Description | Date | Author | Changes | Commit; main: main↑2↓1; footer: 25 commits loadedScrollbar markers:HEADBranchesTagsFind Matches",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-stash-list",
 			"title": "[Webview UI] [Redesign] The Stashes button lists the stashes (with their branch, date & changes), applies / pops / drops them, and goes to them",
 			"pass": true,
 			"details": "main10 minutes ago3 files · +46 −8Not in the loaded commits | feature2 hours ago2 files · +5 −0Includes untracked filesNot in the loaded commits",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-branch-highlight",
 			"title": "[Webview UI] [GitLens] Hovering over a commit highlights the branch it is on in the graph",
 			"pass": true,
 			"details": "1 line(s) & 25 vertices highlighted",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-minimap",
 			"title": "[Webview UI] [GitLens] The minimap shows the activity of the loaded commits, where HEAD & branches are, and the visible commits",
 			"pass": true,
-			"details": "30 days, 2 with commits (25 commits); axis: 17 Sep | 2 Oct | Today; The commits shown on the screen: 15 Oct 2026 – 16 Oct 2026 (20 commits)",
-			"durationMs": 2854
+			"details": "30 days, 2 with commits (25 commits); axis: 17 Sep | 28 Sep | 4 Oct | 10 Oct | Today; The commits in view: 16 Oct 2026 (18 commits) Drag to scroll through the commits.",
+			"durationMs": 3461
+		},
+		{
+			"id": "ui-minimap-zoom",
+			"title": "[Webview UI] [GitLens] The minimap can be zoomed in on a range of dates (its bars & axis changing with it) and panned, its box of the commits in view dragged to scroll, and its height changed",
+			"pass": true,
+			"details": "All: 30 bars (17 Sep | 28 Sep | 4 Oct | 10 Oct | Today); zoomed in: 10 Oct | 12 Oct | 14 Oct | Today; panned: 3 Oct | 5 Oct | 7 Oct | 9 Oct; dragging the box scrolled 594px to commit 19; height 58 -> 98px",
+			"durationMs": 3461
+		},
+		{
+			"id": "ui-refs-column",
+			"title": "[Webview UI] [Redesign] The Branches / Tags column can be resized (remembered for each repository, double-clicking its edge resets it), and the labels that don't fit are truncated",
+			"pass": true,
+			"details": "Width 172 -> 332 -> 120 (first label 60 of 152px) -> 172px",
+			"durationMs": 3461
+		},
+		{
+			"id": "ui-frozen-panes",
+			"title": "[Webview UI] [Redesign] The column headers & the footer stay visible while scrolling through the commits (both can be unfrozen)",
+			"pass": true,
+			"details": "Frozen below the controls & at the bottom of the view; sent: graph.freezeColumnHeaders=false, graph.freezeFooter=false",
+			"durationMs": 3461
 		},
 		{
 			"id": "#856",
 			"title": "[Webview UI] Pasting a branch name with the mouse enables the \"Create Branch\" button",
 			"pass": true,
 			"details": "",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#652",
 			"title": "[Webview UI] The dialog buttons can be focused with Tab (after the inputs), and activated with Enter",
 			"pass": true,
 			"details": "Tab order: inputs 1, 2 → buttons 3, 4",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-components",
 			"title": "[Webview UI] [Redesign] Dialogs show the commit they are for, labels above inputs & the buttons on the right; context menus show keyboard shortcuts (Ctrl/Cmd+C copies the commit hash); the Authors dropdown shows initials, checkboxes & counts",
 			"pass": true,
 			"details": "Shortcut: ⌘C; subtitle: Commit 00000000 · Resolve #104; authors: E2E Author:E:17, Second Author:S:8",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#707",
 			"title": "[Webview UI] Adding Issue Linking prefills the Issue URL of the repository's GitHub remote (not an example URL)",
 			"pass": true,
 			"details": "Prefilled: #(\\d+) → https://github.com/e2e-owner/e2e-repo/issues/$1",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "#171",
 			"title": "[Webview UI] Commits can be filtered by selecting authors in the Authors dropdown",
 			"pass": true,
 			"details": "Options: Show All, E2E Author, Second Author → requested authors [\"Second Author\"]",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-file-history",
 			"title": "[Webview UI] [Redesign] The history of a file (opened by the extension) shows the commits that change it, how they change it, its renames, and its changes in a commit (with a diff)",
 			"pass": true,
 			"details": "5 commits: +1−0, +2−1, +3−2, +4−3, +5−4; diff: 4 lines",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-graph-fit",
 			"title": "[Webview UI] [Redesign] When the lanes of the graph don't fit in the Graph column, they're moved closer together (so the commits aren't cut off)",
 			"pass": true,
 			"details": "40 lanes, 8px apart, in a 262px wide graph (natural width 656px)",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-settings-panel",
 			"title": "[Webview UI] [Redesign] The Repository Settings panel changes the colour preset, line style, language & Status Bar Item for all repositories",
 			"pass": true,
-			"details": "Sent: graph.colourPreset=Tokyo Subway, graph.style=angular, statusBarItemDisplay=Icon, graph.density=Compact, graph.nodeStyle=Avatar, language=English",
-			"durationMs": 2854
+			"details": "Sent: graph.colourPreset=Tokyo Subway, graph.style=angular, statusBarItemDisplay=Icon, graph.density=Compact, graph.nodeStyle=Avatar, graph.freezeColumnHeaders=false, graph.freezeFooter=false, language=English",
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-find-operators",
 			"title": "[Webview UI] [GitLens] The Find Widget supports the author:, message: & commit: search operators, shown alongside the scrollbar",
 			"pass": true,
 			"details": "{\"author:\\\"Second Author\\\" Commit\":\"1 of 2\",\"@:second\":\"1 of 3\",\"message:Resolve =:#10\":\"1 of 4\",\"commit:0000000000000000000000000000000000000005\":\"1 of 1\"}, the view isn't scrollable (no scrollbar markers)",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-find-filter",
 			"title": "[Webview UI] [Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)",
 			"pass": true,
 			"details": "3 commit(s) by Second Author (1 graph column), 1 also changing README, of 10",
-			"durationMs": 2854
+			"durationMs": 3461
 		},
 		{
 			"id": "ui-settings-update",
 			"title": "[Redesign] The Repository Settings panel can only update its whitelisted Extension Settings, for all repositories",
 			"pass": true,
-			"details": "Valid: updated; invalid value: \"The Extension Setting \"git-graph.statusBarItemDisplay\" can't be set to \"Huge\".\"; other setting: \"The Extension Setting \"git-graph.repository.commits.initialLoad\" can't be set to \"1\".\"",
-			"durationMs": 75
+			"details": "Valid: updated; invalid value: \"The Extension Setting \"git-graph.statusBarItemDisplay\" can't be set to \"Huge\".\"; other setting: \"The Extension Setting \"git-graph.repository.commits.initialLoad\" can't be set to \"1\".\"; boolean: updated, as a string: \"The Extension Setting \"git-graph.graph.freezeColumnHeaders\" can't be set to \"false\".\"",
+			"durationMs": 609
 		},
 		{
 			"id": "l10n",
 			"title": "Setting git-graph.language to Simplified Chinese re-renders the open Git Map View & Status Bar Item in Simplified Chinese",
 			"pass": true,
-			"details": "365 contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: View Git Map → 查看 Git Map",
-			"durationMs": 119
+			"details": "367 contribution descriptions in package.nls.json & package.nls.zh-cn.json, Status Bar Item tooltip: View Git Map → 查看 Git Map",
+			"durationMs": 145
 		},
 		{
 			"id": "l10n-view",
 			"title": "[Webview UI, 简体中文] The control bar, column headers, dates & tooltips are displayed in Simplified Chinese",
 			"pass": true,
-			"details": "Columns: 分支 / 标签 | 图形 | 说明 | 日期 | 作者 | 改动 | 提交, date: 2026年10月16日 17:19",
-			"durationMs": 124
+			"details": "Columns: 分支 / 标签 | 图形 | 说明 | 日期 | 作者 | 改动 | 提交, date: 2026年10月16日 18:54",
+			"durationMs": 1976
 		},
 		{
 			"id": "l10n-menu-dialog",
 			"title": "[Webview UI, 简体中文] Context menus and dialogs are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Commit context menu: 添加标签… | 创建分支… | 签出… | 拣选… | 还原… | 合并到当前分支… | 将当前分支变基到此提交… | 将当前分支重置到此提交… | 复制提交哈希到剪贴板⌘C | 复制提交标题到剪贴板; branch context menu: 9 items; dialog buttons: 创建分支 / 取消",
-			"durationMs": 124
+			"durationMs": 1976
 		},
 		{
 			"id": "l10n-cdv",
 			"title": "[Webview UI, 简体中文] The Commit Details View and the Authors dropdown are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Author options: 全部, E2E Author, Second Author",
-			"durationMs": 124
+			"durationMs": 1976
 		},
 		{
 			"id": "l10n-settings",
 			"title": "[Webview UI, 简体中文] The Repository Settings Widget and its dialogs are displayed in Simplified Chinese",
 			"pass": true,
 			"details": "Sections: 外观 · 所有仓库, 界面语言 · 所有仓库, 状态栏 · 所有仓库, 此仓库, Issue 链接, 远程仓库, 常规, 用户信息, 拉取请求创建; Issue Linking dialog buttons: 保存 / 取消",
-			"durationMs": 124
+			"durationMs": 1976
 		},
 		{
 			"id": "l10n-reset",
 			"title": "Resetting git-graph.language re-renders the open Git Map View in the display language of Visual Studio Code (English)",
 			"pass": true,
 			"details": "vscode.env.language: en",
-			"durationMs": 29
+			"durationMs": 38
 		}
 	]
 }
