@@ -287,6 +287,7 @@ interface PullRequestConfigCustom extends PullRequestConfigBase {
 export type PullRequestConfig = PullRequestConfigBuiltIn | PullRequestConfigCustom;
 
 export interface GitRepoState {
+	refsColumnWidth?: number;
 	showChangesColumn?: boolean;
 	cdvDivider: number;
 	cdvHeight: number;
@@ -368,6 +369,7 @@ export interface GitGraphViewConfig {
 export interface GitGraphViewGlobalState {
 	alwaysAcceptCheckoutCommit: boolean;
 	issueLinkingConfig: IssueLinkingConfig | null;
+	minimapHeight?: number;
 	pushTagSkipRemoteCheck: boolean;
 }
 
@@ -387,6 +389,8 @@ export interface CommitDetailsViewConfig {
 export interface GraphConfig {
 	readonly colours: ReadonlyArray<string>;
 	readonly density: GraphDensity;
+	readonly freezeColumnHeaders: boolean;
+	readonly freezeFooter: boolean;
 	readonly minimap: boolean;
 	readonly nodeStyle: GraphNodeStyle;
 	readonly style: GraphStyle;
@@ -1165,8 +1169,8 @@ export interface ResponseMerge extends ResponseWithErrorInfo {
 
 export interface RequestUpdateExtensionSetting extends BaseMessage {
 	readonly command: 'updateExtensionSetting';
-	readonly key: 'graph.colourPreset' | 'graph.density' | 'graph.nodeStyle' | 'graph.style' | 'language' | 'statusBarItemDisplay';
-	readonly value: string;
+	readonly key: 'graph.colourPreset' | 'graph.density' | 'graph.freezeColumnHeaders' | 'graph.freezeFooter' | 'graph.nodeStyle' | 'graph.style' | 'language' | 'statusBarItemDisplay';
+	readonly value: string | boolean;
 }
 export interface ResponseUpdateExtensionSetting extends ResponseWithErrorInfo {
 	readonly command: 'updateExtensionSetting';

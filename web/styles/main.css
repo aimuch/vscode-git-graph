@@ -68,15 +68,24 @@ code{
 #eventCaptureElem.colResize{
 	cursor:col-resize;
 }
+#eventCaptureElem.grabbing{
+	cursor:grabbing;
+}
 
+/* The shadow cast on the commits scrolled below the sticky controls (as on the lists of Visual Studio Code) */
 #scrollShadow.active{
 	position:fixed;
 	top:var(--git-graph-headerHeight, 0px);
 	left:0;
 	right:0;
-	height:0;
-	box-shadow:0 -6px 6px 6px var(--vscode-scrollbar-shadow);
+	height:6px;
+	box-shadow:var(--vscode-scrollbar-shadow) 0 6px 6px -6px inset;
+	pointer-events:none;
 	z-index:20;
+}
+/* The shadow is below the column headers when they are frozen */
+body.freezeColumnHeaders #scrollShadow.active{
+	top:calc(var(--git-graph-headerHeight, 0px) + var(--git-graph-colHeadersHeight, 0px));
 }
 
 
@@ -118,7 +127,10 @@ code{
 	dominant-baseline:central;
 	pointer-events:none;
 }
-#commitGraph svg.branchHighlight text[data-branch]:not(.highlight){
+#commitGraph image.avatarImage{
+	pointer-events:none;
+}
+#commitGraph svg.branchHighlight text[data-branch]:not(.highlight), #commitGraph svg.branchHighlight image[data-branch]:not(.highlight){
 	opacity:0.25;
 }
 #commitGraph circle.stashInner{
@@ -248,6 +260,9 @@ code{
 	font-size:13px;
 	cursor:default;
 	text-overflow:ellipsis;
+}
+/* Only the cells clip their contents, as the column headers can't be frozen (sticky) inside an element that clips */
+#commitTable th, #commitTable td{
 	overflow:hidden;
 }
 /* The height of the rows of commits (the git-graph.graph.density Extension Setting) */
@@ -262,6 +277,7 @@ body.compactRows{
 	padding:0 6px;
 }
 #commitTable th{
+	position:relative;
 	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
 	line-height:18px;
 	padding:6px 12px;
@@ -269,6 +285,23 @@ body.compactRows{
 	font-size:12px;
 	font-weight:600;
 	text-align:left;
+}
+/* The column headers stay visible below the controls (the git-graph.graph.freezeColumnHeaders Extension Setting). They are above the
+   graph, and their bottom border is drawn as a shadow, as the borders of a table with collapsed borders don't move with sticky cells. */
+body.freezeColumnHeaders #commitTable th{
+	position:sticky;
+	top:var(--git-graph-headerHeight, 0px);
+	z-index:4;
+	background-color:var(--vscode-editor-background);
+	border-bottom-color:transparent;
+	box-shadow:inset 0 -1px 0 var(--vscode-panel-border, rgba(128,128,128,0.35));
+}
+/* The footer stays visible at the bottom of the view (the git-graph.graph.freezeFooter Extension Setting) */
+body.freezeFooter #footer{
+	position:sticky;
+	bottom:0;
+	z-index:4;
+	background-color:var(--vscode-editor-background);
 }
 #commitTable td.dateCol{
 	color:var(--vscode-descriptionForeground);
@@ -334,9 +367,6 @@ body.compactRows{
 	}
 }
 
-.tableColHeader{
-	position:relative;
-}
 .resizeCol{
 	position:absolute;
 	top:0;
@@ -1481,6 +1511,20 @@ body.refsColumn #commitGraph{
 #commitTable td.refsCol{
 	padding:0 8px 0 12px;
 }
+
+/* The handle to resize the Branches / Tags column, on the right edge of its header */
+#refsColResize{
+	position:absolute;
+	top:0;
+	right:0;
+	width:6px;
+	height:100%;
+	box-sizing:border-box;
+	border-right:1px solid rgba(128,128,128,0.25);
+	cursor:col-resize;
+}
+/* The labels that don't fit are truncated: the first (most important) label keeps at least 60% of the width, and the other labels can
+   be truncated to their icon (--git-graph-refs is the number of labels) */
 .refsColLabels{
 	display:flex;
 	align-items:center;
@@ -1489,28 +1533,21 @@ body.refsColumn #commitGraph{
 	overflow:hidden;
 }
 .refsColLabels .gitRef{
-	flex:0 0 auto;
+	flex:0 1 auto;
+	min-width:28px;
 	max-width:100%;
 	margin:0;
 }
-.refsColLabels .gitRef.hidden{
-	display:none;
+.refsColLabels .gitRef:first-child{
+	flex-shrink:0;
+	max-width:max(60%, calc(100% - (var(--git-graph-refs, 1) - 1) * 44px));
+}
+.refsColLabels.overflowing{
+	-webkit-mask-image:linear-gradient(to right, #000 calc(100% - 16px), transparent);
+	mask-image:linear-gradient(to right, #000 calc(100% - 16px), transparent);
 }
 .refsColLabels .gitRefName{
 	min-width:0;
-}
-.refsColMore{
-	display:inline-flex;
-	align-items:center;
-	flex:0 0 auto;
-	box-sizing:border-box;
-	height:20px;
-	padding:0 7px;
-	border:1px solid color-mix(in srgb, var(--vscode-foreground) 35%, transparent);
-	border-radius:10px;
-	color:var(--vscode-descriptionForeground);
-	font-size:11.5px;
-	cursor:help;
 }
 
 .gitRefName, .gitRefHeadRemote{
@@ -2026,6 +2063,7 @@ body.tagLabelsRightAligned .gitRef.tag{
 
 #minimap{
 	display:none;
+	position:relative;
 	flex:1 0 100%;
 	align-items:stretch;
 	gap:12px;
@@ -2045,14 +2083,60 @@ body.tagLabelsRightAligned .gitRef.tag{
 	color:var(--vscode-descriptionForeground);
 	font-size:11px;
 }
-.minimapTitle > span:first-child{
+.minimapTitleRow{
+	display:flex;
+	align-items:center;
+	gap:8px;
 	color:var(--vscode-foreground);
 	font-weight:600;
+}
+/* The buttons to zoom in & out, and to show all of the loaded commits */
+.minimapZoom{
+	display:inline-flex;
+	gap:1px;
+}
+.minimapZoomBtn{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	width:17px;
+	height:16px;
+	border-radius:3px;
+	color:var(--vscode-descriptionForeground);
+	cursor:pointer;
+}
+.minimapZoomBtn:hover{
+	color:var(--vscode-foreground);
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+.minimapZoomBtn.disabled{
+	opacity:0.35;
+	cursor:default;
+	background-color:transparent;
 }
 .minimapChart{
 	position:relative;
 	flex:1 1 auto;
 	min-width:0;
+}
+.minimapChart.zoomedIn{
+	cursor:grab;
+}
+#minimap.dragging .minimapBar{
+	cursor:inherit;
+}
+/* The handle to resize the minimap, along its bottom edge */
+.minimapResize{
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:-5px;
+	height:6px;
+	cursor:row-resize;
+	z-index:1;
+}
+.minimapResize:hover{
+	box-shadow:inset 0 -2px 0 color-mix(in srgb, var(--vscode-focusBorder) 60%, transparent);
 }
 .minimapMarkers{
 	position:absolute;
@@ -2116,20 +2200,27 @@ body.tagLabelsRightAligned .gitRef.tag{
 	border:1px solid var(--vscode-focusBorder);
 	border-radius:3px;
 	background-color:transparent;
-	cursor:pointer;
+	cursor:grab;
 }
+#minimapViewport:hover, #minimap.dragging #minimapViewport{
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
+}
+/* The labels of the axis (positioned below their bars) */
 .minimapAxis{
 	position:absolute;
 	left:0;
 	right:0;
 	bottom:0;
-	display:flex;
-	justify-content:space-between;
+	height:12px;
 	color:var(--vscode-descriptionForeground);
 	font-size:10.5px;
 	line-height:12px;
 	white-space:nowrap;
 	overflow:hidden;
+}
+.minimapAxis > span{
+	position:absolute;
+	top:0;
 }
 /* The legend of the minimap */
 .minimapLegend{
@@ -2276,13 +2367,20 @@ body.tagLabelsRightAligned .gitRef.tag{
 	cursor:inherit;
 }
 
-/* The button to choose the columns that are shown */
+/* The button to choose the columns that are shown, on the right of the last column header */
+#tableColHeaders .lastColHeaderName{
+	display:block;
+	margin-right:14px;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
 #columnSettingsBtn{
-	position:relative;
-	float:right;
+	position:absolute;
+	right:4px;
+	top:50%;
 	width:20px;
 	height:18px;
-	margin-right:-6px;
+	margin-top:-9px;
 	border-radius:4px;
 	color:var(--vscode-descriptionForeground);
 	cursor:pointer;

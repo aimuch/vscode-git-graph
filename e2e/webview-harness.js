@@ -194,6 +194,8 @@
 			assert(/^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/.test(date.textContent), 'Unexpected date: ' + date.textContent);
 			assert(date.title.includes('年'), 'Unexpected date tooltip: ' + date.title);
 			assert(document.getElementById('findBtn').title === '查找', 'Unexpected Find tooltip: ' + document.getElementById('findBtn').title);
+			const legend = document.querySelector('.minimapLegend > span');
+			assert(legend !== null && legend.textContent === '视图内提交', 'Unexpected minimap legend: ' + (legend && legend.textContent));
 			return 'Columns: ' + headers.join(' | ') + ', date: ' + date.textContent;
 		});
 
@@ -439,9 +441,10 @@
 			assert(commitRow(0).querySelector('td.refsCol .gitRef.head').textContent === 'feature' && commitRow(0).querySelector('td.descriptionCol .gitRef') === null, 'The branch label isn\'t in the Branches / Tags column');
 			const main = commitRow(HEAD_INDEX).querySelector('td.refsCol .gitRef.head');
 			assert(main.textContent === 'main\u21912\u21931' && main.querySelector('.gitRefTrack').title === '2 commit(s) ahead of origin/main, 1 commit(s) behind origin/main', 'Unexpected label of main: ' + main.textContent);
-			// The labels that don't fit are counted on a "+N" label, and the first label isn't squeezed
-			const tagsCell = commitRow(5).querySelector('td.refsCol'), firstTag = tagsCell.querySelector('.gitRef'), more = tagsCell.querySelector('.refsColMore');
-			assert(more !== null && /^\+[12]$/.test(more.textContent) && more.title.split('\n').length === parseInt(more.textContent.substring(1)) && firstTag.querySelector('.gitRefName').scrollWidth <= firstTag.querySelector('.gitRefName').clientWidth, 'The labels don\'t fit: ' + tagsCell.textContent);
+			// The labels that don't fit are truncated (the first label isn't), and the tooltip of the cell lists them
+			const tagsCell = commitRow(5).querySelector('td.refsCol'), firstTag = tagsCell.querySelector('.gitRef');
+			assert(tagsCell.querySelectorAll('.gitRef').length === 3 && document.querySelector('.refsColMore') === null, 'Unexpected labels: ' + tagsCell.innerHTML);
+			assert(tagsCell.title === 'v1.0.0\nv1.0.0-rc.2\nv1.0.0-rc.1' && firstTag.querySelector('.gitRefName').scrollWidth <= firstTag.querySelector('.gitRefName').clientWidth, 'The labels don\'t fit: "' + tagsCell.title + '"');
 			const graphLeft = document.querySelector('#commitGraph').getBoundingClientRect().left, graphColLeft = document.getElementById('tableHeaderGraphCol').getBoundingClientRect().left;
 			assert(Math.abs(graphLeft - graphColLeft) < 1, 'The graph isn\'t in the Graph column: ' + graphLeft + ' / ' + graphColLeft);
 
@@ -535,14 +538,163 @@
 			const viewport = document.getElementById('minimapViewport');
 			assert(viewport !== null && viewport.style.width !== '', 'The visible commits aren\'t shown');
 			// The bars of the visible commits are highlighted, the box describes them, and a legend explains the minimap
-			assert(minimap.querySelectorAll('.minimapBar.visible:not(.empty)').length > 0 && viewport.title.startsWith('The commits shown on the screen: ') && /\(\d+ commits?\)$/.test(viewport.title), 'Unexpected box of the visible commits: ' + viewport.title);
+			assert(minimap.querySelectorAll('.minimapBar.visible:not(.empty)').length > 0 && viewport.title.startsWith('The commits in view: ') && /\(\d+ commits?\)\nDrag to scroll through the commits\.$/.test(viewport.title), 'Unexpected box of the commits in view: ' + viewport.title);
 			const legend = Array.from(minimap.querySelectorAll('.minimapLegend > span')).map((elem) => elem.textContent);
-			assert(JSON.stringify(legend) === JSON.stringify(['On screen', 'HEAD', 'Branches', 'Tags']), 'Unexpected legend: ' + JSON.stringify(legend));
+			assert(JSON.stringify(legend) === JSON.stringify(['In view', 'HEAD', 'Branches', 'Tags']), 'Unexpected legend: ' + JSON.stringify(legend));
 			const axis = Array.from(minimap.querySelectorAll('.minimapAxis > span')).map((elem) => elem.textContent);
-			assert(axis.length === 3 && axis[2] === 'Today' && minimap.querySelector('.minimapUnit').textContent === 'Commits per day', 'Unexpected axis: ' + JSON.stringify(axis));
+			assert(axis.length >= 3 && axis[axis.length - 1] === 'Today' && minimap.querySelector('.minimapUnit').textContent === 'Commits per day', 'Unexpected axis: ' + JSON.stringify(axis));
 			mouse(activeBars[0], 'click');
-			await waitFor('the oldest day\'s newest commit to be scrolled to', () => document.querySelector('#commitTable tr.commit.flash') !== null);
-			return bars.length + ' days, ' + activeBars.length + ' with commits (' + counted + ' commits); axis: ' + axis.join(' | ') + '; ' + viewport.title;
+			const flashed = await waitFor('the oldest day\'s newest commit to be scrolled to', () => document.querySelector('#commitTable tr.commit.flash'));
+			// The commit isn't hidden by the frozen column headers or footer
+			const rowRect = flashed.getBoundingClientRect();
+			assert(rowRect.top >= document.querySelector('#tableColHeaders th').getBoundingClientRect().bottom - 1 && rowRect.bottom <= document.getElementById('footer').getBoundingClientRect().top + 1, 'The commit scrolled to is hidden: ' + JSON.stringify(rowRect));
+			return bars.length + ' days, ' + activeBars.length + ' with commits (' + counted + ' commits); axis: ' + axis.join(' | ') + '; ' + viewport.title.replace('\n', ' ');
+		});
+
+		await check('ui-minimap-zoom', '[GitLens] The minimap can be zoomed in on a range of dates (its bars & axis changing with it) and panned, its box of the commits in view dragged to scroll, and its height changed', async () => {
+			const minimap = document.getElementById('minimap'), view = document.getElementById('view');
+			const numBars = () => minimap.querySelectorAll('.minimapBar').length, axis = () => Array.from(minimap.querySelectorAll('.minimapAxis > span')).map((elem) => elem.textContent);
+			const zoomBtn = (zoom) => minimap.querySelector('.minimapZoomBtn[data-zoom="' + zoom + '"]'), chart = () => minimap.querySelector('.minimapChart');
+			// The view is made shorter, so that it can be scrolled
+			view.style.bottom = Math.max(window.innerHeight - 460, 0) + 'px';
+			view.scrollTop = 0;
+			try {
+				const allBars = numBars(), allAxis = axis().join(' | ');
+				assert(zoomBtn('out').classList.contains('disabled') && zoomBtn('all').classList.contains('disabled') && !zoomBtn('in').classList.contains('disabled'), 'Unexpected zoom buttons before zooming in');
+
+				// The zoom buttons & Ctrl / Cmd + scroll zoom in (around the mouse), down to a week
+				mouse(zoomBtn('in'), 'click');
+				await waitFor('the minimap to zoom in', () => numBars() < allBars && !zoomBtn('all').classList.contains('disabled'));
+				const zoomedBars = numBars();
+				let chartRect = chart().getBoundingClientRect();
+				chart().dispatchEvent(new WheelEvent('wheel', Object.assign({ bubbles: true, cancelable: true, deltaY: -1000, clientX: chartRect.right - 2, clientY: chartRect.top + 20 }, ctrl)));
+				await waitFor('the minimap to zoom in further', () => numBars() < zoomedBars);
+				const weekAxis = axis();
+				assert(numBars() === 7 && zoomBtn('in').classList.contains('disabled') && weekAxis[weekAxis.length - 1] === 'Today' && weekAxis.join(' | ') !== allAxis, 'Unexpected zoomed in minimap: ' + numBars() + ' bars, axis: ' + weekAxis.join(' | '));
+
+				// Scrolling horizontally pans the minimap to earlier dates (the commits in view are then outside of it)
+				chartRect = chart().getBoundingClientRect();
+				chart().dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaX: -chartRect.width, clientX: chartRect.left + 20, clientY: chartRect.top + 20 }));
+				await waitFor('the minimap to pan', () => axis()[axis().length - 1] !== 'Today');
+				assert(document.getElementById('minimapViewport').style.display === 'none', 'The box of the commits in view should be hidden when they\'re outside of the minimap');
+				const pannedAxis = axis().join(' | ');
+				// Scrolling the view pans the minimap back to the commits in view
+				view.scrollTop = 40;
+				await waitFor('the minimap to follow the view', () => axis()[axis().length - 1] === 'Today' && document.getElementById('minimapViewport').style.display !== 'none');
+				view.scrollTop = 0;
+				await sleep(100);
+
+				// Dragging the box of the commits in view to the left scrolls the view to older commits
+				const box = document.getElementById('minimapViewport'), boxRect = box.getBoundingClientRect(), barWidth = chart().getBoundingClientRect().width / numBars();
+				const down = mouse(box, 'mousedown', { button: 0, clientX: Math.round(boxRect.right - 2) });
+				const overlay = document.getElementById('eventCaptureElem');
+				overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: down.clientX - 10, clientY: down.clientY }));
+				overlay.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: Math.round(down.clientX - barWidth * 1.5), clientY: down.clientY }));
+				overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: Math.round(down.clientX - barWidth * 1.5), clientY: down.clientY }));
+				// The newest commit from before today is scrolled to the top of the view (or into view, if the view can't be scrolled that far)
+				const scrolled = await waitFor('the view to scroll', () => view.scrollTop > 0 ? view.scrollTop : null);
+				const midnight = new Date();
+				midnight.setHours(0, 0, 0, 0);
+				let expected = 0;
+				while (NOW - expected * 3600 >= midnight.getTime() / 1000) expected++;
+				const headersBottom = document.querySelector('#tableColHeaders th').getBoundingClientRect().bottom, expectedRect = commitRow(expected).getBoundingClientRect();
+				const atTop = Math.abs(expectedRect.top - headersBottom) < 1.5, atEnd = view.scrollTop >= view.scrollHeight - view.clientHeight - 1;
+				assert(atTop || (atEnd && expectedRect.top >= headersBottom - 1 && expectedRect.bottom <= document.getElementById('footer').getBoundingClientRect().top + 1), 'Commit ' + expected + ' wasn\'t scrolled to: ' + expectedRect.top + ' / ' + headersBottom + ' (scrolled ' + view.scrollTop + 'px)');
+				const topRow = commitRow(expected);
+
+				// Show all of the loaded commits again
+				await sleep(350);
+				mouse(zoomBtn('all'), 'click');
+				await waitFor('all of the loaded commits to be shown', () => numBars() === allBars && zoomBtn('all').classList.contains('disabled'));
+
+				// Dragging the bottom edge makes the minimap taller (remembered for all repositories), and the frozen column headers move down with it
+				view.scrollTop = 0;
+				const handle = minimap.querySelector('.minimapResize'), height = minimap.offsetHeight, headerCell = document.querySelector('#tableColHeaders th'), headersTop = headerCell.getBoundingClientRect().top;
+				const resize = (dy) => {
+					const start = mouse(handle, 'mousedown', { button: 0 }), capture = document.getElementById('eventCaptureElem');
+					if (dy !== 0) capture.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: start.clientX, clientY: start.clientY + dy }));
+					capture.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: start.clientX, clientY: start.clientY + dy }));
+				};
+				resize(40);
+				await waitFor('the minimap to be taller', () => minimap.offsetHeight === height + 40 && Math.abs(headerCell.getBoundingClientRect().top - headersTop - 40) < 1.5);
+				const saved = requestsOf('setGlobalViewState').slice(-1)[0];
+				assert(saved && saved.state.minimapHeight === height + 40, 'The height of the minimap wasn\'t saved: ' + JSON.stringify(saved && saved.state));
+				// Double-clicking the bottom edge resets the height
+				resize(0);
+				resize(0);
+				await waitFor('the height of the minimap to be reset', () => minimap.offsetHeight === height);
+				return 'All: ' + allBars + ' bars (' + allAxis + '); zoomed in: ' + weekAxis.join(' | ') + '; panned: ' + pannedAxis + '; dragging the box scrolled ' + scrolled + 'px to commit ' + topRow.dataset.id + '; height ' + height + ' -> ' + (height + 40) + 'px';
+			} finally {
+				view.style.bottom = '';
+			}
+		});
+
+		await check('ui-refs-column', '[Redesign] The Branches / Tags column can be resized (remembered for each repository, double-clicking its edge resets it), and the labels that don\'t fit are truncated', async () => {
+			const handle = document.getElementById('refsColResize'), header = handle.parentElement, tagsCell = () => commitRow(5).querySelector('td.refsCol');
+			const graphAligned = () => Math.abs(document.querySelector('#commitGraph').getBoundingClientRect().left - document.getElementById('tableHeaderGraphCol').getBoundingClientRect().left) < 1;
+			const drag = (dx) => {
+				const start = mouse(handle, 'mousedown', { button: 0 }), capture = document.getElementById('eventCaptureElem');
+				if (dx !== 0) capture.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: start.clientX + dx, clientY: start.clientY }));
+				capture.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: start.clientX + dx, clientY: start.clientY }));
+			};
+			const width = Math.round(header.getBoundingClientRect().width);
+			assert(width === 172 && tagsCell().title !== '', 'Unexpected initial column: ' + width + 'px, "' + tagsCell().title + '"');
+
+			// Widening the column moves the graph with it, and the labels then fit
+			drag(160);
+			await waitFor('the column to be wider', () => Math.round(header.getBoundingClientRect().width) === width + 160);
+			const saved = requestsOf('setRepoState').slice(-1)[0];
+			assert(saved.state.refsColumnWidth === width + 160 && graphAligned(), 'The width wasn\'t saved, or the graph didn\'t move: ' + saved.state.refsColumnWidth);
+			assert(!tagsCell().hasAttribute('title') && !tagsCell().querySelector('.refsColLabels').classList.contains('overflowing'), 'The labels should fit: "' + tagsCell().title + '"');
+
+			// Narrowing the column truncates the labels: the first label keeps most of the width, and the others fade out at the edge
+			drag(-212);
+			await waitFor('the column to be narrower', () => Math.round(header.getBoundingClientRect().width) === width - 52);
+			const labels = tagsCell().querySelector('.refsColLabels'), first = labels.querySelector('.gitRef').getBoundingClientRect().width;
+			assert(tagsCell().title === 'v1.0.0\nv1.0.0-rc.2\nv1.0.0-rc.1' && labels.classList.contains('overflowing') && first >= labels.clientWidth * 0.6 - 1 && graphAligned(), 'Unexpected truncated labels: "' + tagsCell().title + '", first label ' + first + ' of ' + labels.clientWidth + 'px');
+
+			// Double-clicking the edge resets the width
+			drag(0);
+			drag(0);
+			await waitFor('the width to be reset', () => Math.round(header.getBoundingClientRect().width) === width);
+			assert(requestsOf('setRepoState').slice(-1)[0].state.refsColumnWidth === width && graphAligned(), 'The width wasn\'t reset');
+			return 'Width ' + width + ' -> ' + (width + 160) + ' -> ' + (width - 52) + ' (first label ' + Math.round(first) + ' of ' + labels.clientWidth + 'px) -> ' + width + 'px';
+		});
+
+		await check('ui-frozen-panes', '[Redesign] The column headers & the footer stay visible while scrolling through the commits (both can be unfrozen)', async () => {
+			const view = document.getElementById('view'), headers = document.getElementById('tableColHeaders'), footer = document.getElementById('footer');
+			assert(document.body.classList.contains('freezeColumnHeaders') && document.body.classList.contains('freezeFooter') && getComputedStyle(headers.querySelector('th')).position === 'sticky', 'The column headers & footer aren\'t frozen');
+			view.style.bottom = Math.max(window.innerHeight - 460, 0) + 'px';
+			try {
+				view.scrollTop = 160;
+				await waitFor('the view to scroll', () => view.scrollTop === 160);
+				await sleep(150);
+				// (The cells of the column headers are sticky, not their row)
+				const controlsBottom = document.getElementById('controls').getBoundingClientRect().bottom, headersRect = headers.querySelector('th').getBoundingClientRect();
+				assert(Array.from(headers.children).every((th) => Math.abs(th.getBoundingClientRect().top - controlsBottom) < 1.5), 'The column headers aren\'t below the controls: ' + headersRect.top + ' / ' + controlsBottom);
+				assert(Math.abs(footer.getBoundingClientRect().bottom - view.getBoundingClientRect().bottom) < 1.5 && view.scrollHeight - view.clientHeight > 160, 'The footer isn\'t at the bottom of the view: ' + footer.getBoundingClientRect().bottom + ' / ' + view.getBoundingClientRect().bottom);
+				// The column headers & footer are drawn above the commits (and the graph)
+				const headersHit = document.elementFromPoint(headersRect.left + 300, headersRect.top + headersRect.height / 2), footerHit = document.elementFromPoint(footer.getBoundingClientRect().left + 300, footer.getBoundingClientRect().bottom - 10);
+				assert(headers.contains(headersHit) && footer.contains(footerHit), 'The column headers or footer are covered: ' + (headersHit && headersHit.outerHTML.substring(0, 60)) + ' / ' + (footerHit && footerHit.outerHTML.substring(0, 60)));
+				// The commits in view (on the minimap) are the commits between the column headers & the footer
+				const box = document.getElementById('minimapViewport').title;
+				const visible = Array.from(document.querySelectorAll('#commitTable tr.commit')).filter((row) => row.getBoundingClientRect().top < footer.getBoundingClientRect().top && row.getBoundingClientRect().bottom > headersRect.bottom).length;
+				assert(box.includes('(' + visible + ' commits)'), 'Unexpected box of the commits in view: ' + box + ' (' + visible + ' commits are visible)');
+			} finally {
+				view.style.bottom = '';
+				view.scrollTop = 0;
+			}
+			// Both can be unfrozen from the column menu
+			const updates = () => requestsOf('updateExtensionSetting').map((msg) => msg.key + '=' + msg.value), before = updates().length;
+			for (const title of ['Freeze Column Headers', 'Freeze Footer']) {
+				mouse(document.getElementById('columnSettingsBtn'), 'click');
+				const item = Array.from((await waitFor('the column menu', () => document.querySelector('.contextMenu'))).querySelectorAll('.contextMenuItem')).find((elem) => elem.textContent === title);
+				assert(item && item.querySelector('svg') !== null, 'The "' + title + '" item isn\'t checked');
+				mouse(item, 'click');
+			}
+			const sent = await waitFor('the settings to be sent', () => updates().length >= before + 2 ? updates().slice(before) : null);
+			assert(JSON.stringify(sent) === JSON.stringify(['graph.freezeColumnHeaders=false', 'graph.freezeFooter=false']), 'Unexpected updates: ' + JSON.stringify(sent));
+			return 'Frozen below the controls & at the bottom of the view; sent: ' + sent.join(', ');
 		});
 
 		// Open the "Create Branch" dialog from the context menu of a commit
@@ -736,11 +888,14 @@
 			mouse(widget.querySelector('.settingsSegmented[data-setting="statusBarItemDisplay"] .settingsSegment[data-value="Icon"]'), 'click');
 			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.density"] .settingsSegment[data-value="Compact"]'), 'click');
 			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.nodeStyle"] .settingsSegment[data-value="Avatar"]'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.freezeColumnHeaders"] .settingsSegment[data-value="false"]'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.freezeFooter"] .settingsSegment[data-value="false"]'), 'click');
 			const english = Array.from(widget.querySelectorAll('input[name="settingsLanguage"]')).find((elem) => elem.value === 'English');
 			english.checked = true;
 			english.dispatchEvent(new Event('change', { bubbles: true }));
-			const sent = await waitFor('the settings to be sent to the extension', () => updates().length >= before + 6 ? updates().slice(before) : null);
-			assert(JSON.stringify(sent) === JSON.stringify(['graph.colourPreset=Tokyo Subway', 'graph.style=angular', 'statusBarItemDisplay=Icon', 'graph.density=Compact', 'graph.nodeStyle=Avatar', 'language=English']), 'Unexpected updates: ' + JSON.stringify(sent));
+			const sent = await waitFor('the settings to be sent to the extension', () => updates().length >= before + 8 ? updates().slice(before) : null);
+			assert(JSON.stringify(sent) === JSON.stringify(['graph.colourPreset=Tokyo Subway', 'graph.style=angular', 'statusBarItemDisplay=Icon', 'graph.density=Compact', 'graph.nodeStyle=Avatar', 'graph.freezeColumnHeaders=false', 'graph.freezeFooter=false', 'language=English']), 'Unexpected updates: ' + JSON.stringify(sent));
+			assert(typeof requestsOf('updateExtensionSetting').find((msg) => msg.key === 'graph.freezeFooter').value === 'boolean', 'The freeze settings should be sent as booleans');
 			assert(document.querySelector('.settingsStatusBarPreview svg') !== null && !document.querySelector('.settingsStatusBarPreview').textContent.includes('Git Map'), 'The Status Bar Item preview wasn\'t updated');
 			mouse(document.getElementById('settingsClose'), 'click');
 			await waitFor('the panel to close', () => !document.getElementById('settingsWidget').classList.contains('active'));

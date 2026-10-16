@@ -797,6 +797,16 @@
 					"default": true,
 					"description": "%config.graph.minimap.description%"
 				},
+				"git-graph.graph.freezeColumnHeaders": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.graph.freezeColumnHeaders.description%"
+				},
+				"git-graph.graph.freezeFooter": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.graph.freezeFooter.description%"
+				},
 				"git-graph.graph.density": {
 					"type": "string",
 					"enum": [

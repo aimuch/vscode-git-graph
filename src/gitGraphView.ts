@@ -126,7 +126,7 @@ export class GitGraphView extends Disposable {
 
 			// Re-render the view when the appearance of the graph, or the language, is changed
 			vscode.workspace.onDidChangeConfiguration((event) => {
-				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.minimap') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.graph.density') || event.affectsConfiguration('git-graph.graph.nodeStyle') || event.affectsConfiguration('git-graph.language'))) {
+				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.minimap') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.graph.density') || event.affectsConfiguration('git-graph.graph.freezeColumnHeaders') || event.affectsConfiguration('git-graph.graph.freezeFooter') || event.affectsConfiguration('git-graph.graph.nodeStyle') || event.affectsConfiguration('git-graph.language'))) {
 					this.update();
 				} else if (this.panel.visible && this.isGraphViewLoaded && event.affectsConfiguration('workbench.iconTheme')) {
 					this.sendMessage({ command: 'loadFileIconTheme', theme: this.getFileIconTheme() });

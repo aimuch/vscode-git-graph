@@ -350,9 +350,11 @@ export function openExtensionSettings(): Thenable<ErrorInfo> {
 	);
 }
 
-const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<string> } = {
+const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<string | boolean> } = {
 	'graph.colourPreset': GRAPH_COLOUR_PRESET_NAMES,
 	'graph.density': ['Comfortable', 'Compact'],
+	'graph.freezeColumnHeaders': [true, false],
+	'graph.freezeFooter': [true, false],
 	'graph.nodeStyle': ['Dot', 'Avatar'],
 	'graph.style': ['rounded', 'angular'],
 	'language': ['Auto', 'English', 'Simplified Chinese'],
@@ -365,10 +367,10 @@ const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<stri
  * @param value The new value of the Extension Setting.
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
-export function updateExtensionSetting(key: string, value: string): Thenable<ErrorInfo> {
+export function updateExtensionSetting(key: string, value: string | boolean): Thenable<ErrorInfo> {
 	const values = UPDATABLE_EXTENSION_SETTINGS[key];
 	if (typeof values === 'undefined' || !values.includes(value)) {
-		return Promise.resolve(t('The Extension Setting "{0}" can\'t be set to "{1}".', 'git-graph.' + key, value));
+		return Promise.resolve(t('The Extension Setting "{0}" can\'t be set to "{1}".', 'git-graph.' + key, String(value)));
 	}
 	return vscode.workspace.getConfiguration('git-graph').update(key, value, vscode.ConfigurationTarget.Global).then(
 		() => null,

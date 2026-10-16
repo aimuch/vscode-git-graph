@@ -96,8 +96,13 @@ class GitGraphView {
 		viewElem.focus();
 
 		this.graph = new Graph('commitGraph', viewElem, this.config.graph, this.config.mute);
+		this.graph.setAvatarSource((email) => typeof this.avatars[email] === 'string' ? this.avatars[email] : null);
 		this.minimap = new Minimap(document.getElementById('minimap')!, (index) => {
 			if (index < this.commits.length) this.scrollToCommit(this.commits[index].hash, true, true);
+		}, (index) => {
+			// The box of the commits in view is being dragged, so the commit is scrolled to the top of the view (below the sticky controls & frozen column headers)
+			const elem = findCommitElemWithId(getCommitElems(), index);
+			if (elem !== null) this.viewElem.scroll(0, this.controlsElem.clientHeight + elem.offsetTop - this.getCoveredTopHeight());
 		});
 		this.scrollMarkers = new ScrollMarkers(viewElem);
 
@@ -141,6 +146,8 @@ class GitGraphView {
 
 		alterClass(document.body, CLASS_BRANCH_LABELS_ALIGNED_TO_GRAPH, this.config.referenceLabels.branchLabelsAlignedToGraph);
 		alterClass(document.body, 'compactRows', this.config.graph.density === GG.GraphDensity.Compact);
+		alterClass(document.body, 'freezeColumnHeaders', this.config.graph.freezeColumnHeaders);
+		alterClass(document.body, 'freezeFooter', this.config.graph.freezeFooter);
 		alterClass(document.body, CLASS_TAG_LABELS_RIGHT_ALIGNED, this.config.referenceLabels.tagLabelsOnRight);
 
 		this.observeWindowSizeChanges();
@@ -261,6 +268,7 @@ class GitGraphView {
 		this.fileHistory = fileHistory;
 		this.fileHistoryData = null;
 		this.renderFileHistoryBar();
+		if (repo !== this.currentRepo) this.minimap.resetZoom();
 		this.currentRepo = repo;
 		this.currentRepoLoading = true;
 		this.scrollToHeadPending = false;
@@ -648,6 +656,7 @@ class GitGraphView {
 	public loadAvatar(email: string, image: string) {
 		this.avatars[email] = image;
 		this.saveState();
+		this.graph.loadAvatar(email, image);
 		let avatarsElems = <HTMLCollectionOf<HTMLElement>>document.getElementsByClassName('avatar'), escapedEmail = escapeHtml(email);
 		for (let i = 0; i < avatarsElems.length; i++) {
 			if (avatarsElems[i].dataset.email === escapedEmail) {
@@ -997,7 +1006,10 @@ class GitGraphView {
 	private updateMinimapViewport() {
 		const commitElems = getCommitElems();
 		if (commitElems.length === 0) return;
-		const viewRect = this.viewElem.getBoundingClientRect(), top = viewRect.top + this.controlsElem.offsetHeight, bottom = viewRect.bottom;
+		// The commits are only visible between the sticky controls (and the frozen column headers) and the footer (when it's frozen)
+		const colHeaderElem = this.config.graph.freezeColumnHeaders ? document.querySelector('#tableColHeaders th') : null;
+		const top = Math.max(this.controlsElem.getBoundingClientRect().bottom, colHeaderElem !== null ? colHeaderElem.getBoundingClientRect().bottom : 0);
+		const bottom = Math.min(this.viewElem.getBoundingClientRect().bottom, this.footerElem.getBoundingClientRect().top);
 		let low = 0, high = commitElems.length - 1, first = commitElems.length - 1, last: number;
 		while (low <= high) {
 			const mid = (low + high) >> 1;
@@ -1093,11 +1105,12 @@ class GitGraphView {
 
 		const refsInColumn = this.config.referenceLabels.inSeparateColumn, showChanges = this.isChangesColumnShown();
 		alterClass(document.body, 'refsColumn', refsInColumn);
+		if (refsInColumn) document.body.style.setProperty('--git-graph-refsColWidth', this.getRefsColumnWidth() + 'px');
 		const headers = [
 			'<th id="tableHeaderGraphCol" class="tableColHeader graphCol" data-col="0">' + t('Graph') + '</th>',
 			'<th class="tableColHeader descriptionCol" data-col="1">' + t('Description') + '</th>'
 		];
-		if (refsInColumn) headers.unshift('<th class="refsCol">' + t('Branches / Tags') + '</th>');
+		if (refsInColumn) headers.unshift('<th class="refsCol">' + t('Branches / Tags') + '<span id="refsColResize" title="' + t('Drag to resize the column, double-click to reset its width') + '"></span></th>');
 		if (colVisibility.date) headers.push('<th class="tableColHeader dateCol" data-col="2">' + t('Date') + '</th>');
 		if (colVisibility.author) headers.push('<th class="tableColHeader authorCol" data-col="3">' + t('Author') + '</th>');
 		if (fileHistory !== null) {
@@ -1106,8 +1119,8 @@ class GitGraphView {
 			headers.push('<th class="changesCol">' + t('Changes') + '</th>');
 		}
 		if (colVisibility.commit) headers.push('<th class="tableColHeader" data-col="4">' + t('Commit') + '</th>');
-		// The button to choose the columns is in the last column header
-		headers[headers.length - 1] = headers[headers.length - 1].replace(/<\/th>$/, '<span id="columnSettingsBtn" title="' + t('Choose the columns that are shown') + '">' + SVG_ICONS.columns + '</span></th>');
+		// The button to choose the columns is on the right of the last column header (whose name is truncated if they don't both fit)
+		headers[headers.length - 1] = headers[headers.length - 1].replace(/^(<th[^>]*>)(.*)<\/th>$/, '$1<span class="lastColHeaderName">$2</span><span id="columnSettingsBtn" title="' + t('Choose the columns that are shown') + '">' + SVG_ICONS.columns + '</span></th>');
 		let html = '<tr id="tableColHeaders">' + headers.join('') + '</tr>';
 
 		for (let i = 0; i < this.commits.length; i++) {
@@ -1157,7 +1170,7 @@ class GitGraphView {
 
 			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
 				(refsInColumn
-					? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
+					? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels" style="--git-graph-refs:' + (branchLabels.heads.length + branchLabels.remotes.length + commit.tags.length + (commit.stash !== null ? 1 : 0)) + '">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
 					: this.config.referenceLabels.branchLabelsAlignedToGraph
 						? '<td class="graphCol">' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td class="descriptionCol"><span class="description">' + commitDot + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)
 						: '<td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + refBranches + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)) + '</span></td>' +
@@ -1179,8 +1192,10 @@ class GitGraphView {
 				'<span class="listFooterLegend">' + t('Scrollbar markers:') + '<span><i style="background-color:var(--vscode-focusBorder)"></i>HEAD</span><span><i style="background-color:' + escapeHtml(this.config.graph.colours[1 % this.config.graph.colours.length]) + '"></i>' + t('Branches') + '</span><span><i style="background-color:var(--vscode-descriptionForeground)"></i>' + t('Tags') + '</span><span><i style="background-color:var(--vscode-editorOverviewRuler-findMatchForeground, #d18616)"></i>' + t('Find Matches') + '</span></span>' +
 				'<span class="listFooterSpacer"></span>' + (this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '') + '</div>'
 			: '';
+		document.body.style.setProperty('--git-graph-colHeadersHeight', document.getElementById('tableColHeaders')!.offsetHeight + 'px');
 		this.makeTableResizable();
-		this.fitRefLabels();
+		this.makeRefsColumnResizable();
+		this.updateTruncatedRefLabels();
 		const columnSettingsBtn = document.getElementById('columnSettingsBtn');
 		if (columnSettingsBtn !== null) {
 			columnSettingsBtn.addEventListener('click', (e) => {
@@ -1249,23 +1264,89 @@ class GitGraphView {
 	}
 
 	/**
-	 * Fit the labels in the Branches / Tags column of each commit: the first (most important) label is shown in full, and the labels that
-	 * don't fit are hidden, and counted on a "+N" label (whose tooltip lists them).
+	 * Get the height of the top of the view that is covered by the sticky controls, and the column headers when they are frozen.
+	 * @returns The height (in pixels).
 	 */
-	private fitRefLabels() {
-		this.tableElem.querySelectorAll<HTMLElement>('.refsColLabels').forEach((container) => {
-			const labels = <HTMLElement[]>Array.from(container.children);
-			if (labels.length < 2 || container.scrollWidth <= container.clientWidth + 1) return;
-			const moreElem = document.createElement('span'), hidden: string[] = [];
-			moreElem.className = 'refsColMore';
-			container.appendChild(moreElem);
-			for (let i = labels.length - 1; i > 0 && (hidden.length === 0 || container.scrollWidth > container.clientWidth + 1); i--) {
-				labels[i].classList.add('hidden');
-				const nameElem = labels[i].querySelector('.gitRefName');
-				hidden.unshift(nameElem !== null ? nameElem.textContent! : '');
-				moreElem.textContent = '+' + hidden.length;
+	private getCoveredTopHeight() {
+		const colHeadersElem = this.config.graph.freezeColumnHeaders ? document.getElementById('tableColHeaders') : null;
+		return this.controlsElem.offsetHeight + (colHeadersElem !== null ? colHeadersElem.offsetHeight : 0);
+	}
+
+	/**
+	 * Get the height of the bottom of the view that is covered by the footer when it's frozen.
+	 * @returns The height (in pixels).
+	 */
+	private getCoveredBottomHeight() {
+		return this.config.graph.freezeFooter ? this.footerElem.offsetHeight : 0;
+	}
+
+	/**
+	 * Get the width of the Branches / Tags column of the current repository.
+	 * @returns The width (in pixels).
+	 */
+	private getRefsColumnWidth() {
+		const width = this.gitRepos[this.currentRepo].refsColumnWidth;
+		return typeof width === 'number' && width >= REFS_COLUMN_MIN_WIDTH ? width : REFS_COLUMN_DEFAULT_WIDTH;
+	}
+
+	/**
+	 * Allow the Branches / Tags column to be resized by dragging the right edge of its header (the width is remembered for each repository).
+	 * Double-clicking the edge resets the width.
+	 */
+	private makeRefsColumnResizable() {
+		const handleElem = document.getElementById('refsColResize');
+		if (handleElem === null) return;
+		const setWidth = (width: number) => document.body.style.setProperty('--git-graph-refsColWidth', width + 'px');
+		let mouseX = -1, startWidth = 0, width = 0, lastClick = 0;
+
+		const processResizing: EventListener = (e) => {
+			if (mouseX < 0) return;
+			const maxWidth = Math.max(REFS_COLUMN_MIN_WIDTH, Math.round(this.viewElem.clientWidth * 0.5));
+			width = Math.min(Math.max(startWidth + (<MouseEvent>e).clientX - mouseX, REFS_COLUMN_MIN_WIDTH), maxWidth);
+			setWidth(width);
+		};
+		const stopResizing: EventListener = () => {
+			if (mouseX < 0) return;
+			mouseX = -1;
+			eventOverlay.remove();
+			// The overlay receives the clicks while resizing, so a double-click is detected here
+			const now = performance.now();
+			if (width === startWidth && now - lastClick < 400) {
+				width = REFS_COLUMN_DEFAULT_WIDTH;
+				setWidth(width);
 			}
-			moreElem.title = hidden.join('\n');
+			lastClick = width === startWidth ? now : 0;
+			this.saveRepoStateValue(this.currentRepo, 'refsColumnWidth', width);
+			this.updateTruncatedRefLabels();
+		};
+
+		handleElem.addEventListener('mousedown', (e) => {
+			handledEvent(e);
+			mouseX = e.clientX;
+			startWidth = width = this.getRefsColumnWidth();
+			eventOverlay.create('colResize', processResizing, stopResizing);
+		});
+	}
+
+	/**
+	 * The labels in the Branches / Tags column are truncated when they don't fit (the first, most important label keeps most of the width).
+	 * The cells whose labels are truncated have a tooltip listing all of their labels, and the labels that are cut off by the edge of the
+	 * column fade out.
+	 */
+	private updateTruncatedRefLabels() {
+		const containers = <HTMLElement[]>Array.from(this.tableElem.querySelectorAll('.refsColLabels'));
+		// All widths are read before anything is changed, so that the layout is only calculated once
+		const overflowing = containers.map((container) => container.scrollWidth > container.clientWidth + 1);
+		const truncated = containers.map((container, i) => overflowing[i]
+			|| Array.from(container.querySelectorAll<HTMLElement>('.gitRefName')).some((nameElem) => nameElem.scrollWidth > nameElem.clientWidth + 1));
+		containers.forEach((container, i) => {
+			const cell = container.parentElement!;
+			alterClass(container, 'overflowing', overflowing[i]);
+			if (truncated[i]) {
+				cell.title = Array.from(container.querySelectorAll<HTMLElement>('.gitRefName, .gitRefHeadRemote.icon')).map((elem) => elem.dataset.fullref!).filter((name) => typeof name === 'string').join('\n');
+			} else {
+				cell.removeAttribute('title');
+			}
 		});
 	}
 
@@ -2448,6 +2529,20 @@ class GitGraphView {
 				],
 				[
 					{
+						title: t('Freeze Column Headers'),
+						visible: true,
+						checked: this.config.graph.freezeColumnHeaders,
+						onClick: () => sendMessage({ command: 'updateExtensionSetting', key: 'graph.freezeColumnHeaders', value: !this.config.graph.freezeColumnHeaders })
+					},
+					{
+						title: t('Freeze Footer'),
+						visible: true,
+						checked: this.config.graph.freezeFooter,
+						onClick: () => sendMessage({ command: 'updateExtensionSetting', key: 'graph.freezeFooter', value: !this.config.graph.freezeFooter })
+					}
+				],
+				[
+					{
 						title: t('Commit Timestamp Order'),
 						visible: true,
 						checked: commitOrdering === GG.CommitOrdering.Date,
@@ -2523,10 +2618,11 @@ class GitGraphView {
 		const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(hash));
 		if (elem === null) return;
 
-		// The controls are sticky (always visible at the top of the view), so commits are only visible below them
-		const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + elem.offsetTop;
-		if (alwaysCenterCommit || elemTop - 8 < this.viewElem.scrollTop + headerHeight || elemTop + 32 - this.viewElem.clientHeight > this.viewElem.scrollTop) {
-			this.viewElem.scroll(0, elemTop + 12 - (this.viewElem.clientHeight + headerHeight) / 2);
+		// The controls are sticky (always visible at the top of the view), so commits are only visible below them (and the frozen column
+		// headers), and above the footer when it's frozen
+		const elemTop = this.controlsElem.clientHeight + elem.offsetTop, coveredTop = this.getCoveredTopHeight(), visibleBottom = this.viewElem.clientHeight - this.getCoveredBottomHeight();
+		if (alwaysCenterCommit || elemTop - 8 < this.viewElem.scrollTop + coveredTop || elemTop + 32 - visibleBottom > this.viewElem.scrollTop) {
+			this.viewElem.scroll(0, elemTop + 12 - (visibleBottom + coveredTop) / 2);
 		}
 
 		if (flash && !elem.classList.contains('flash')) {
@@ -3341,28 +3437,29 @@ class GitGraphView {
 
 		if (!refresh) {
 			if (isDocked) {
-				const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + expandedCommit.commitElem.offsetTop;
-				if (elemTop - 8 < this.viewElem.scrollTop + headerHeight) {
+				const elemTop = this.controlsElem.clientHeight + expandedCommit.commitElem.offsetTop, coveredTop = this.getCoveredTopHeight(), visibleBottom = this.viewElem.clientHeight - this.getCoveredBottomHeight();
+				if (elemTop - 8 < this.viewElem.scrollTop + coveredTop) {
 					// Commit is above what is visible on screen (below the sticky controls)
-					this.viewElem.scroll(0, elemTop - headerHeight - 8);
-				} else if (elemTop - this.viewElem.clientHeight + 32 > this.viewElem.scrollTop) {
+					this.viewElem.scroll(0, elemTop - coveredTop - 8);
+				} else if (elemTop - visibleBottom + 32 > this.viewElem.scrollTop) {
 					// Commit is below what is visible on screen
-					this.viewElem.scroll(0, elemTop - this.viewElem.clientHeight + 32);
+					this.viewElem.scroll(0, elemTop - visibleBottom + 32);
 				}
 			} else {
-				const headerHeight = this.controlsElem.clientHeight, elemTop = headerHeight + elem.offsetTop, cdvHeight = this.gitRepos[this.currentRepo].cdvHeight;
+				const elemTop = this.controlsElem.clientHeight + elem.offsetTop, cdvHeight = this.gitRepos[this.currentRepo].cdvHeight;
+				const coveredTop = this.getCoveredTopHeight(), visibleBottom = this.viewElem.clientHeight - this.getCoveredBottomHeight();
 				if (this.config.commitDetailsView.autoCenter) {
-					// Center Commit Detail View setting is enabled (in the area below the sticky controls)
-					// elemTop - commit height [24px] + (commit details view height + commit height [24px]) / 2 - (view height + controls height) / 2
-					this.viewElem.scroll(0, elemTop - 12 + (cdvHeight - this.viewElem.clientHeight - headerHeight) / 2);
-				} else if (elemTop - 32 < this.viewElem.scrollTop + headerHeight) {
-					// Commit Detail View is opening above what is visible on screen (below the sticky controls)
-					// elemTop - commit height [24px] - desired gap from top [8px] < view scroll offset + controls height
-					this.viewElem.scroll(0, elemTop - headerHeight - 32);
-				} else if (elemTop + cdvHeight - this.viewElem.clientHeight + 8 > this.viewElem.scrollTop) {
-					// Commit Detail View is opening below what is visible on screen
-					// elemTop + commit details view height + desired gap from bottom [8px] - view height > view scroll offset
-					this.viewElem.scroll(0, elemTop + cdvHeight - this.viewElem.clientHeight + 8);
+					// Center Commit Detail View setting is enabled (in the area below the sticky controls & frozen column headers)
+					// elemTop - commit height [24px] + (commit details view height + commit height [24px]) / 2 - (visible bottom + covered top) / 2
+					this.viewElem.scroll(0, elemTop - 12 + (cdvHeight - visibleBottom - coveredTop) / 2);
+				} else if (elemTop - 32 < this.viewElem.scrollTop + coveredTop) {
+					// Commit Detail View is opening above what is visible on screen (below the sticky controls & frozen column headers)
+					// elemTop - commit height [24px] - desired gap from top [8px] < view scroll offset + covered top
+					this.viewElem.scroll(0, elemTop - coveredTop - 32);
+				} else if (elemTop + cdvHeight - visibleBottom + 8 > this.viewElem.scrollTop) {
+					// Commit Detail View is opening below what is visible on screen (above the frozen footer)
+					// elemTop + commit details view height + desired gap from bottom [8px] - visible bottom > view scroll offset
+					this.viewElem.scroll(0, elemTop + cdvHeight - visibleBottom + 8);
 				}
 			}
 		}

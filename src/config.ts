@@ -296,6 +296,8 @@ class Config {
 		return {
 			colours: typeof preset !== 'undefined' ? preset.slice() : this.defaultGraphColours,
 			density: this.config.get<string>('graph.density', 'Comfortable') === 'Compact' ? GraphDensity.Compact : GraphDensity.Comfortable,
+			freezeColumnHeaders: !!this.config.get('graph.freezeColumnHeaders', true),
+			freezeFooter: !!this.config.get('graph.freezeFooter', true),
 			minimap: !!this.config.get('graph.minimap', true),
 			nodeStyle: nodeStyle,
 			style: this.getRenamedExtensionSetting<string>('graph.style', 'graphStyle', 'rounded') === 'angular'

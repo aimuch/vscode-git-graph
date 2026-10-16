@@ -296,7 +296,7 @@ class Vertex {
 
 	/* Rendering */
 
-	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, branchIndex: number, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void, author: string | null) {
+	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, branchIndex: number, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void, avatar: VertexAvatar | null) {
 		if (this.onBranch === null) return;
 
 		const colour = this.isCommitted ? config.colours[this.onBranch.getColour() % config.colours.length] : '#808080';
@@ -309,19 +309,24 @@ class Vertex {
 		circle.setAttribute('cx', cx);
 		circle.setAttribute('cy', cy);
 		circle.setAttribute('r', '4');
-		let initialElem: SVGTextElement | null = null;
-		if (author !== null && this.isCommitted && !this.isStash) {
-			// The author's initial, in a circle outlined in the colour of the branch
+		let avatarElem: SVGElement | null = null;
+		if (avatar !== null && this.isCommitted && !this.isStash) {
+			// The author's avatar (or their initial until the avatar is loaded, or if they don't have one), in a circle outlined in the colour of the branch
 			circle.setAttribute('r', '9');
 			circle.setAttribute('class', 'avatar' + (this.isCurrent ? ' current' : ''));
-			circle.style.fill = getAuthorColour(author);
+			circle.style.fill = getAuthorColour(avatar.author);
 			circle.style.stroke = colour;
-			initialElem = document.createElementNS(SVG_NAMESPACE, 'text');
-			initialElem.dataset.branch = branchIndex.toString();
-			initialElem.setAttribute('x', cx);
-			initialElem.setAttribute('y', cy);
-			initialElem.setAttribute('class', 'avatarInitial');
-			initialElem.textContent = author.trim().length > 0 ? author.trim().charAt(0).toUpperCase() : '?';
+			if (avatar.image !== null) {
+				avatarElem = createAvatarImageElem(cx, cy, avatar.image);
+			} else {
+				avatarElem = document.createElementNS(SVG_NAMESPACE, 'text');
+				avatarElem.setAttribute('x', cx);
+				avatarElem.setAttribute('y', cy);
+				avatarElem.setAttribute('class', 'avatarInitial');
+				avatarElem.textContent = avatar.author.trim().length > 0 ? avatar.author.trim().charAt(0).toUpperCase() : '?';
+			}
+			avatarElem.dataset.branch = branchIndex.toString();
+			avatarElem.dataset.email = avatar.email;
 		} else if (this.isCurrent) {
 			circle.setAttribute('class', 'current');
 			circle.setAttribute('stroke', colour);
@@ -329,7 +334,7 @@ class Vertex {
 			circle.setAttribute('fill', colour);
 		}
 		svg.appendChild(circle);
-		if (initialElem !== null) svg.appendChild(initialElem);
+		if (avatarElem !== null) svg.appendChild(avatarElem);
 
 		if (this.isStash && !this.isCurrent) {
 			circle.setAttribute('r', '4.5');
@@ -345,6 +350,36 @@ class Vertex {
 		circle.addEventListener('mouseover', overListener);
 		circle.addEventListener('mouseout', outListener);
 	}
+}
+
+
+/**
+ * The author of a commit, whose avatar is drawn on the graph.
+ */
+interface VertexAvatar {
+	readonly author: string;
+	readonly email: string;
+	readonly image: string | null; // The data URI of the author's avatar, or NULL if it isn't available
+}
+
+/**
+ * Create the element of an author's avatar on the graph (inside the circle of the commit, within its outline).
+ * @param cx The x coordinate of the centre of the circle.
+ * @param cy The y coordinate of the centre of the circle.
+ * @param image The data URI of the avatar.
+ * @returns The element.
+ */
+function createAvatarImageElem(cx: string, cy: string, image: string) {
+	const elem = document.createElementNS(SVG_NAMESPACE, 'image');
+	elem.setAttribute('x', (parseFloat(cx) - 8).toString());
+	elem.setAttribute('y', (parseFloat(cy) - 8).toString());
+	elem.setAttribute('width', '16');
+	elem.setAttribute('height', '16');
+	elem.setAttribute('href', image);
+	elem.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+	elem.setAttribute('clip-path', 'url(#AvatarClip)');
+	elem.setAttribute('class', 'avatarImage');
+	return elem;
 }
 
 
@@ -366,6 +401,7 @@ class Graph {
 	private commitLookup: { [hash: string]: number } = {};
 	private onlyFollowFirstParent: boolean = false;
 	private expandedCommitIndex: number = -1;
+	private getAvatar: (email: string) => string | null = () => null;
 
 	private readonly viewElem: HTMLElement;
 	private readonly contentElem: HTMLElement;
@@ -403,6 +439,16 @@ class Graph {
 		mask.setAttribute('id', 'GraphMask');
 		this.maskRect = mask.appendChild(document.createElementNS(SVG_NAMESPACE, 'rect'));
 		this.maskRect.setAttribute('fill', 'url(#GraphGradient)');
+
+		// The avatars of the authors are clipped to a circle (drawn as a rounded rectangle, as the circles of the graph are its commits)
+		const avatarClip = defs.appendChild(document.createElementNS(SVG_NAMESPACE, 'clipPath'));
+		avatarClip.setAttribute('id', 'AvatarClip');
+		avatarClip.setAttribute('clipPathUnits', 'objectBoundingBox');
+		const avatarClipShape = avatarClip.appendChild(document.createElementNS(SVG_NAMESPACE, 'rect'));
+		avatarClipShape.setAttribute('width', '1');
+		avatarClipShape.setAttribute('height', '1');
+		avatarClipShape.setAttribute('rx', '0.5');
+		avatarClipShape.setAttribute('ry', '0.5');
 
 		this.setDimensions(0, 0);
 		elem.appendChild(this.svg);
@@ -472,8 +518,8 @@ class Graph {
 
 		const overListener = (e: MouseEvent) => this.vertexOver(e), outListener = (e: MouseEvent) => this.vertexOut(e), avatars = this.config.nodeStyle === GG.GraphNodeStyle.Avatar;
 		for (i = 0; i < this.vertices.length; i++) {
-			const branch = this.vertices[i].getBranch();
-			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener, avatars && i < this.commits.length ? this.commits[i].author : null);
+			const branch = this.vertices[i].getBranch(), commit = avatars && i < this.commits.length ? this.commits[i] : null;
+			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener, commit !== null ? { author: commit.author, email: commit.email, image: this.getAvatar(commit.email) } : null);
 		}
 
 		if (this.group !== null) this.svg.removeChild(this.group);
@@ -494,7 +540,7 @@ class Graph {
 		const branch = id !== null && id < this.vertices.length ? this.vertices[id].getBranch() : null;
 		const branchIndex = branch !== null ? this.branches.indexOf(branch).toString() : null;
 		this.svg.classList.toggle('branchHighlight', branchIndex !== null);
-		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch], text[data-branch]').forEach((elem) => {
+		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch], text[data-branch], image[data-branch]').forEach((elem) => {
 			elem.classList.toggle('highlight', branchIndex !== null && elem.dataset.branch === branchIndex);
 		});
 	}
@@ -719,6 +765,38 @@ class Graph {
 			// The vertex has no children
 			return -1;
 		}
+	}
+
+
+	/* Avatars */
+
+	/**
+	 * Set how the avatars of the authors are found (they are drawn on the commits when the git-graph.graph.nodeStyle Extension Setting is "Avatar").
+	 * @param getAvatar Returns the data URI of the avatar of an email address, or NULL if it isn't available.
+	 */
+	public setAvatarSource(getAvatar: (email: string) => string | null) {
+		this.getAvatar = getAvatar;
+	}
+
+	/**
+	 * Draw an avatar that has been loaded on the commits of its author (replacing their initial).
+	 * @param email The email address of the author.
+	 * @param image The data URI of the avatar.
+	 */
+	public loadAvatar(email: string, image: string) {
+		if (this.group === null) return;
+		this.group.querySelectorAll<SVGElement>('[data-email]').forEach((elem) => {
+			if (elem.dataset.email !== email) return;
+			if (elem.tagName === 'image') {
+				elem.setAttribute('href', image);
+			} else {
+				const imageElem = createAvatarImageElem(elem.getAttribute('x')!, elem.getAttribute('y')!, image);
+				imageElem.dataset.branch = elem.dataset.branch;
+				imageElem.dataset.email = email;
+				if (elem.classList.contains('highlight')) imageElem.classList.add('highlight');
+				elem.replaceWith(imageElem);
+			}
+		});
 	}
 
 
