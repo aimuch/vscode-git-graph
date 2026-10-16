@@ -49,6 +49,11 @@
 					for (let i = 0; i < 40; i++) tips.push(Object.assign(makeCommits(1)[0], { hash: 'e'.repeat(38) + i.toString(16).padStart(2, '0'), parents: [base.hash], date: base.date + 40 - i, message: 'Branch ' + i, heads: ['branch-' + i] }));
 					return { command: 'loadCommits', refreshId: msg.refreshId, commits: tips.concat([base]), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
 				}
+				if (msg.filePath === 'e2e-dates.txt') {
+					// A commit each day, for the after: & before: search operators
+					const daily = makeCommits(20).map((commit, i) => Object.assign(commit, { date: NOW - i * 86400, heads: [] }));
+					return { command: 'loadCommits', refreshId: msg.refreshId, commits: daily, head: daily[0].hash, tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
+				}
 				if (msg.filePath === 'src/new-name.ts') {
 					// The history of src/new-name.ts: every 5th commit (with the parents rewritten by Git), renamed from src/old-name.ts in the oldest commit
 					const history = makeCommits(25).filter((_, i) => i % 5 === 0);
@@ -941,6 +946,71 @@
 			await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
 			await waitFor('the find match to be removed from the minimap', () => minimapMatches().length === 0 && legend().length === 4);
 			return JSON.stringify(results) + (view.scrollHeight > view.clientHeight ? ', scrollbar markers shown' : ', the view isn\'t scrollable (no scrollbar markers)') + ', minimap: ' + minimapMatch;
+		});
+
+		await check('ui-find-dates', '[GitLens] The after: & before: search operators find the commits in a range of dates (which can also be searched for from the zoomed in minimap)', async () => {
+			// The history of a file with a commit each day is loaded
+			window.dispatchEvent(new MessageEvent('message', { data: { command: 'loadRepos', repos: initialState.repos, lastActiveRepo: REPO, loadViewTo: { repo: REPO, fileHistory: 'e2e-dates.txt' } } }));
+			await waitFor('the daily commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === 'e2e-dates.txt' && document.querySelectorAll('#commitTable tr.commit').length === 20);
+			const fixture = makeCommits(20).map((commit, i) => Object.assign(commit, { date: NOW - i * 86400 }));
+			const startOfDay = (daysAgo) => {
+				const date = new Date();
+				date.setHours(0, 0, 0, 0);
+				date.setDate(date.getDate() - daysAgo);
+				return date.getTime() / 1000;
+			};
+			const count = (from, to) => fixture.filter((commit) => commit.date >= from && commit.date < to).length;
+			// The number of matches (the current match can be any of them)
+			const expected = (n) => n > 0 ? 'of ' + n : 'No Results';
+			const matches = (text) => text === 'No Results' ? text : text.replace(/^\d+ /, '');
+			const input = document.getElementById('findInput'), widget = document.querySelector('.findWidget'), position = () => document.getElementById('findPosition').textContent;
+			const search = async (text) => {
+				input.value = text;
+				input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
+				await sleep(500);
+				return widget.hasAttribute('data-error') ? 'Error: ' + widget.getAttribute('data-error') : position();
+			};
+			document.getElementById('findBtn').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await waitFor('the Find Widget to open', () => widget.classList.contains('active'));
+			const results = {};
+			const day = (daysAgo) => {
+				const date = new Date(startOfDay(daysAgo) * 1000), pad = (value) => (value < 10 ? '0' : '') + value;
+				return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+			};
+			for (const [text, from, to] of [['after:today', startOfDay(0), Infinity], ['before:today', -Infinity, startOfDay(0)], ['>:yesterday <:today', startOfDay(1), startOfDay(0)], ['after:1w', startOfDay(7), Infinity], ['after:' + day(12) + ' before:' + day(5), startOfDay(12), startOfDay(5)]]) {
+				results[text] = await search(text);
+				assert(matches(results[text]) === expected(count(from, to)), 'Unexpected matches of ' + text + ': ' + results[text] + ' (expected ' + expected(count(from, to)) + ')');
+			}
+			assert(matches(results['after:1w']) === 'of 8' && matches(results['before:today']) === 'of 19', 'Unexpected matches: ' + JSON.stringify(results));
+			const invalid = await search('after:2026-02-30');
+			assert(invalid.startsWith('Error: ') && invalid.includes('"2026-02-30" isn\'t a date'), 'An invalid date wasn\'t reported: ' + invalid);
+			mouse(document.getElementById('findClose'), 'click');
+			await waitFor('the Find Widget to close', () => !widget.classList.contains('active'));
+
+			// The range of dates that the minimap is zoomed in on can be searched for
+			const minimap = document.getElementById('minimap'), zoomBtn = (zoom) => minimap.querySelector('.minimapZoomBtn[data-zoom="' + zoom + '"]');
+			assert(zoomBtn('search').classList.contains('disabled'), 'The minimap can only search the range of dates it\'s zoomed in on');
+			mouse(zoomBtn('in'), 'click');
+			await waitFor('the minimap to zoom in', () => !zoomBtn('search').classList.contains('disabled'));
+			mouse(zoomBtn('search'), 'click');
+			const chips = await waitFor('the range to be searched for', () => {
+				const values = Array.from(document.querySelectorAll('#findChips .findChip')).map((chip) => chip.textContent);
+				return values.length === 2 ? values : null;
+			});
+			const [, after] = chips[0].match(/^after:(\d{4}-\d{2}-\d{2})$/) || [], [, before] = chips[1].match(/^before:(\d{4}-\d{2}-\d{2})$/) || [];
+			assert(after && before, 'Unexpected chips: ' + JSON.stringify(chips));
+			assert(input.placeholder === 'Add a condition…', 'Unexpected placeholder: ' + input.placeholder);
+			const parse = (day) => new Date(parseInt(day.substring(0, 4)), parseInt(day.substring(5, 7)) - 1, parseInt(day.substring(8, 10))).getTime() / 1000;
+			await waitFor('the commits in the range to be found', () => matches(position()) === expected(count(parse(after), parse(before))))
+				.catch((err) => { throw new Error(err.message + ': ' + position() + ' (expected ' + expected(count(parse(after), parse(before))) + ')'); });
+			const rangeResult = position();
+			mouse(document.getElementById('findClose'), 'click');
+			await waitFor('the Find Widget to close', () => !widget.classList.contains('active'));
+			mouse(zoomBtn('all'), 'click');
+			await waitFor('all of the loaded commits to be shown', () => zoomBtn('all').classList.contains('disabled'));
+			mouse(document.getElementById('fileHistoryExit'), 'click');
+			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && document.querySelectorAll('#commitTable tr.commit').length === 10);
+			return JSON.stringify(results) + '; invalid: ' + invalid + '; minimap range: ' + chips.join(' ') + ' → ' + rangeResult;
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {

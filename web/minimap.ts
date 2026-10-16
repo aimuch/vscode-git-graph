@@ -12,7 +12,8 @@ const SECONDS_PER_DAY = 86400;
 const MINIMAP_ICONS = {
 	zoomIn: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>',
 	zoomOut: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 8h10"/></svg>',
-	showAll: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>'
+	showAll: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>',
+	searchRange: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>'
 };
 
 const enum MinimapPeriod {
@@ -58,6 +59,7 @@ class Minimap {
 	private readonly elem: HTMLElement;
 	private readonly onClick: (commitIndex: number) => void;
 	private readonly onScrollTo: (commitIndex: number) => void;
+	private readonly onSearchRange: (after: string, before: string) => void;
 	private data: MinimapData | null = null;
 	private commitDays: number[] = [];
 	private fullRange: MinimapRange = { start: 0, end: 0 };
@@ -80,11 +82,14 @@ class Minimap {
 	 * @param onClick A callback invoked with the index of the newest commit of the bar that was clicked.
 	 * @param onScrollTo A callback invoked with the index of the commit that should be scrolled to the top of the view, as the box of the
 	 * commits in view is dragged.
+	 * @param onSearchRange A callback invoked with the first day of the range of dates that is zoomed in on, and the day after it
+	 * (YYYY-MM-DD), to search for the commits in it.
 	 */
-	constructor(elem: HTMLElement, onClick: (commitIndex: number) => void, onScrollTo: (commitIndex: number) => void) {
+	constructor(elem: HTMLElement, onClick: (commitIndex: number) => void, onScrollTo: (commitIndex: number) => void, onSearchRange: (after: string, before: string) => void) {
 		this.elem = elem;
 		this.onClick = onClick;
 		this.onScrollTo = onScrollTo;
+		this.onSearchRange = onSearchRange;
 		this.setHeight(typeof globalState.minimapHeight === 'number' ? globalState.minimapHeight : MINIMAP_DEFAULT_HEIGHT);
 
 		this.elem.addEventListener('click', (e) => {
@@ -232,6 +237,7 @@ class Minimap {
 			+ zoomBtn('out', t('Zoom Out'), MINIMAP_ICONS.zoomOut, zoomedIn)
 			+ zoomBtn('in', t('Zoom In'), MINIMAP_ICONS.zoomIn, canZoomIn)
 			+ zoomBtn('all', t('Show All Loaded Commits'), MINIMAP_ICONS.showAll, zoomedIn)
+			+ zoomBtn('search', t('Search for the Commits in this Range of Dates'), MINIMAP_ICONS.searchRange, zoomedIn)
 			+ '</span></div><span class="minimapUnit">' + unit + '</span></div>'
 			+ '<div class="minimapChart' + (zoomedIn ? ' zoomedIn' : '') + '" title="' + escapeHtml(t('{0} + scroll (or pinch) to zoom in on a range of dates.', modifier) + (zoomedIn ? ' ' + t('Drag to pan.') : '')) + '">'
 			+ '<div class="minimapMarkers">' + markers.map((marker) => '<span class="minimapMarker ' + marker.kind + '" style="left:' + left(marker.bucket) + ';background-color:' + escapeHtml(marker.colour) + '" title="' + escapeHtml(marker.title) + '"></span>').join('') + '</div>'
@@ -373,6 +379,12 @@ class Minimap {
 		if (zoom === 'all') {
 			this.range = null;
 			this.scheduleRender();
+			return;
+		} else if (zoom === 'search') {
+			if (this.range !== null) {
+				const startDay = Math.round(this.range.start), endDay = startDay + Math.round(this.range.end - this.range.start);
+				this.onSearchRange(Minimap.formatDay(startDay), Minimap.formatDay(endDay));
+			}
 			return;
 		}
 		let fraction = 0.5;
@@ -615,6 +627,16 @@ class Minimap {
 	private static getLocalDay(unixTimestamp: number) {
 		const offset = -new Date(unixTimestamp * 1000).getTimezoneOffset() * 60;
 		return Math.floor((unixTimestamp + offset) / SECONDS_PER_DAY);
+	}
+
+	/**
+	 * Format a local day as YYYY-MM-DD.
+	 * @param day The local day number.
+	 * @returns The formatted day.
+	 */
+	private static formatDay(day: number) {
+		const date = new Date(day * SECONDS_PER_DAY * 1000), pad = (value: number) => (value < 10 ? '0' : '') + value;
+		return date.getUTCFullYear() + '-' + pad(date.getUTCMonth() + 1) + '-' + pad(date.getUTCDate());
 	}
 
 	/**

@@ -21,14 +21,18 @@ interface FindQuery {
 	readonly commit: string[];
 	readonly file: string[];
 	readonly change: string[];
+	readonly after: string[];
+	readonly before: string[];
 }
 
-const FIND_OPERATORS: { readonly [operator: string]: 'author' | 'message' | 'commit' | 'file' | 'change' } = {
+const FIND_OPERATORS: { readonly [operator: string]: 'author' | 'message' | 'commit' | 'file' | 'change' | 'after' | 'before' } = {
 	'author:': 'author', '@:': 'author',
 	'message:': 'message', '=:': 'message',
 	'commit:': 'commit', '#:': 'commit',
 	'file:': 'file', '?:': 'file',
-	'change:': 'change', '~:': 'change'
+	'change:': 'change', '~:': 'change',
+	'after:': 'after', '>:': 'after',
+	'before:': 'before', '<:': 'before'
 };
 
 /**
@@ -74,7 +78,7 @@ class FindWidget {
 		this.widgetElem.className = 'findWidget';
 		this.widgetElem.setAttribute('role', 'search');
 		this.widgetElem.innerHTML = '<span id="findBtn" title="' + t('Find') + '">' + SVG_ICONS.search + '</span><span id="findChips"></span>' +
-			'<input id="findInput" type="text" placeholder="' + t('Search commits') + ELLIPSIS + '" title="' + t('Search operators: author: (or @:), message: (or =:), commit: (or #:), file: (or ?:), change: (or ~:). Enclose a value containing spaces in double quotes. Press Enter to add the condition as a chip.') + '" tabindex="-1"/>' +
+			'<input id="findInput" type="text" placeholder="' + t('Search commits') + ELLIPSIS + '" title="' + t('Search operators: author: (or @:), message: (or =:), commit: (or #:), file: (or ?:), change: (or ~:), after: (or >:), before: (or <:). Enclose a value containing spaces in double quotes. Press Enter to add the condition as a chip.') + '" tabindex="-1"/>' +
 			'<span id="findCaseSensitive" class="findModifier" title="' + t('Match Case') + '">Aa</span><span id="findRegex" class="findModifier" title="' + t('Use Regular Expression') + '">.*</span>' +
 			'<span id="findClose" title="' + t('Clear Search (Escape)') + '">' + SVG_ICONS.close + '</span>';
 		controlsElem.insertBefore(this.widgetElem, document.getElementById('scrollToHeadBtn'));
@@ -90,7 +94,9 @@ class FindWidget {
 				{ operator: 'author:', short: '@:', description: t('The name or email of the author contains') },
 				{ operator: 'commit:', short: '#:', description: t('The commit hash starts with') },
 				{ operator: 'file:', short: '?:', description: t('A file whose path contains this is changed') },
-				{ operator: 'change:', short: '~:', description: t('A line containing this is added or removed') }
+				{ operator: 'change:', short: '~:', description: t('A line containing this is added or removed') },
+				{ operator: 'after:', short: '>:', description: t('The commit is on or after this date (the date shown in the Date column): YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y)') },
+				{ operator: 'before:', short: '<:', description: t('The commit is before this date (the date shown in the Date column): YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y)') }
 			].map((button) => '<span class="findOperator" data-operator="' + button.operator + '" title="' + button.description + '">' + button.operator + '<span>' + button.short + '</span></span>').join('') +
 			'<span id="findClear">' + t('Clear Search') + '</span>';
 		controlsElem.insertBefore(this.resultsElem, document.getElementById('minimap'));
@@ -235,6 +241,18 @@ class FindWidget {
 	}
 
 	/**
+	 * Search for the commits in a range of dates (replacing the conditions on dates that were already added).
+	 * @param after The first day of the range (YYYY-MM-DD).
+	 * @param before The day after the range (YYYY-MM-DD).
+	 */
+	public searchDateRange(after: string, before: string) {
+		this.chips = this.chips.filter((chip) => !/^(after:|>:|before:|<:)\S+$/.test(chip)).concat(['after:' + after, 'before:' + before]);
+		this.renderChips();
+		this.show(false);
+		this.textChanged();
+	}
+
+	/**
 	 * Get the hashes of the commits that match the Find Widget's criteria.
 	 * @returns The hashes.
 	 */
@@ -335,14 +353,14 @@ class FindWidget {
 
 	/**
 	 * Parse the text entered into the Find Widget into the text to find, and the values of the search operators it contains:
-	 * `author:` (or `@:`), `message:` (or `=:`), `commit:` (or `#:`), `file:` (or `?:`) and `change:` (or `~:`). A value containing
-	 * spaces can be enclosed in double quotes.
+	 * `author:` (or `@:`), `message:` (or `=:`), `commit:` (or `#:`), `file:` (or `?:`), `change:` (or `~:`), `after:` (or `>:`) and
+	 * `before:` (or `<:`). A value containing spaces can be enclosed in double quotes.
 	 * @param text The text entered into the Find Widget.
 	 * @returns The parsed query.
 	 */
 	public static parseQuery(text: string): FindQuery {
-		const query: FindQuery = { text: '', author: [], message: [], commit: [], file: [], change: [] }, remaining: string[] = [];
-		const pattern = /(author:|@:|message:|=:|commit:|#:|file:|\?:|change:|~:)(?:"([^"]*)"|(\S*))/g;
+		const query: FindQuery = { text: '', author: [], message: [], commit: [], file: [], change: [], after: [], before: [] }, remaining: string[] = [];
+		const pattern = /(author:|@:|message:|=:|commit:|#:|file:|\?:|change:|~:|after:|>:|before:|<:)(?:"([^"]*)"|(\S*))/g;
 		let lastIndex = 0, match: RegExpExecArray | null;
 		while ((match = pattern.exec(text)) !== null) {
 			if (match.index > 0 && !/\s/.test(text.charAt(match.index - 1))) continue; // Only operators at the start of a word
@@ -353,6 +371,35 @@ class FindWidget {
 		}
 		remaining.push(text.substring(lastIndex));
 		return Object.assign(query, { text: remaining.join(' ').trim().replace(/\s+/g, ' ') });
+	}
+
+	/**
+	 * Parse the value of the `after:` & `before:` search operators into the start of the day, month or year it refers to.
+	 * @param value The value: YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w,
+	 * 3m, 1y).
+	 * @param now The current date.
+	 * @returns The Unix timestamp (in seconds) of the start of the day, month or year (in local time), or NULL if the value isn't a date.
+	 */
+	public static parseDate(value: string, now: Date = new Date()) {
+		const text = value.trim().toLowerCase();
+		let match = text.match(/^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/), date: Date;
+		if (match !== null) {
+			const year = parseInt(match[1]), month = typeof match[2] === 'string' ? parseInt(match[2]) - 1 : 0, day = typeof match[3] === 'string' ? parseInt(match[3]) : 1;
+			date = new Date(year, month, day);
+			if (month < 0 || month > 11 || day < 1 || date.getMonth() !== month) return null; // e.g. 2026-13 or 2026-02-30
+		} else if (text === 'today' || text === 'yesterday') {
+			date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (text === 'yesterday' ? 1 : 0));
+		} else if ((match = text.match(/^(\d+)([dwmy])$/)) !== null) {
+			const count = parseInt(match[1]);
+			date = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			if (match[2] === 'd') date.setDate(date.getDate() - count);
+			else if (match[2] === 'w') date.setDate(date.getDate() - count * 7);
+			else if (match[2] === 'm') date.setMonth(date.getMonth() - count);
+			else date.setFullYear(date.getFullYear() - count);
+		} else {
+			return null;
+		}
+		return Math.round(date.getTime() / 1000);
 	}
 
 	/**
@@ -374,8 +421,15 @@ class FindWidget {
 		const colVisibility = this.view.getColumnVisibility();
 		const toRegexText = (text: string) => workspaceState.findIsRegex ? text : text.replace(/[\\\[\](){}|.*+?^$]/g, '\\$&'), flags = 'u' + (workspaceState.findIsCaseSensitive ? '' : 'i');
 		const highlightText = [query.text].concat(query.author, query.message).filter((text) => text !== '').map((text) => '(?:' + toRegexText(text) + ')').join('|');
-		let findPattern: RegExp | null, authorPatterns: RegExp[], messagePatterns: RegExp[], commitPatterns: RegExp[], highlight: RegExp;
+		let findPattern: RegExp | null, authorPatterns: RegExp[], messagePatterns: RegExp[], commitPatterns: RegExp[], highlight: RegExp, after: number[], before: number[];
 		try {
+			const parseDate = (value: string) => {
+				const date = FindWidget.parseDate(value);
+				if (date === null) throw new Error(t('"{0}" isn\'t a date. Use YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y).', value));
+				return date;
+			};
+			after = query.after.map(parseDate);
+			before = query.before.map(parseDate);
 			findPattern = query.text !== '' ? new RegExp(toRegexText(query.text), flags) : null;
 			authorPatterns = query.author.map((text) => new RegExp(toRegexText(text), flags));
 			messagePatterns = query.message.map((text) => new RegExp(toRegexText(text), flags));
@@ -405,6 +459,8 @@ class FindWidget {
 				)) && authorPatterns.every((pattern) => pattern.test(commit.author) || pattern.test(commit.email))
 					&& messagePatterns.every((pattern) => pattern.test(commit.message))
 					&& commitPatterns.every((pattern) => pattern.test(commit.hash))
+					&& after.every((date) => commit.date >= date)
+					&& before.every((date) => commit.date < date)
 					&& (typeof searchHashes === 'undefined' || searchHashes.has(commit.hash));
 			},
 			findPattern: findPattern,
@@ -671,7 +727,8 @@ class FindWidget {
 			return '<span class="findChip' + (isOperator ? ' operator' : '') + '" data-index="' + index + '" title="' + escapeHtml(chip) + '">' + escapeHtml(chip) + '<span class="findChipRemove" title="' + t('Remove') + '">' + SVG_ICONS.close + '</span></span>';
 		}).join('');
 		alterClass(this.widgetElem, 'hasChips', this.chips.length > 0);
-		this.inputElem.placeholder = this.chips.length > 0 ? t('Add a condition') + ELLIPSIS : t('Search commits') + ELLIPSIS;
+		// (The placeholder is text, not HTML, so it can't contain the HTML entity of an ellipsis)
+		this.inputElem.placeholder = (this.chips.length > 0 ? t('Add a condition') : t('Search commits')) + '…';
 	}
 
 	/**

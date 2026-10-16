@@ -116,7 +116,7 @@ class GitGraphView {
 			// The box of the commits in view is being dragged, so the commit is scrolled to the top of the view (below the sticky controls & frozen column headers)
 			const elem = findCommitElemWithId(getCommitElems(), index);
 			if (elem !== null) this.viewElem.scroll(0, this.controlsElem.clientHeight + elem.offsetTop - this.getCoveredTopHeight());
-		});
+		}, (after, before) => this.findWidget.searchDateRange(after, before));
 		this.scrollMarkers = new ScrollMarkers(viewElem);
 
 		this.repoDropdown = new Dropdown('repoDropdown', true, false, 'Repos', (values) => {
