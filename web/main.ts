@@ -5,8 +5,11 @@ class GitGraphView {
 	private gitConfig: GG.GitRepoConfig | null = null;
 	private gitRemotes: ReadonlyArray<string> = [];
 	private gitStashes: ReadonlyArray<GG.GitStash> = [];
+	private gitUpstreams: GG.GitBranchUpstreams = {};
 	private gitTags: ReadonlyArray<string> = [];
 	private commits: GG.GitCommit[] = [];
+	private loadedCommits: GG.GitCommit[] = []; // All of the loaded commits (when only the matches of the Find Widget are shown, this.commits only contains them)
+	private commitFilter: ReadonlySet<string> | null = null;
 	private commitHead: string | null = null;
 	private commitLookup: { [hash: string]: number } = {};
 	private onlyFollowFirstParent: boolean = false;
@@ -148,7 +151,7 @@ class GitGraphView {
 			this.expandedCommit = prevState.expandedCommit;
 			this.avatars = prevState.avatars;
 			this.gitConfig = prevState.gitConfig;
-			this.loadRepoInfo(prevState.gitBranches, prevState.gitBranchHead, prevState.gitRemotes, prevState.gitStashes, true);
+			this.loadRepoInfo(prevState.gitBranches, prevState.gitBranchHead, prevState.gitRemotes, prevState.gitStashes, prevState.gitUpstreams || {}, true);
 			this.loadCommits(prevState.commits, prevState.commitHead, prevState.gitTags, prevState.moreCommitsAvailable, prevState.onlyFollowFirstParent);
 			this.findWidget.restoreState(prevState.findWidget);
 			this.settingsWidget.restoreState(prevState.settingsWidget);
@@ -168,13 +171,16 @@ class GitGraphView {
 			this.requestLoadRepoInfoAndCommits(false, false);
 		}
 
-		const fetchBtn = document.getElementById('fetchBtn')!, findBtn = document.getElementById('findBtn')!, scrollToHeadBtn = document.getElementById('scrollToHeadBtn')!, settingsBtn = document.getElementById('settingsBtn')!, terminalBtn = document.getElementById('terminalBtn')!;
+		const fetchBtn = document.getElementById('fetchBtn')!, scrollToHeadBtn = document.getElementById('scrollToHeadBtn')!, settingsBtn = document.getElementById('settingsBtn')!, terminalBtn = document.getElementById('terminalBtn')!;
 		fetchBtn.title = this.config.fetchAndPrune ? t('Fetch & Prune from Remote(s)') : t('Fetch from Remote(s)');
-		fetchBtn.innerHTML = SVG_ICONS.download;
+		fetchBtn.innerHTML = SVG_ICONS.fetch + '<span>' + t('Fetch') + '</span>';
 		fetchBtn.addEventListener('click', () => this.fetchFromRemotesAction());
-		findBtn.innerHTML = SVG_ICONS.search;
-		findBtn.addEventListener('click', () => this.findWidget.show(true));
-		scrollToHeadBtn.innerHTML = SVG_ICONS.target;
+		document.getElementById('pullBtn')!.addEventListener('click', () => this.pullUpstreamAction());
+		document.getElementById('pushBtn')!.addEventListener('click', () => {
+			if (this.gitBranchHead !== null && this.gitRemotes.length > 0) this.pushBranchAction(this.gitBranchHead, null);
+		});
+		document.getElementById('stashBtn')!.addEventListener('click', (e) => this.showStashList(<HTMLElement>e.currentTarget, e));
+		scrollToHeadBtn.innerHTML = SVG_ICONS.head + '<span>HEAD</span>';
 		scrollToHeadBtn.addEventListener('click', () => this.scrollToHead());
 		settingsBtn.innerHTML = SVG_ICONS.gear;
 		settingsBtn.addEventListener('click', () => this.settingsWidget.show(this.currentRepo));
@@ -238,21 +244,27 @@ class GitGraphView {
 		this.gitConfig = null;
 		this.gitRemotes = [];
 		this.gitStashes = [];
+		this.gitUpstreams = {};
 		this.gitTags = [];
 		this.currentBranches = null;
 		this.currentAuthors = null;
 		this.knownAuthors = [];
 		this.renderAuthorDropdown();
 		this.renderFetchButton();
+		this.renderSyncButtons();
+		this.renderStashButton();
 		this.closeCommitDetails(false);
 		this.settingsWidget.close();
 		this.saveState();
 		this.refresh(true);
 	}
 
-	private loadRepoInfo(branchOptions: ReadonlyArray<string>, branchHead: string | null, remotes: ReadonlyArray<string>, stashes: ReadonlyArray<GG.GitStash>, isRepo: boolean) {
+	private loadRepoInfo(branchOptions: ReadonlyArray<string>, branchHead: string | null, remotes: ReadonlyArray<string>, stashes: ReadonlyArray<GG.GitStash>, upstreams: GG.GitBranchUpstreams, isRepo: boolean) {
 		// Changes to this.gitStashes are reflected as changes to the commits when loadCommits is run
 		this.gitStashes = stashes;
+		this.gitUpstreams = upstreams;
+		this.renderStashButton();
+		if (isRepo) this.renderSyncButtons(branchHead);
 
 		if (!isRepo || (!this.currentRepoRefreshState.hard && arraysStrictlyEqual(this.gitBranches, branchOptions) && this.gitBranchHead === branchHead && arraysStrictlyEqual(this.gitRemotes, remotes))) {
 			this.saveState();
@@ -334,7 +346,7 @@ class GitGraphView {
 		const tagsChanged = !arraysStrictlyEqual(this.gitTags, tags);
 		this.gitTags = tags;
 
-		if (!this.currentRepoLoading && !this.currentRepoRefreshState.hard && this.moreCommitsAvailable === moreAvailable && this.onlyFollowFirstParent === onlyFollowFirstParent && this.commitHead === commitHead && commits.length > 0 && arraysEqual(this.commits, commits, (a, b) =>
+		if (!this.currentRepoLoading && !this.currentRepoRefreshState.hard && this.moreCommitsAvailable === moreAvailable && this.onlyFollowFirstParent === onlyFollowFirstParent && this.commitHead === commitHead && commits.length > 0 && arraysEqual(this.loadedCommits, commits, (a, b) =>
 			a.hash === b.hash &&
 			arraysStrictlyEqual(a.heads, b.heads) &&
 			arraysEqual(a.tags, b.tags, (a, b) => a.name === b.name && a.annotated === b.annotated) &&
@@ -343,11 +355,11 @@ class GitGraphView {
 			((a.stash === null && b.stash === null) || (a.stash !== null && b.stash !== null && a.stash.selector === b.stash.selector))
 		) && this.renderedGitBranchHead === this.gitBranchHead) {
 
-			if (this.commits[0].hash === UNCOMMITTED) {
-				this.commits[0] = commits[0];
+			if (this.loadedCommits[0].hash === UNCOMMITTED) {
+				this.loadedCommits[0] = commits[0]; // Also updates this.commits, unless only the matches of the Find Widget are shown (which don't include the uncommitted changes)
 				this.saveState();
-				this.renderUncommittedChanges();
-				if (this.expandedCommit !== null && this.expandedCommit.commitElem !== null) {
+				if (this.commitFilter === null) this.renderUncommittedChanges();
+				if (this.commitFilter === null && this.expandedCommit !== null && this.expandedCommit.commitElem !== null) {
 					if (this.expandedCommit.compareWithHash === null) {
 						// Commit Details View is open
 						if (this.expandedCommit.commitHash === UNCOMMITTED) {
@@ -371,8 +383,25 @@ class GitGraphView {
 		this.currentRepoLoading = false;
 		this.moreCommitsAvailable = moreAvailable;
 		this.onlyFollowFirstParent = onlyFollowFirstParent;
-		this.commits = commits;
+		this.loadedCommits = commits;
 		this.commitHead = commitHead;
+		if (this.findWidget.isFiltering()) this.commitFilter = this.findWidget.getMatchingHashes(commits);
+		const avatarsNeeded = this.showCommits();
+
+		if (currentRepoLoading && this.config.onRepoLoad.scrollToHead && this.commitHead !== null) {
+			this.scrollToCommit(this.commitHead, true);
+		}
+
+		this.finaliseLoadCommits();
+		this.requestAvatars(avatarsNeeded);
+	}
+
+	/**
+	 * Show the loaded commits (or only those that match the Find Widget, when only its matches are shown) in the view.
+	 * @returns The avatars that need to be requested for the commits.
+	 */
+	private showCommits() {
+		this.commits = this.commitFilter !== null ? filterCommits(this.loadedCommits, this.commitFilter) : this.loadedCommits;
 		this.commitLookup = {};
 
 		let i: number, expandedCommitVisible = false, expandedCompareWithCommitVisible = false, avatarsNeeded: { [email: string]: string[] } = {}, commit;
@@ -404,13 +433,47 @@ class GitGraphView {
 		this.graph.loadCommits(this.commits, this.commitHead, this.commitLookup, this.onlyFollowFirstParent);
 		this.render();
 		this.updateKnownAuthors();
+		return avatarsNeeded;
+	}
 
-		if (currentRepoLoading && this.config.onRepoLoad.scrollToHead && this.commitHead !== null) {
-			this.scrollToCommit(this.commitHead, true);
-		}
+	/**
+	 * Set the commits that are shown: only the commits that match the Find Widget, or all of the loaded commits.
+	 * @param filter The hashes of the commits to show, or NULL to show all of the loaded commits.
+	 */
+	public setCommitFilter(filter: ReadonlySet<string> | null) {
+		const current = this.commitFilter;
+		if (filter === null ? current === null : current !== null && filter.size === current.size && Array.from(filter).every((hash) => current.has(hash))) return;
+		this.commitFilter = filter;
+		this.showCommits();
+	}
 
-		this.finaliseLoadCommits();
-		this.requestAvatars(avatarsNeeded);
+	/**
+	 * Get all of the loaded commits (including those not shown when only the matches of the Find Widget are shown).
+	 * @returns The commits.
+	 */
+	public getLoadedCommits(): ReadonlyArray<GG.GitCommit> {
+		return this.loadedCommits;
+	}
+
+	/**
+	 * Get the date of the oldest loaded commit, used to limit searches to the loaded commits.
+	 * @returns The unix timestamp of the date (less a day to allow for the difference between author & committer dates), or 0 if all commits are loaded.
+	 */
+	public getOldestLoadedCommitDate() {
+		if (!this.moreCommitsAvailable) return 0;
+		let oldest = Infinity;
+		this.loadedCommits.forEach((commit) => {
+			if (commit.hash !== UNCOMMITTED && commit.date < oldest) oldest = commit.date;
+		});
+		return oldest !== Infinity ? Math.max(oldest - 86400, 1) : 0;
+	}
+
+	/**
+	 * Get the path of the repository currently shown in the view.
+	 * @returns The path of the repository.
+	 */
+	public getCurrentRepo() {
+		return this.currentRepo;
 	}
 
 	private finaliseLoadCommits() {
@@ -482,6 +545,7 @@ class GitGraphView {
 		closeDialogAndContextMenu();
 		this.moreCommitsAvailable = false;
 		this.commits = [];
+		this.loadedCommits = this.commits;
 		this.commitHead = null;
 		this.commitLookup = {};
 		this.renderedGitBranchHead = null;
@@ -498,11 +562,15 @@ class GitGraphView {
 		if (msg.error === null) {
 			const refreshState = this.currentRepoRefreshState;
 			if (refreshState.inProgress && refreshState.loadRepoInfoRefreshId === msg.refreshId) {
-				this.loadRepoInfo(msg.branches, msg.head, msg.remotes, msg.stashes, msg.isRepo);
+				this.loadRepoInfo(msg.branches, msg.head, msg.remotes, msg.stashes, msg.upstreams, msg.isRepo);
 			}
 		} else {
 			this.displayLoadDataError(t('Unable to load Repository Info'), msg.error);
 		}
+	}
+
+	public processSearchCommitsResponse(msg: GG.ResponseSearchCommits) {
+		this.findWidget.processSearchCommitsResponse(msg);
 	}
 
 	public processLoadCommitsResponse(msg: GG.ResponseLoadCommits) {
@@ -779,8 +847,9 @@ class GitGraphView {
 			gitConfig: this.gitConfig,
 			gitRemotes: this.gitRemotes,
 			gitStashes: this.gitStashes,
+			gitUpstreams: this.gitUpstreams,
 			gitTags: this.gitTags,
-			commits: this.commits,
+			commits: this.loadedCommits,
 			commitHead: this.commitHead,
 			avatars: this.avatars,
 			currentBranches: this.currentBranches,
@@ -1081,6 +1150,79 @@ class GitGraphView {
 		alterClass(this.controlsElem, CLASS_FETCH_SUPPORTED, this.gitRemotes.length > 0);
 	}
 
+	/**
+	 * Render the Pull & Push buttons in the control bar, with the number of commits the current branch is behind / ahead of its upstream branch.
+	 * @param branchHead The current branch (NULL if HEAD is detached).
+	 */
+	private renderSyncButtons(branchHead: string | null = this.gitBranchHead) {
+		const pullBtn = document.getElementById('pullBtn')!, pushBtn = document.getElementById('pushBtn')!;
+		const upstream = branchHead !== null && typeof this.gitUpstreams[branchHead] !== 'undefined' && !this.gitUpstreams[branchHead].gone ? this.gitUpstreams[branchHead] : null;
+		const behind = upstream !== null ? upstream.behind : 0, ahead = upstream !== null ? upstream.ahead : 0;
+
+		pullBtn.innerHTML = SVG_ICONS.pull + '<span>' + t('Pull') + '</span>' + (behind > 0 ? '<span class="syncCount">' + behind + '</span>' : '');
+		pullBtn.title = upstream !== null
+			? (behind > 0 ? t('Pull {0} commit(s) from {1} into the current branch', behind, upstream.name) : t('Pull {0} into the current branch', upstream.name))
+			: t('The current branch doesn\'t have an upstream branch to pull from');
+		alterClass(pullBtn, CLASS_DISABLED, upstream === null);
+
+		pushBtn.innerHTML = SVG_ICONS.push + '<span>' + t('Push') + '</span>' + (ahead > 0 ? '<span class="syncCount">' + ahead + '</span>' : '');
+		pushBtn.title = branchHead === null
+			? t('HEAD is detached, so there isn\'t a branch to push')
+			: ahead > 0 ? t('Push {0} unpushed commit(s) on {1}', ahead, branchHead) : t('Push {0}', branchHead) + ELLIPSIS;
+		alterClass(pushBtn, CLASS_DISABLED, branchHead === null);
+		alterClass(pushBtn, 'pending', ahead > 0);
+	}
+
+	/**
+	 * Render the Stashes button in the control bar (shown when the repository has stashes).
+	 */
+	private renderStashButton() {
+		const stashBtn = document.getElementById('stashBtn')!, count = this.gitStashes.length;
+		stashBtn.innerHTML = SVG_ICONS.stashes + '<span class="pillLabel">' + t('Stashes') + '</span><span class="pillValue">' + count + '</span>' + SVG_ICONS.chevron;
+		stashBtn.title = t('View the stashes in this repository');
+		alterClass(stashBtn, 'hidden', count === 0);
+	}
+
+	/**
+	 * Show the list of stashes in the repository below the Stashes button. Clicking on a stash scrolls to it, and opens its Commit Details View.
+	 * @param stashBtn The Stashes button.
+	 * @param e The click event on the Stashes button.
+	 */
+	private showStashList(stashBtn: HTMLElement, e: Event) {
+		handledEvent(e); // Don't let the click propagate to the document, which closes context menus
+		if (contextMenu.isOpen()) {
+			contextMenu.close();
+			return;
+		}
+		const bounds = stashBtn.getBoundingClientRect();
+		const position = <MouseEvent>{ pageX: bounds.left + 2, pageY: bounds.bottom + 6 };
+		contextMenu.show([this.gitStashes.map((stash) => ({
+			title: '<span class="stashListSelector">' + escapeHtml(stash.selector) + '</span><span class="stashListMessage">' + escapeHtml(stash.message) + '</span><span class="stashListDate">' + escapeHtml(formatRelativeDate(stash.date)) + '</span>',
+			visible: true,
+			onClick: () => {
+				const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(stash.hash));
+				if (elem !== null) {
+					this.scrollToCommit(stash.hash, true, true);
+					if (!this.isCdvOpen(stash.hash, null)) this.loadCommitDetails(elem);
+				} else {
+					dialog.showMessage(t('The stash <b><i>{0}</i></b> isn\'t in the commits that are currently shown. Load more commits (or clear the search) to view it.', escapeHtml(stash.selector)));
+				}
+			}
+		}))], false, null, position, document.body, null, 'stashList');
+	}
+
+	/**
+	 * Pull the upstream branch of the current branch into the current branch.
+	 */
+	private pullUpstreamAction() {
+		const branchHead = this.gitBranchHead;
+		if (branchHead === null || typeof this.gitUpstreams[branchHead] === 'undefined' || this.gitUpstreams[branchHead].gone) return;
+		const upstream = this.gitUpstreams[branchHead].name;
+		const remote = this.gitRemotes.filter((remote) => upstream.startsWith(remote + '/')).sort((a, b) => b.length - a.length)[0];
+		if (typeof remote === 'undefined') return;
+		this.pullBranchAction(upstream, remote, upstream.substring(remote.length + 1), null);
+	}
+
 	public renderRefreshButton() {
 		const enabled = !this.currentRepoRefreshState.inProgress;
 		this.refreshBtnElem.title = enabled ? t('Refresh') : t('Refreshing');
@@ -1160,46 +1302,7 @@ class GitGraphView {
 			}, {
 				title: t('Push Branch') + ELLIPSIS,
 				visible: visibility.push && this.gitRemotes.length > 0,
-				onClick: () => {
-					const multipleRemotes = this.gitRemotes.length > 1;
-					const inputs: DialogInput[] = [
-						{ type: DialogInputType.Checkbox, name: t('Set Upstream'), value: true },
-						{
-							type: DialogInputType.Radio,
-							name: t('Push Mode'),
-							options: [
-								{ name: t('Normal'), value: GG.GitPushBranchMode.Normal },
-								{ name: t('Force With Lease'), value: GG.GitPushBranchMode.ForceWithLease },
-								{ name: t('Force'), value: GG.GitPushBranchMode.Force }
-							],
-							default: GG.GitPushBranchMode.Normal
-						}
-					];
-
-					if (multipleRemotes) {
-						inputs.unshift({
-							type: DialogInputType.Select,
-							name: t('Push to Remote(s)'),
-							defaults: [this.getPushRemote(refName)],
-							options: this.gitRemotes.map((remote) => ({ name: remote, value: remote })),
-							multiple: true
-						});
-					}
-
-					dialog.showForm(t('Are you sure you want to push the branch <b><i>{0}</i></b>{1}?', escapeHtml(refName), (multipleRemotes ? '' : t(' to the remote <b><i>{0}</i></b>', escapeHtml(this.gitRemotes[0])))), inputs, t('Yes, push'), (values) => {
-						const remotes = multipleRemotes ? <string[]>values.shift() : [this.gitRemotes[0]];
-						const setUpstream = <boolean>values[0];
-						runAction({
-							command: 'pushBranch',
-							repo: this.currentRepo,
-							branchName: refName,
-							remotes: remotes,
-							setUpstream: setUpstream,
-							mode: <GG.GitPushBranchMode>values[1],
-							willUpdateBranchConfig: setUpstream && remotes.length > 0 && (this.gitConfig === null || typeof this.gitConfig.branches[refName] === 'undefined' || this.gitConfig.branches[refName].remote !== remotes[remotes.length - 1])
-						}, t('Pushing Branch'));
-					}, target);
-				}
+				onClick: () => this.pushBranchAction(refName, target)
 			}
 		], [
 			this.getViewIssueAction(refName, visibility.viewIssue, target),
@@ -1421,14 +1524,7 @@ class GitGraphView {
 			}, {
 				title: t('Pull into current branch') + ELLIPSIS,
 				visible: visibility.pull && remote !== '',
-				onClick: () => {
-					dialog.showForm(t('Are you sure you want to pull the remote branch <b><i>{0}</i></b> into {1}? If a merge is required:', escapeHtml(refName), (this.gitBranchHead !== null ? t('<b><i>{0}</i></b> (the current branch)', escapeHtml(this.gitBranchHead)) : t('the current branch'))), [
-						{ type: DialogInputType.Checkbox, name: t('Create a new commit even if fast-forward is possible'), value: this.config.dialogDefaults.pullBranch.noFastForward },
-						{ type: DialogInputType.Checkbox, name: t('Squash Commits'), value: this.config.dialogDefaults.pullBranch.squash, info: t('Create a single commit on the current branch whose effect is the same as merging this remote branch.') }
-					], t('Yes, pull'), (values) => {
-						runAction({ command: 'pullBranch', repo: this.currentRepo, branchName: branchName, remote: remote, createNewCommit: <boolean>values[0], squash: <boolean>values[1] }, t('Pulling Branch'));
-					}, target);
-				}
+				onClick: () => this.pullBranchAction(refName, remote, branchName, target)
 			}
 		], [
 			this.getViewIssueAction(refName, visibility.viewIssue, target),
@@ -1816,6 +1912,68 @@ class GitGraphView {
 
 	private deleteTagAction(refName: string, deleteOnRemote: string | null) {
 		runAction({ command: 'deleteTag', repo: this.currentRepo, tagName: refName, deleteOnRemote: deleteOnRemote }, t('Deleting Tag'));
+	}
+
+	/**
+	 * Show the dialog to push a branch to the remote(s).
+	 * @param refName The name of the branch.
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private pushBranchAction(refName: string, target: DialogTarget | null) {
+		const multipleRemotes = this.gitRemotes.length > 1;
+		const inputs: DialogInput[] = [
+			{ type: DialogInputType.Checkbox, name: t('Set Upstream'), value: true },
+			{
+				type: DialogInputType.Radio,
+				name: t('Push Mode'),
+				options: [
+					{ name: t('Normal'), value: GG.GitPushBranchMode.Normal },
+					{ name: t('Force With Lease'), value: GG.GitPushBranchMode.ForceWithLease },
+					{ name: t('Force'), value: GG.GitPushBranchMode.Force }
+				],
+				default: GG.GitPushBranchMode.Normal
+			}
+		];
+
+		if (multipleRemotes) {
+			inputs.unshift({
+				type: DialogInputType.Select,
+				name: t('Push to Remote(s)'),
+				defaults: [this.getPushRemote(refName)],
+				options: this.gitRemotes.map((remote) => ({ name: remote, value: remote })),
+				multiple: true
+			});
+		}
+
+		dialog.showForm(t('Are you sure you want to push the branch <b><i>{0}</i></b>{1}?', escapeHtml(refName), (multipleRemotes ? '' : t(' to the remote <b><i>{0}</i></b>', escapeHtml(this.gitRemotes[0])))), inputs, t('Yes, push'), (values) => {
+			const remotes = multipleRemotes ? <string[]>values.shift() : [this.gitRemotes[0]];
+			const setUpstream = <boolean>values[0];
+			runAction({
+				command: 'pushBranch',
+				repo: this.currentRepo,
+				branchName: refName,
+				remotes: remotes,
+				setUpstream: setUpstream,
+				mode: <GG.GitPushBranchMode>values[1],
+				willUpdateBranchConfig: setUpstream && remotes.length > 0 && (this.gitConfig === null || typeof this.gitConfig.branches[refName] === 'undefined' || this.gitConfig.branches[refName].remote !== remotes[remotes.length - 1])
+			}, t('Pushing Branch'));
+		}, target);
+	}
+
+	/**
+	 * Show the dialog to pull a remote branch into the current branch.
+	 * @param refName The name of the remote branch (including the name of the remote).
+	 * @param remote The name of the remote.
+	 * @param branchName The name of the branch on the remote.
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private pullBranchAction(refName: string, remote: string, branchName: string, target: DialogTarget | null) {
+		dialog.showForm(t('Are you sure you want to pull the remote branch <b><i>{0}</i></b> into {1}? If a merge is required:', escapeHtml(refName), (this.gitBranchHead !== null ? t('<b><i>{0}</i></b> (the current branch)', escapeHtml(this.gitBranchHead)) : t('the current branch'))), [
+			{ type: DialogInputType.Checkbox, name: t('Create a new commit even if fast-forward is possible'), value: this.config.dialogDefaults.pullBranch.noFastForward },
+			{ type: DialogInputType.Checkbox, name: t('Squash Commits'), value: this.config.dialogDefaults.pullBranch.squash, info: t('Create a single commit on the current branch whose effect is the same as merging this remote branch.') }
+		], t('Yes, pull'), (values) => {
+			runAction({ command: 'pullBranch', repo: this.currentRepo, branchName: branchName, remote: remote, createNewCommit: <boolean>values[0], squash: <boolean>values[1] }, t('Pulling Branch'));
+		}, target);
 	}
 
 	private fetchFromRemotesAction() {
@@ -3812,6 +3970,9 @@ window.addEventListener('load', () => {
 			case 'loadRepos':
 				gitGraph.loadRepos(msg.repos, msg.lastActiveRepo, msg.loadViewTo);
 				break;
+			case 'searchCommits':
+				gitGraph.processSearchCommitsResponse(msg);
+				break;
 			case 'merge':
 				refreshOrDisplayError(msg.error, t('Unable to Merge {0}', t(msg.actionOn)));
 				break;
@@ -4030,6 +4191,37 @@ window.addEventListener('load', () => {
 
 
 /* File Tree Methods (for the Commit Details & Comparison Views) */
+
+/**
+ * Get the commits that match a filter, with their parents rewritten to be their nearest ancestors that also match (as Git does when it
+ * simplifies the history of a path), so that the graph of the matching commits remains connected.
+ * @param commits The commits, ordered so that each commit is before its parents (as they're returned by Git).
+ * @param filter The hashes of the commits that match.
+ * @returns The matching commits.
+ */
+function filterCommits(commits: ReadonlyArray<GG.GitCommit>, filter: ReadonlySet<string>) {
+	const lookup: { [hash: string]: number } = {}, nearestMatches: { [hash: string]: string[] } = {}, filtered: GG.GitCommit[] = [];
+	commits.forEach((commit, index) => lookup[commit.hash] = index);
+	const rewriteParents = (parents: ReadonlyArray<string>) => {
+		const rewritten: string[] = [];
+		parents.forEach((parent) => {
+			// Parents that aren't loaded are kept, as the graph continues below the loaded commits
+			(filter.has(parent) || typeof lookup[parent] !== 'number' ? [parent] : nearestMatches[parent] || []).forEach((hash) => {
+				if (!rewritten.includes(hash)) rewritten.push(hash);
+			});
+		});
+		return rewritten;
+	};
+	for (let i = commits.length - 1; i >= 0; i--) {
+		const commit = commits[i];
+		if (filter.has(commit.hash)) {
+			filtered.push(Object.assign({}, commit, { parents: rewriteParents(commit.parents) }));
+		} else {
+			nearestMatches[commit.hash] = rewriteParents(commit.parents);
+		}
+	}
+	return filtered.reverse();
+}
 
 function generateFileViewHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG.GitFileChange>, lastViewedFile: string | null, fileContextMenuOpen: number, type: GG.FileViewType, isUncommitted: boolean) {
 	fileViewMaxLinesChanged = gitFiles.reduce((max, file) => Math.max(max, (file.additions || 0) + (file.deletions || 0)), 1);

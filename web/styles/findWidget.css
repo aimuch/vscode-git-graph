@@ -1,84 +1,143 @@
 .findWidget{
-	display:block;
-	position:fixed;
-	top:-42px;
-	right:28px;
-	height:34px;
-	padding:0 10px;
-	z-index:21;
-	background-color:var(--vscode-editorWidget-background);
-	border:1px solid var(--vscode-widget-border, transparent);
-	border-top:none;
-	border-radius:0 0 8px 8px;
-	box-shadow:0 4px 12px var(--vscode-widget-shadow);
-	line-height:34px;
-	font-size:13px;
-	color:var(--vscode-editorSuggestWidget-foreground);
-	fill:var(--vscode-editorSuggestWidget-foreground);
+	display:flex;
+	align-items:center;
+	gap:6px;
+	flex:1 1 260px;
+	min-width:200px;
+	max-width:420px;
+	position:relative;
+	box-sizing:border-box;
+	height:28px;
+	padding:0 6px 0 8px;
+	border:1px solid var(--vscode-input-border, var(--vscode-dropdown-border, rgba(128,128,128,0.45)));
+	border-radius:6px;
+	background-color:var(--vscode-input-background);
+	color:var(--vscode-input-foreground);
+	fill:var(--vscode-input-foreground);
 	fill-opacity:0.7;
+	font-size:13px;
 	white-space:nowrap;
 }
-.findWidget.active{
-	top:0;
+.findWidget:focus-within, .findWidget.active{
+	border-color:var(--vscode-focusBorder);
 }
-.findWidget.transition{
-	transition:top .2s linear;
-}
-.findWidget[data-error] #findInput, .findWidget[data-error]:after{
-	outline:1px solid var(--vscode-inputValidation-errorBorder) !important;
+.findWidget[data-error]{
+	border-color:var(--vscode-inputValidation-errorBorder);
 }
 .findWidget[data-error]:after{
 	content:attr(data-error);
-	position:relative;
-	display:block;
-	top:-5px;
+	position:absolute;
+	top:calc(100% + 4px);
 	left:0;
-	width:201px;
-	padding:5px;
+	right:0;
+	z-index:21;
+	padding:5px 8px;
+	border:1px solid var(--vscode-inputValidation-errorBorder);
+	border-radius:4px;
+	background-color:var(--vscode-inputValidation-errorBackground, var(--vscode-editorWidget-background));
 	font-size:12px;
 	line-height:16px;
-	background-color:var(--vscode-inputValidation-errorBackground);
-	outline-offset:-1px !important;
 	white-space:normal;
 }
 
-#findInput{
-	display:inline-block;
-	vertical-align:top;
-	margin-top:4px;
-	padding:5px 47px 5px 7px;
-	border:0;
-	border-radius:4px;
+#findBtn{
+	position:relative;
+	flex:0 0 auto;
+	width:16px;
 	height:16px;
-	width:159px;
-	background-color:var(--vscode-input-background);
-	color:var(--vscode-input-foreground);
-	font-size:13px;
-	outline-offset:-1px !important;
+	cursor:pointer;
 }
-#findInput:focus{
-	outline:1px solid var(--vscode-focusBorder);
+#findBtn svg{
+	position:absolute;
+	left:1px;
+	top:1px;
+	width:14px !important;
+	height:14px !important;
+}
+
+#findChips{
+	display:flex;
+	flex:0 1 auto;
+	gap:4px;
+	min-width:0;
+	overflow:hidden;
+}
+#findChips:empty{
+	display:none;
+}
+.findChip{
+	display:inline-flex;
+	align-items:center;
+	flex:0 1 auto;
+	min-width:0;
+	height:20px;
+	padding:0 2px 0 6px;
+	border-radius:4px;
+	background-color:color-mix(in srgb, var(--git-graph-findMatch, #e2b93d) 40%, transparent);
+	font-family:var(--vscode-editor-font-family);
+	font-size:11.5px;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
+.findChip.operator{
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 22%, transparent);
+}
+.findChipRemove{
+	position:relative;
+	flex:0 0 auto;
+	width:14px;
+	height:14px;
+	margin-left:2px;
+	border-radius:3px;
+	cursor:pointer;
+	opacity:0.6;
+}
+.findChipRemove:hover{
+	opacity:1;
+	background-color:rgba(128,128,128,0.25);
+}
+.findChipRemove svg{
+	position:absolute;
+	left:1px;
+	top:1px;
+	width:12px !important;
+	height:12px !important;
+}
+
+#findInput{
+	flex:1 1 auto;
+	min-width:40px;
+	height:24px;
+	padding:0;
+	border:0;
+	background-color:transparent;
+	color:var(--vscode-input-foreground);
+	font-family:inherit;
+	font-size:13px;
+	outline:none !important;
 }
 #findInput::placeholder{
 	color:var(--vscode-input-placeholderForeground);
 }
 
 .findModifier{
-	display:block;
-	position:absolute;
-	top:7px;
-	height:20px;
+	flex:0 0 auto;
 	width:20px;
+	height:20px;
+	border-radius:3px;
 	line-height:20px;
 	font-size:11px;
+	text-align:center;
 	cursor:pointer;
 	-webkit-user-select:none;
 	user-select:none;
-	text-align:center;
 	color:var(--vscode-input-foreground);
 	opacity:0.7;
 }
-.findModifier.active, #findOpenCdv.active{
+#findRegex{
+	font-size:12px;
+}
+.findModifier.active, #findOpenCdv.active, .findMode.active{
 	outline:1px solid var(--vscode-inputOption-activeBorder);
 	outline-offset:-1px;
 	background-color:var(--vscode-inputOption-activeBackground);
@@ -86,35 +145,22 @@
 .findModifier:hover, .findModifier.active{
 	opacity:1;
 }
-#findCaseSensitive{
-	left:176px;
-}
-#findRegex{
-	left:198px;
-	font-size:12px;
-}
 
-#findPosition, #findPrev, #findNext, #findOpenCdv, #findClose{
-	display:inline-block;
-	-webkit-user-select:none;
-	user-select:none;
-}
-#findPosition{
-	min-width:75px;
-	margin-left:10px;
-}
-#findPrev, #findNext, #findOpenCdv, #findClose{
+#findClose{
+	display:none;
 	position:relative;
+	flex:0 0 auto;
 	width:20px;
 	height:20px;
-	vertical-align:top;
-	margin:7px 0 0 6px;
+	border-radius:3px;
 	cursor:pointer;
 }
-#findPrev svg, #findNext svg, #findOpenCdv svg{
-	position:absolute;
-	left:3px;
-	top:3px;
+.findWidget.active #findClose{
+	display:block;
+}
+#findClose:hover, #findPrev:hover, #findNext:hover, #findOpenCdv:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+	fill-opacity:1;
 }
 #findClose svg{
 	position:absolute;
@@ -123,12 +169,118 @@
 	width:16px !important;
 	height:16px !important;
 }
-#findPrev:hover, #findNext:hover, #findOpenCdv:hover, #findOpenCdv.active, #findClose:hover{
-	fill-opacity:1;
+
+/* The bar of the results of the search (below the search box in the control bar) */
+#findResults{
+	display:none;
+	flex:1 0 100%;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:6px 8px;
+	box-sizing:border-box;
+	margin:0 -12px;
+	padding:6px 12px 0;
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	font-size:12px;
+	fill:var(--vscode-foreground);
+	fill-opacity:0.8;
+}
+#findResults.active{
+	display:flex;
+}
+#findCount{
+	font-weight:600;
+	color:var(--git-graph-findMatchText, var(--vscode-editorWarning-foreground, #cca700));
+}
+#findCount.noMatches{
+	color:var(--vscode-descriptionForeground);
+}
+#findPosition{
+	color:var(--vscode-descriptionForeground);
+}
+#findPosition:empty{
+	display:none;
+}
+#findPrev, #findNext, #findOpenCdv{
+	position:relative;
+	width:24px;
+	height:22px;
+	border-radius:4px;
+	cursor:pointer;
+}
+#findPrev svg, #findNext svg, #findOpenCdv svg{
+	position:absolute;
+	left:5px;
+	top:4px;
+	width:14px !important;
+	height:14px !important;
 }
 #findPrev.disabled, #findNext.disabled{
 	fill-opacity:0.3;
 	cursor:default;
+}
+#findPrev.disabled:hover, #findNext.disabled:hover{
+	background-color:transparent;
+}
+#findModes{
+	display:inline-flex;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:6px;
+	overflow:hidden;
+}
+.findMode{
+	height:22px;
+	padding:0 10px;
+	line-height:22px;
+	cursor:pointer;
+}
+.findMode + .findMode{
+	border-left:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+}
+.findMode:not(.active):hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+.findMode.active{
+	outline:none;
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 25%, transparent);
+}
+.findResultsSpacer{
+	flex:1 1 16px;
+}
+.findSyntaxLabel{
+	color:var(--vscode-descriptionForeground);
+}
+.findOperator{
+	display:inline-flex;
+	align-items:center;
+	gap:4px;
+	height:22px;
+	padding:0 7px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:4px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.12));
+	font-family:var(--vscode-editor-font-family);
+	font-size:11.5px;
+	cursor:pointer;
+}
+.findOperator:hover{
+	border-color:var(--vscode-focusBorder);
+}
+.findOperator > span{
+	color:var(--vscode-descriptionForeground);
+}
+#findClear{
+	height:22px;
+	padding:0 8px;
+	border-radius:4px;
+	line-height:22px;
+	color:var(--vscode-descriptionForeground);
+	cursor:pointer;
+}
+#findClear:hover{
+	color:var(--vscode-foreground);
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
 }
 
 .findMatch{
@@ -138,11 +290,4 @@
 }
 body.vscode-high-contrast .findMatch{
 	outline-style:dotted;
-}
-
-body.cdvDockedRight .findWidget{
-	right:calc(var(--git-graph-cdvWidth, 0px) + 20px);
-}
-.findWidget:not(.active){
-	box-shadow:none;
 }

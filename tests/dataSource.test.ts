@@ -188,6 +188,7 @@ describe('DataSource', () => {
 						untrackedFilesHash: '9d81ce0a6cf64b6651bacd7a6c3a6ca90fd63235'
 					}
 				],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-a', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -214,6 +215,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -246,6 +248,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -278,6 +281,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -310,6 +314,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -342,6 +347,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -366,11 +372,12 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-a', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['remote'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(spyOnSpawn).toHaveBeenCalledTimes(2);
+			expect(spyOnSpawn).toHaveBeenCalledTimes(3);
 		});
 
 		it('Should return the repository info (hidden remote and an invalid branch)', async () => {
@@ -395,6 +402,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-a', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -424,6 +432,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['branch', '-a', '--no-color'], expect.objectContaining({ cwd: '/path/to/repo' }));
@@ -447,6 +456,7 @@ describe('DataSource', () => {
 				head: null,
 				remotes: [],
 				stashes: [],
+				upstreams: {},
 				error: 'error message'
 			});
 		});
@@ -470,6 +480,7 @@ describe('DataSource', () => {
 				head: null,
 				remotes: [],
 				stashes: [],
+				upstreams: {},
 				error: 'error message'
 			});
 		});
@@ -493,6 +504,7 @@ describe('DataSource', () => {
 				head: 'develop',
 				remotes: ['origin'],
 				stashes: [],
+				upstreams: {},
 				error: null
 			});
 		});

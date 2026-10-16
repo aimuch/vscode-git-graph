@@ -37,7 +37,7 @@
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
-				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: [], isRepo: true, error: null };
+				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: [], upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
 			case 'loadCommits':
 				// HEAD is the 20th commit, which isn't included in the first load of 10 commits
 				return msg.maxCommits <= 10
@@ -67,6 +67,9 @@
 						]
 					}
 				};
+			case 'searchCommits':
+				// The commits that change a file whose path contains "README" are the even commits
+				return { command: 'searchCommits', id: msg.id, error: null, hashes: msg.files.some((file) => 'readme.md'.includes(file.toLowerCase())) ? makeCommits(25).filter((_, i) => i % 2 === 0).map((commit) => commit.hash) : [] };
 			case 'openExternalUrl':
 			case 'setGlobalViewState':
 			case 'setWorkspaceViewState':
@@ -144,8 +147,9 @@
 
 		await check('l10n-view', 'The control bar, column headers, dates & tooltips are displayed in Simplified Chinese', async () => {
 			assert(document.documentElement.lang === 'zh-CN', 'Unexpected lang: ' + document.documentElement.lang);
-			const controls = document.getElementById('controls').textContent;
-			['仓库：', '分支：', '作者：', '显示远程分支'].forEach((text) => assert(controls.includes(text), 'The control bar doesn\'t include "' + text + '": ' + controls));
+			const controls = document.getElementById('controls').textContent, labels = Array.from(document.querySelectorAll('#controls .dropdownLabel')).map((elem) => elem.textContent);
+			assert(JSON.stringify(labels) === JSON.stringify(['仓库', '分支', '作者']), 'Unexpected dropdown labels: ' + JSON.stringify(labels));
+			['显示远程分支', '提取', '拉取', '推送'].forEach((text) => assert(controls.includes(text), 'The control bar doesn\'t include "' + text + '": ' + controls));
 			const headers = Array.from(document.querySelectorAll('#tableColHeaders th')).map((elem) => elem.textContent.trim());
 			assert(JSON.stringify(headers) === JSON.stringify(['图形', '说明', '日期', '作者', '提交']), 'Unexpected column headers: ' + JSON.stringify(headers));
 			const date = commitRow(0).querySelector('.dateCol');
@@ -306,14 +310,28 @@
 			const controls = document.getElementById('controls');
 			assert(getComputedStyle(controls).position === 'sticky', 'The controls aren\'t sticky: ' + getComputedStyle(controls).position);
 			const labels = Array.from(document.querySelectorAll('#controls .dropdownLabel')).map((elem) => elem.textContent);
-			assert(labels.includes('Branches:') && labels.includes('Authors:'), 'Unexpected dropdown labels: ' + JSON.stringify(labels));
+			assert(JSON.stringify(labels) === JSON.stringify(['Repo', 'Branches', 'Authors']), 'Unexpected dropdown labels: ' + JSON.stringify(labels));
 			const headBtn = document.getElementById('scrollToHeadBtn');
-			assert(headBtn !== null && headBtn.querySelector('svg') !== null && headBtn.getAttribute('title') === 'Scroll to HEAD', 'The Jump to HEAD button is missing');
+			assert(headBtn !== null && headBtn.querySelector('svg') !== null && headBtn.getAttribute('title') === 'Scroll to HEAD' && headBtn.textContent === 'HEAD', 'The Jump to HEAD button is missing');
+
+			// The Pull & Push buttons show how many commits the current branch (main) is behind / ahead of its upstream (origin/main)
+			const pullBtn = document.getElementById('pullBtn'), pushBtn = document.getElementById('pushBtn');
+			assert(pullBtn.textContent === 'Pull1' && pushBtn.textContent === 'Push2' && pushBtn.classList.contains('pending'), 'Unexpected sync buttons: ' + pullBtn.textContent + ' / ' + pushBtn.textContent);
+			mouse(pushBtn, 'click');
+			const pushDialog = await waitFor('the Push Branch dialog', () => document.querySelector('.dialog'));
+			assert(pushDialog.textContent.includes('push the branch main'), 'Unexpected Push dialog: ' + pushDialog.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+			mouse(pullBtn, 'click');
+			const pullDialog = await waitFor('the Pull dialog', () => document.querySelector('.dialog'));
+			assert(pullDialog.textContent.includes('pull the remote branch origin/main into main'), 'Unexpected Pull dialog: ' + pullDialog.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
 			mouse(document.querySelector('#branchDropdown .dropdownLabel'), 'click');
 			await waitFor('the Branches dropdown to open when its label is clicked', () => document.getElementById('branchDropdown').classList.contains('dropdownOpen'));
 			mouse(controls, 'click');
 			await waitFor('the Branches dropdown to close', () => !document.getElementById('branchDropdown').classList.contains('dropdownOpen'));
-			return 'Labels: ' + labels.join(', ');
+			return 'Labels: ' + labels.join(', ') + '; sync: ' + pullBtn.textContent + ', ' + pushBtn.textContent;
 		});
 
 		await check('ui-cdv', '[Redesign] The Commit Details View is docked to the right, with buttons for the most common commit actions', async () => {
@@ -530,6 +548,36 @@
 			mouse(document.getElementById('findClose'), 'click');
 			await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
 			return JSON.stringify(results) + (view.scrollHeight > view.clientHeight ? ', scrollbar markers shown' : ', the view isn\'t scrollable (no scrollbar markers)');
+		});
+
+		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {
+			const rows = () => document.querySelectorAll('#commitTable tr.commit').length, total = rows(), fixture = makeCommits(total);
+			const countText = (count) => count !== 1 ? count + ' commits match' : '1 commit matches';
+			const input = document.getElementById('findInput');
+			input.focus();
+			input.value = 'author:"Second Author"';
+			key(input, 'Enter');
+			assert(document.querySelectorAll('#findChips .findChip').length === 1 && input.value === '', 'The condition wasn\'t added as a chip');
+			const expected = fixture.filter((commit) => commit.author === 'Second Author').length;
+			await waitFor('the matches to be counted', () => document.getElementById('findCount').textContent === countText(expected));
+
+			mouse(document.querySelector('.findMode[data-mode="filter"]'), 'click');
+			await waitFor('only the matching commits to be shown', () => rows() === expected);
+			const columns = new Set(Array.from(document.querySelectorAll('#commitGraph svg circle')).map((circle) => circle.getAttribute('cx')));
+			assert(columns.size === 1, 'The graph of the matching commits isn\'t connected (' + columns.size + ' columns)');
+
+			input.value = '?:README';
+			input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'E' }));
+			const search = await waitFor('the files changed by the commits to be searched', () => requestsOf('searchCommits').pop());
+			assert(JSON.stringify(search.files) === JSON.stringify(['README']) && search.changes.length === 0, 'Unexpected search: ' + JSON.stringify(search));
+			const both = fixture.filter((commit, i) => commit.author === 'Second Author' && i % 2 === 0).length;
+			await waitFor('the commits matching both conditions to be shown', () => rows() === both && document.getElementById('findCount').textContent === countText(both))
+				.catch((err) => { throw new Error(err.message + ' (' + rows() + ' rows, "' + document.getElementById('findCount').textContent + '", expected ' + both + ')'); });
+
+			mouse(document.getElementById('findClear'), 'click');
+			await waitFor('all of the commits to be shown again', () => rows() === total && !document.querySelector('.findWidget').classList.contains('active'));
+			assert(document.querySelectorAll('#findChips .findChip').length === 0, 'The chips weren\'t cleared');
+			return expected + ' commit(s) by Second Author (' + columns.size + ' graph column), ' + both + ' also changing README, of ' + total;
 		});
 	};
 

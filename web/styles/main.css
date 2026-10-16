@@ -1325,9 +1325,6 @@ body.tagLabelsRightAligned .gitRef.tag{
 	align-items:center;
 	white-space:nowrap;
 }
-#controls.singleRepo #repoControl{
-	display:none;
-}
 #showRemoteBranchesControl{
 	display:inline-flex;
 	align-items:center;
@@ -1346,8 +1343,119 @@ body.tagLabelsRightAligned .gitRef.tag{
 #authorDropdown .dropdownCurrentValue{
 	max-width:20vw;
 }
-#controls.singleRepo .dropdownCurrentValue{
-	max-width:40vw;
+#repoDropdown .dropdownValue{
+	font-weight:600;
+}
+.dropdownCurrentValue .toolbarIcon{
+	margin-right:6px;
+	vertical-align:-2px;
+	opacity:0.85;
+}
+#controlsSpacer{
+	flex:1 1 24px;
+}
+
+/* Pill buttons in the control bar (Stashes, HEAD) */
+.controlPill, .syncBtn{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+	flex:0 0 auto;
+	box-sizing:border-box;
+	height:28px;
+	padding:0 10px;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:6px;
+	background-color:var(--vscode-dropdown-background, rgba(128,128,128,0.1));
+	color:var(--vscode-dropdown-foreground, inherit);
+	white-space:nowrap;
+	cursor:pointer;
+}
+.controlPill:hover{
+	border-color:var(--vscode-focusBorder);
+}
+.controlPill.hidden{
+	display:none;
+}
+.controlPill .pillLabel{
+	color:var(--vscode-descriptionForeground);
+}
+.controlPill .pillValue{
+	font-weight:600;
+}
+.toolbarIcon{
+	flex:0 0 auto;
+	fill:none !important;
+	stroke:currentColor;
+}
+.toolbarIcon.chevron{
+	opacity:0.75;
+}
+
+/* Fetch, Pull & Push buttons */
+#syncControl{
+	display:none;
+	flex:0 0 auto;
+	height:28px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:6px;
+	background-color:var(--vscode-dropdown-background, rgba(128,128,128,0.1));
+	overflow:hidden;
+}
+#controls.fetchSupported #syncControl{
+	display:inline-flex;
+}
+.syncBtn{
+	gap:5px;
+	height:100%;
+	padding:0 9px;
+	border:0;
+	border-radius:0;
+	background-color:transparent;
+}
+.syncBtn + .syncBtn{
+	border-left:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+}
+.syncBtn:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+.syncBtn.disabled{
+	opacity:0.5;
+	cursor:default;
+}
+.syncBtn.disabled:hover{
+	background-color:transparent;
+}
+#pushBtn.pending{
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 20%, transparent);
+}
+.syncCount{
+	font-weight:700;
+}
+
+/* The list of stashes (shown by the Stashes button) */
+.contextMenu.stashList{
+	max-width:min(560px, calc(100vw - 24px));
+}
+.contextMenu.stashList .contextMenuItem{
+	display:flex;
+	gap:10px;
+}
+.stashListSelector{
+	flex:0 0 auto;
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
+}
+.stashListMessage{
+	flex:1 1 auto;
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
+.stashListDate{
+	flex:0 0 auto;
+	opacity:0.7;
 }
 
 .controlBtn{
@@ -1362,15 +1470,6 @@ body.tagLabelsRightAligned .gitRef.tag{
 }
 .controlBtn:hover{
 	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
-}
-#findBtn{
-	margin-left:auto;
-}
-#fetchBtn{
-	display:none;
-}
-#controls.fetchSupported #fetchBtn{
-	display:block;
 }
 #refreshBtn.refreshing{
 	cursor:default;

@@ -124,6 +124,20 @@ export const enum GitResetMode {
 	Hard = 'hard'
 }
 
+/**
+ * The upstream (remote-tracking) branch of a local branch, and how many commits the local branch is ahead / behind it.
+ */
+export interface GitBranchUpstream {
+	readonly name: string;
+	readonly ahead: number;
+	readonly behind: number;
+	readonly gone: boolean;
+}
+
+export interface GitBranchUpstreams {
+	readonly [branchName: string]: GitBranchUpstream;
+}
+
 export interface GitStash {
 	readonly hash: string;
 	readonly baseHash: string;
@@ -967,8 +981,24 @@ export interface ResponseLoadRepoInfo extends ResponseWithErrorInfo {
 	readonly branches: ReadonlyArray<string>;
 	readonly head: string | null;
 	readonly remotes: ReadonlyArray<string>;
+	readonly upstreams: GitBranchUpstreams;
 	readonly stashes: ReadonlyArray<GitStash>;
 	readonly isRepo: boolean;
+}
+
+export interface RequestSearchCommits extends RepoRequest {
+	readonly command: 'searchCommits';
+	readonly id: number;
+	readonly files: ReadonlyArray<string>;
+	readonly changes: ReadonlyArray<string>;
+	readonly isRegex: boolean;
+	readonly isCaseSensitive: boolean;
+	readonly since: number;
+}
+export interface ResponseSearchCommits extends ResponseWithErrorInfo {
+	readonly command: 'searchCommits';
+	readonly id: number;
+	readonly hashes: ReadonlyArray<string>;
 }
 
 export interface RequestLoadRepos extends BaseMessage {
@@ -1334,6 +1364,7 @@ export type RequestMessage =
 	| RequestRebase
 	| RequestRenameBranch
 	| RequestRescanForRepos
+	| RequestSearchCommits
 	| RequestResetFileToRevision
 	| RequestResetToCommit
 	| RequestRevertCommit
@@ -1400,6 +1431,7 @@ export type ResponseMessage =
 	| ResponseRenameBranch
 	| ResponseResetFileToRevision
 	| ResponseResetToCommit
+	| ResponseSearchCommits
 	| ResponseRevertCommit
 	| ResponseSetGlobalViewState
 	| ResponseSetWorkspaceViewState

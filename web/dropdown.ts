@@ -11,6 +11,7 @@ class Dropdown {
 	private readonly showInfo: boolean;
 	private readonly multipleAllowed: boolean;
 	private readonly label: string;
+	private readonly icon: string;
 	private readonly changeCallback: (values: string[]) => void;
 
 	private options: ReadonlyArray<DropdownOption> = [];
@@ -42,6 +43,7 @@ class Dropdown {
 		this.changeCallback = changeCallback;
 		this.elem = document.getElementById(id)!;
 		this.label = this.elem.dataset.label || '';
+		this.icon = (<{ [name: string]: string }>SVG_ICONS)[this.elem.dataset.icon || ''] || '';
 
 		this.menuElem = document.createElement('div');
 		this.menuElem.className = 'dropdownMenu';
@@ -221,7 +223,7 @@ class Dropdown {
 
 		const curValueText = formatCommaSeparatedList(this.getSelectedOptions(true));
 		this.currentValueElem.title = curValueText;
-		this.currentValueElem.innerHTML = (this.label !== '' ? '<span class="dropdownLabel">' + escapeHtml(this.label) + '</span>' : '') + '<span class="dropdownValue">' + escapeHtml(curValueText) + '</span>';
+		this.currentValueElem.innerHTML = this.icon + (this.label !== '' ? '<span class="dropdownLabel">' + escapeHtml(this.label) + '</span>' : '') + '<span class="dropdownValue">' + escapeHtml(curValueText) + '</span>';
 		alterClass(this.elem, 'filtered', this.multipleAllowed && this.optionsSelected.length > 0 && !this.optionsSelected[0]);
 
 		let html = '';

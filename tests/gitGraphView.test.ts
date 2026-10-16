@@ -2322,7 +2322,7 @@ describe('GitGraphView', () => {
 					branches: ['master'],
 					head: 'master',
 					remotes: ['origin', 'upstream'],
-					stashes: [],
+					stashes: [], upstreams: {},
 					error: null
 				};
 				const spyOnGetRepoInfo = jest.spyOn(dataSource, 'getRepoInfo');
@@ -2357,6 +2357,7 @@ describe('GitGraphView', () => {
 							head: getRepoInfoResolvedValue.head,
 							remotes: getRepoInfoResolvedValue.remotes,
 							stashes: getRepoInfoResolvedValue.stashes,
+							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
 							error: getRepoInfoResolvedValue.error
 						}
@@ -2372,7 +2373,7 @@ describe('GitGraphView', () => {
 					branches: ['master'],
 					head: 'master',
 					remotes: ['origin', 'upstream'],
-					stashes: [],
+					stashes: [], upstreams: {},
 					error: null
 				};
 				const spyOnGetRepoInfo = jest.spyOn(dataSource, 'getRepoInfo');
@@ -2406,6 +2407,7 @@ describe('GitGraphView', () => {
 							head: getRepoInfoResolvedValue.head,
 							remotes: getRepoInfoResolvedValue.remotes,
 							stashes: getRepoInfoResolvedValue.stashes,
+							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
 							error: getRepoInfoResolvedValue.error
 						}
@@ -2421,7 +2423,7 @@ describe('GitGraphView', () => {
 					branches: ['master'],
 					head: 'master',
 					remotes: ['origin', 'upstream'],
-					stashes: [],
+					stashes: [], upstreams: {},
 					error: 'error message'
 				};
 				const spyOnGetRepoInfo = jest.spyOn(dataSource, 'getRepoInfo');
@@ -2456,6 +2458,7 @@ describe('GitGraphView', () => {
 							head: getRepoInfoResolvedValue.head,
 							remotes: getRepoInfoResolvedValue.remotes,
 							stashes: getRepoInfoResolvedValue.stashes,
+							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
 							error: getRepoInfoResolvedValue.error
 						}
@@ -2471,7 +2474,7 @@ describe('GitGraphView', () => {
 					branches: ['master'],
 					head: 'master',
 					remotes: ['origin', 'upstream'],
-					stashes: [],
+					stashes: [], upstreams: {},
 					error: 'error message'
 				};
 				const spyOnGetRepoInfo = jest.spyOn(dataSource, 'getRepoInfo');
@@ -2506,6 +2509,7 @@ describe('GitGraphView', () => {
 							head: getRepoInfoResolvedValue.head,
 							remotes: getRepoInfoResolvedValue.remotes,
 							stashes: getRepoInfoResolvedValue.stashes,
+							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: false,
 							error: null
 						}

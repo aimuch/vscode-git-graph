@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitCommit, GitCommitDetails, GitCommitStash, GitConfigLocation, GitFileChange, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitConfigLocation, GitFileChange, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -142,12 +142,45 @@ export class DataSource extends Disposable {
 		return Promise.all([
 			this.getBranches(repo, showRemoteBranches, hideRemotes),
 			this.getRemotes(repo),
-			showStashes ? this.getStashes(repo) : Promise.resolve([])
+			showStashes ? this.getStashes(repo) : Promise.resolve([]),
+			this.getUpstreams(repo)
 		]).then((results) => {
-			return { branches: results[0].branches, head: results[0].head, remotes: results[1], stashes: results[2], error: null };
+			return { branches: results[0].branches, head: results[0].head, remotes: results[1], stashes: results[2], upstreams: results[3], error: null };
 		}).catch((errorMessage) => {
-			return { branches: [], head: null, remotes: [], stashes: [], error: errorMessage };
+			return { branches: [], head: null, remotes: [], stashes: [], upstreams: {}, error: errorMessage };
 		});
+	}
+
+	/**
+	 * Search the commits on all branches (local & remote), tags and HEAD of a repository for those that change files matching a path, and / or whose changes add or remove lines matching some text.
+	 * @param repo The path of the repository.
+	 * @param files Text that the path of a file changed by a commit must contain (all must be matched by the commit).
+	 * @param changes Text that a line added or removed by a commit must contain (all must be matched by the commit).
+	 * @param isRegex Is the text of the changes a regular expression.
+	 * @param isCaseSensitive Is the search case sensitive.
+	 * @param since Only commits committed on or after this unix timestamp are searched (0 => all commits).
+	 * @returns The hashes of the commits that match.
+	 */
+	public searchCommits(repo: string, files: ReadonlyArray<string>, changes: ReadonlyArray<string>, isRegex: boolean, isCaseSensitive: boolean, since: number): Promise<{ hashes: string[], error: ErrorInfo }> {
+		const pathspecs = files.map((file) => (isCaseSensitive ? '' : ':(icase)') + '*' + file.replace(/[*?[\\]/g, '\\$&') + '*');
+		const search = (change: string | null) => {
+			const args = ['-c', 'log.showSignature=false', 'log', '--format=%H', '--branches', '--remotes', '--tags', 'HEAD'];
+			if (since > 0) args.push('--since=' + since);
+			if (change !== null) {
+				args.push('-G' + (isRegex ? change : change.replace(EXTENDED_REGEXP_SPECIAL_CHARACTERS, '\\$&')));
+				if (!isCaseSensitive) args.push('--regexp-ignore-case');
+			}
+			args.push('--', ...pathspecs);
+			return this.spawnGit(args, repo, (stdout) => stdout.split(LF_REGEX).filter((hash) => hash !== ''));
+		};
+		// Git only supports one -G option, so each change is searched for separately (and commits that match all of them are returned)
+		return Promise.all(changes.length > 0 ? changes.map((change) => search(change)) : [search(null)]).then((results) => {
+			const hashes = results.reduce((matched, hashes) => {
+				const set = new Set(hashes);
+				return matched.filter((hash) => set.has(hash));
+			});
+			return { hashes: hashes, error: null };
+		}).catch((errorMessage: string) => ({ hashes: <string[]>[], error: errorMessage }));
 	}
 
 	/**
@@ -1663,6 +1696,29 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Get the upstream (remote-tracking) branch of each local branch in a repository, and how many commits each local branch is ahead / behind its upstream.
+	 * @param repo The path of the repository.
+	 * @returns The upstream of each local branch that has one (an empty object if they couldn't be read).
+	 */
+	private getUpstreams(repo: string) {
+		return this.spawnGit(['for-each-ref', '--format=%(refname)' + GIT_LOG_SEPARATOR + '%(upstream:short)' + GIT_LOG_SEPARATOR + '%(upstream:track)', 'refs/heads'], repo, (stdout) => {
+			const upstreams: { [branchName: string]: GitBranchUpstream } = {};
+			stdout.split(LF_REGEX).forEach((line) => {
+				const fields = line.split(GIT_LOG_SEPARATOR);
+				if (fields.length !== 3 || !fields[0].startsWith('refs/heads/') || fields[1] === '') return;
+				const ahead = fields[2].match(/ahead (\d+)/), behind = fields[2].match(/behind (\d+)/);
+				upstreams[fields[0].substring(11)] = {
+					name: fields[1],
+					ahead: ahead !== null ? parseInt(ahead[1]) : 0,
+					behind: behind !== null ? parseInt(behind[1]) : 0,
+					gone: fields[2] === '[gone]'
+				};
+			});
+			return <GitBranchUpstreams>upstreams;
+		}).catch(() => <GitBranchUpstreams>{});
+	}
+
+	/**
 	 * Get the names of the remotes of a repository.
 	 * @param repo The path of the repository.
 	 * @returns An array of remote names.
@@ -2031,6 +2087,7 @@ interface GitRefData {
 interface GitRepoInfo extends GitBranchData {
 	remotes: string[];
 	stashes: GitStash[];
+	upstreams: GitBranchUpstreams;
 }
 
 interface GitRepoConfigData {

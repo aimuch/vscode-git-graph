@@ -215,6 +215,41 @@ async function run() {
 		return 'All authors: ' + all.length + ' commits, "' + fixtures.secondAuthor + '": 1 commit';
 	});
 
+	await check('ui-sync-search', '[Redesign] The repository info includes how far each branch is behind / ahead of its upstream, and commits can be searched by the files they change (file:) and the lines they add or remove (change:)', async () => {
+		const dataSource = (await getView()).dataSource;
+		git(main, 'branch', 'e2e-behind', fixtures.crCommit);
+		git(main, 'branch', '--set-upstream-to=origin/main', 'e2e-behind');
+		git(main, 'branch', 'e2e-gone', fixtures.firstCommit);
+		git(main, 'config', 'branch.e2e-gone.remote', 'origin');
+		git(main, 'config', 'branch.e2e-gone.merge', 'refs/heads/e2e-deleted');
+		try {
+			const info = await dataSource.getRepoInfo(main, true, false, []);
+			assert(info.error === null, 'Loading the repository info failed: ' + info.error);
+			const behind = info.upstreams['e2e-behind'], gone = info.upstreams['e2e-gone'];
+			assert(behind && behind.name === 'origin/main' && behind.behind === 3 && behind.ahead === 0 && !behind.gone, 'Unexpected upstream of e2e-behind: ' + JSON.stringify(behind));
+			assert(gone && gone.name === 'origin/e2e-deleted' && gone.gone, 'Unexpected upstream of e2e-gone: ' + JSON.stringify(gone));
+			assert(typeof info.upstreams['main'] === 'undefined', 'main shouldn\'t have an upstream: ' + JSON.stringify(info.upstreams['main']));
+
+			const search = async (files, changes, isRegex, isCaseSensitive) => {
+				const result = await dataSource.searchCommits(main, files, changes, isRegex, isCaseSensitive, 0);
+				assert(result.error === null, 'Searching failed: ' + result.error);
+				return result.hashes;
+			};
+			const fileMatches = await search(['FILE.TXT'], [], false, false);
+			assert(fileMatches.length === 4 && fileMatches.includes(fixtures.firstCommit) && fileMatches.includes(fixtures.secondAuthorCommit) && !fileMatches.includes(fixtures.headCommit), 'Unexpected commits changing FILE.TXT: ' + fileMatches.length);
+			assert((await search(['FILE.TXT'], [], false, true)).length === 0, 'The case sensitive file search matched file.txt');
+			const changeMatches = await search([], ['FOUR'], false, false);
+			assert(changeMatches.length === 1 && changeMatches[0] === fixtures.secondAuthorCommit, 'Unexpected commits changing a line containing FOUR: ' + JSON.stringify(changeMatches));
+			const literal = await search([], ['t.o'], false, true), regex = await search([], ['t.o'], true, true);
+			assert(literal.length === 0 && regex.length === 2 && regex.includes(fixtures.crCommit), 'Unexpected commits changing t.o: ' + literal.length + ' (literal), ' + regex.length + ' (regular expression)');
+			const both = await search(['file'], ['four', 'one'], false, false);
+			assert(both.length === 0, 'A commit was matched by only one of the changes: ' + JSON.stringify(both));
+			return 'e2e-behind: ' + behind.behind + ' behind ' + behind.name + ', e2e-gone: gone; file: ' + fileMatches.length + ' commits, change: ' + changeMatches.length + ' commit, t.o: ' + literal.length + ' literal / ' + regex.length + ' regex';
+		} finally {
+			git(main, 'branch', '-D', 'e2e-behind', 'e2e-gone');
+		}
+	});
+
 	await check('#940', 'Interactive rebase on a branch whose name contains shell syntax does not execute it', async () => {
 		const dataSource = (await getView()).dataSource;
 		assert(!fs.existsSync(fixtures.injectionMarker), 'The marker exists before the rebase');
