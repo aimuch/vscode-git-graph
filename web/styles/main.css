@@ -1024,6 +1024,47 @@ code{
 .fileTreeFileBadge.R{
 	color:var(--vscode-charts-blue, #6cb6ff);
 }
+/* The icons of files & folders (from the file icon theme of Visual Studio Code) */
+.fileTypeIcon{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	flex:0 0 auto;
+	width:16px;
+	height:16px;
+	margin-right:6px;
+	font-size:13px;
+	font-style:normal;
+	font-weight:normal;
+	line-height:1;
+	-webkit-font-smoothing:antialiased;
+	vertical-align:middle;
+}
+.fileTypeIcon.image{
+	background-position:center;
+	background-repeat:no-repeat;
+	background-size:16px 16px;
+}
+.fileTypeIcon.text{
+	font-family:var(--vscode-editor-font-family);
+	font-size:9.5px;
+	font-weight:700;
+	letter-spacing:-0.3px;
+}
+.fileTypeIcon.svg svg{
+	position:static;
+	width:13px;
+	height:13px !important;
+	fill:var(--vscode-editor-foreground);
+	fill-opacity:0.6;
+}
+.fileTreeFolder > .fileTreeFolderIcon{
+	display:inline-flex;
+	width:auto;
+	height:auto;
+	margin-right:2px;
+}
+
 .fileTreeFileText{
 	min-width:0;
 	overflow:hidden;

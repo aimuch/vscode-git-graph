@@ -4,6 +4,7 @@ import { AvatarManager } from './avatarManager';
 import { getConfig } from './config';
 import { DataSource, GitConfigKey } from './dataSource';
 import { ExtensionState } from './extensionState';
+import { buildFileIconTheme, findFileIconTheme, getFileIconThemeExtensionPaths, getLanguageFiles } from './fileIconTheme';
 import { Logger } from './logger';
 import { RepoFileWatcher } from './repoFileWatcher';
 import { RepoManager } from './repoManager';
@@ -89,7 +90,7 @@ export class GitGraphView extends Disposable {
 		const config = getConfig();
 		this.panel = vscode.window.createWebviewPanel('git-graph', 'Git Map', column || vscode.ViewColumn.One, {
 			enableScripts: true,
-			localResourceRoots: [vscode.Uri.file(path.join(extensionPath, 'media'))],
+			localResourceRoots: this.getLocalResourceRoots(extensionPath),
 			retainContextWhenHidden: config.retainContextWhenHidden
 		});
 		this.panel.iconPath = config.tabIconColourTheme === TabIconColourTheme.Colour
@@ -127,6 +128,8 @@ export class GitGraphView extends Disposable {
 			vscode.workspace.onDidChangeConfiguration((event) => {
 				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.minimap') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.language'))) {
 					this.update();
+				} else if (this.panel.visible && this.isGraphViewLoaded && event.affectsConfiguration('workbench.iconTheme')) {
+					this.sendMessage({ command: 'loadFileIconTheme', theme: this.getFileIconTheme() });
 				}
 			}),
 
@@ -453,6 +456,9 @@ export class GitGraphView extends Disposable {
 					id: msg.id,
 					...await this.dataSource.searchCommits(msg.repo, msg.files, msg.changes, msg.isRegex, msg.isCaseSensitive, msg.since)
 				});
+				break;
+			case 'loadFileIconTheme':
+				this.sendMessage({ command: 'loadFileIconTheme', theme: this.getFileIconTheme() });
 				break;
 			case 'loadRepos':
 				if (!msg.check || !await this.repoManager.checkReposExist()) {
@@ -785,7 +791,7 @@ export class GitGraphView extends Disposable {
 		<html lang="${getLanguage() === 'zh-cn' ? 'zh-CN' : 'en'}">
 			<head>
 				<meta charset="UTF-8">
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${standardiseCspSource(this.panel.webview.cspSource)} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src data:;">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${standardiseCspSource(this.panel.webview.cspSource)} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src data: ${standardiseCspSource(this.panel.webview.cspSource)}; font-src ${standardiseCspSource(this.panel.webview.cspSource)};">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<link rel="stylesheet" type="text/css" href="${this.getMediaUri('out.min.css')}">
 				<title>Git Map</title>
@@ -797,6 +803,30 @@ export class GitGraphView extends Disposable {
 
 
 	/* URI Manipulation Methods */
+
+	/**
+	 * Get the directories that the Webview can load resources from: the extension's media, and the extensions that contribute file icon themes.
+	 * @param extensionPath The absolute file path of the directory containing the extension.
+	 * @returns The directories.
+	 */
+	private getLocalResourceRoots(extensionPath: string) {
+		return [vscode.Uri.file(path.join(extensionPath, 'media'))].concat(getFileIconThemeExtensionPaths().map((extensionPath) => vscode.Uri.file(extensionPath)));
+	}
+
+	/**
+	 * Get the file icon theme used by Visual Studio Code, with the URIs of its fonts & images converted into Webview URIs.
+	 * @returns The file icon theme, or NULL if no file icon theme is used (or it couldn't be read).
+	 */
+	private getFileIconTheme() {
+		const theme = findFileIconTheme();
+		if (theme === null) return null;
+		const roots = this.panel.webview.options.localResourceRoots || [];
+		if (!roots.some((root) => theme.path.startsWith(root.fsPath + path.sep))) {
+			// The extension contributing the file icon theme was installed after the view was opened
+			this.panel.webview.options = Object.assign({}, this.panel.webview.options, { localResourceRoots: this.getLocalResourceRoots(this.extensionPath) });
+		}
+		return buildFileIconTheme(theme.id, theme.path, (absolutePath) => this.panel.webview.asWebviewUri(vscode.Uri.file(absolutePath)).toString(), getLanguageFiles());
+	}
 
 	/**
 	 * Get a WebviewUri for a media file included in the extension.

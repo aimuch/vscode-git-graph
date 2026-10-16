@@ -171,6 +171,8 @@ class GitGraphView {
 			this.requestLoadRepoInfoAndCommits(false, false);
 		}
 
+		sendMessage({ command: 'loadFileIconTheme' });
+
 		const fetchBtn = document.getElementById('fetchBtn')!, scrollToHeadBtn = document.getElementById('scrollToHeadBtn')!, settingsBtn = document.getElementById('settingsBtn')!, terminalBtn = document.getElementById('terminalBtn')!;
 		fetchBtn.title = this.config.fetchAndPrune ? t('Fetch & Prune from Remote(s)') : t('Fetch from Remote(s)');
 		fetchBtn.innerHTML = SVG_ICONS.fetch + '<span>' + t('Fetch') + '</span>';
@@ -3520,6 +3522,15 @@ class GitGraphView {
 		this.saveRepoState();
 	}
 
+	/**
+	 * Re-render the file view of the Commit Details View (if it's open), e.g. after the file icon theme has changed.
+	 */
+	public refreshCdvFileView() {
+		if (this.expandedCommit !== null && this.expandedCommit.fileTree !== null && !this.expandedCommit.loading) {
+			this.changeFileViewType(this.getFileViewType());
+		}
+	}
+
 	private changeFileViewType(type: GG.FileViewType) {
 		const expandedCommit = this.expandedCommit, filesElem = getCdvFileViewElem();
 		if (expandedCommit === null || expandedCommit.fileTree === null || expandedCommit.fileChanges === null || filesElem === null) return;
@@ -3634,7 +3645,8 @@ class GitGraphView {
 			let parent = sourceElem.parentElement!;
 			parent.classList.toggle('closed');
 			let isOpen = !parent.classList.contains('closed');
-			parent.children[0].children[0].innerHTML = isOpen ? SVG_ICONS.openFolder : SVG_ICONS.closedFolder;
+			const folderName = sourceElem.querySelector('.gitFolderName')!.textContent!;
+			parent.children[0].children[0].innerHTML = fileIcons.getFolderIcon(folderName.substring(folderName.lastIndexOf(' / ') + 1).trim(), isOpen);
 			parent.children[1].classList.toggle('hidden');
 			alterFileTreeFolderOpen(expandedCommit.fileTree, decodeURIComponent(sourceElem.dataset.folderpath!), isOpen);
 			this.saveState();
@@ -3834,7 +3846,7 @@ class GitGraphView {
 
 /* Main */
 
-const contextMenu = new ContextMenu(), dialog = new Dialog(), eventOverlay = new EventOverlay(), titleTooltip = new TitleTooltip();
+const contextMenu = new ContextMenu(), dialog = new Dialog(), eventOverlay = new EventOverlay(), titleTooltip = new TitleTooltip(), fileIcons = new FileIcons();
 let loaded = false;
 
 window.addEventListener('load', () => {
@@ -3966,6 +3978,10 @@ window.addEventListener('load', () => {
 				break;
 			case 'loadRepoInfo':
 				gitGraph.processLoadRepoInfoResponse(msg);
+				break;
+			case 'loadFileIconTheme':
+				fileIcons.setTheme(msg.theme);
+				gitGraph.refreshCdvFileView();
 				break;
 			case 'loadRepos':
 				gitGraph.loadRepos(msg.repos, msg.lastActiveRepo, msg.loadViewTo);
@@ -4242,7 +4258,7 @@ function generateFileTreeHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG
 			: generateFileTreeLeafHtml(cur.name, cur, gitFiles, lastViewedFile, fileContextMenuOpen, isUncommitted);
 	});
 
-	return (topLevelFolder ? '' : '<li' + (curFolderInfo.folder.open ? '' : ' class="closed"') + ' data-pathseg="' + encodeURIComponent(curFolderInfo.pathSeg) + '"><span class="fileTreeFolder' + (curFolderInfo.folder.reviewed ? '' : ' pendingReview') + '" title="./' + escapeHtml(curFolderInfo.folder.folderPath) + '" data-folderpath="' + encodeURIComponent(curFolderInfo.folder.folderPath) + '"><span class="fileTreeFolderIcon">' + (curFolderInfo.folder.open ? SVG_ICONS.openFolder : SVG_ICONS.closedFolder) + '</span><span class="gitFolderName">' + escapeHtml(curFolderInfo.name) + '</span></span>') +
+	return (topLevelFolder ? '' : '<li' + (curFolderInfo.folder.open ? '' : ' class="closed"') + ' data-pathseg="' + encodeURIComponent(curFolderInfo.pathSeg) + '"><span class="fileTreeFolder' + (curFolderInfo.folder.reviewed ? '' : ' pendingReview') + '" title="./' + escapeHtml(curFolderInfo.folder.folderPath) + '" data-folderpath="' + encodeURIComponent(curFolderInfo.folder.folderPath) + '"><span class="fileTreeFolderIcon">' + fileIcons.getFolderIcon(curFolderInfo.folder.name, curFolderInfo.folder.open) + '</span><span class="gitFolderName">' + escapeHtml(curFolderInfo.name) + '</span></span>') +
 		'<ul class="fileTreeFolderContents' + (curFolderInfo.folder.open ? '' : ' hidden') + '">' + children.join('') + '</ul>' +
 		(topLevelFolder ? '' : '</li>');
 }
@@ -4342,7 +4358,7 @@ function generateFileTreeLeafHtml(name: string, leaf: FileTreeLeaf, gitFiles: Re
 		const nameHtml = dirEnd > -1
 			? '<span class="gitFileName ' + fileTreeFile.type + '">' + escapeHtml(name.substring(dirEnd + 1)) + '</span>' + renamedFromHtml + '<span class="gitFileDir">' + escapeHtml(name.substring(0, dirEnd)) + '</span>'
 			: '<span class="gitFileName ' + fileTreeFile.type + '">' + escapedName + '</span>' + renamedFromHtml;
-		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? t('Click to View Diff') : t('Unable to View Diff{0}', (fileTreeFile.type !== GG.GitFileStatus.Deleted ? t(' (this is a binary file)') : ''))) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileBadge ' + fileTreeFile.type + '">' + fileTreeFile.type + '</span><span class="fileTreeFileText">' + nameHtml + '</span></span>' +
+		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? t('Click to View Diff') : t('Unable to View Diff{0}', (fileTreeFile.type !== GG.GitFileStatus.Deleted ? t(' (this is a binary file)') : ''))) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileBadge ' + fileTreeFile.type + '">' + fileTreeFile.type + '</span>' + fileIcons.getFileIcon(fileTreeFile.newFilePath) + '<span class="fileTreeFileText">' + nameHtml + '</span></span>' +
 			(initialState.config.enhancedAccessibility ? '<span class="fileTreeFileType" title="' + changeTypeMessage + '">' + fileTreeFile.type + '</span>' : '') +
 			(textFile ? '<span class="fileTreeFileAddDel">' + generateChangeBarHtml(fileTreeFile.additions!, fileTreeFile.deletions!, Math.round(8 + 52 * (fileTreeFile.additions! + fileTreeFile.deletions!) / fileViewMaxLinesChanged)) + '<span class="fileTreeFileAdd" title="' + (fileTreeFile.additions !== 1 ? t('{0} additions', fileTreeFile.additions) : t('{0} addition', fileTreeFile.additions)) + '">+' + fileTreeFile.additions + '</span><span class="fileTreeFileDel" title="' + (fileTreeFile.deletions !== 1 ? t('{0} deletions', fileTreeFile.deletions) : t('{0} deletion', fileTreeFile.deletions)) + '">\u2212' + fileTreeFile.deletions + '</span></span>' : '') +
 			(fileTreeFile.newFilePath === lastViewedFile ? '<span id="cdvLastFileViewed" title="' + t('Last File Viewed') + '">' + SVG_ICONS.eyeOpen + '</span>' : '') +

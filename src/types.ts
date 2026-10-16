@@ -124,6 +124,46 @@ export const enum GitResetMode {
 	Hard = 'hard'
 }
 
+/* File Icon Themes */
+
+export interface FileIconThemeDefinition {
+	readonly fontCharacter: string | null;
+	readonly fontColor: string | null;
+	readonly fontId: string | null;
+	readonly fontSize: string | null;
+	readonly iconPath: string | null;
+}
+
+export interface FileIconThemeMappings {
+	readonly file: string | null;
+	readonly folder: string | null;
+	readonly folderExpanded: string | null;
+	readonly fileExtensions: { readonly [extension: string]: string };
+	readonly fileNames: { readonly [fileName: string]: string };
+	readonly folderNames: { readonly [folderName: string]: string };
+	readonly folderNamesExpanded: { readonly [folderName: string]: string };
+}
+
+export interface FileIconThemeFont {
+	readonly id: string;
+	readonly src: string;
+	readonly format: string | null;
+	readonly weight: string | null;
+	readonly style: string | null;
+	readonly size: string | null;
+}
+
+/**
+ * The file icon theme used by Visual Studio Code (with the URIs of its fonts & images converted into Webview URIs).
+ */
+export interface FileIconTheme extends FileIconThemeMappings {
+	readonly id: string;
+	readonly fonts: ReadonlyArray<FileIconThemeFont>;
+	readonly definitions: { readonly [id: string]: FileIconThemeDefinition };
+	readonly light: FileIconThemeMappings | null;
+	readonly highContrast: FileIconThemeMappings | null;
+}
+
 /**
  * The upstream (remote-tracking) branch of a local branch, and how many commits the local branch is ahead / behind it.
  */
@@ -1001,6 +1041,14 @@ export interface ResponseSearchCommits extends ResponseWithErrorInfo {
 	readonly hashes: ReadonlyArray<string>;
 }
 
+export interface RequestLoadFileIconTheme extends BaseMessage {
+	readonly command: 'loadFileIconTheme';
+}
+export interface ResponseLoadFileIconTheme extends BaseMessage {
+	readonly command: 'loadFileIconTheme';
+	readonly theme: FileIconTheme | null;
+}
+
 export interface RequestLoadRepos extends BaseMessage {
 	readonly command: 'loadRepos';
 	readonly check: boolean;
@@ -1346,6 +1394,7 @@ export type RequestMessage =
 	| RequestLoadCommits
 	| RequestLoadConfig
 	| RequestLoadRepoInfo
+	| RequestLoadFileIconTheme
 	| RequestLoadRepos
 	| RequestMerge
 	| RequestNavigateEditorHistory
@@ -1412,6 +1461,7 @@ export type ResponseMessage =
 	| ResponseLoadCommits
 	| ResponseLoadConfig
 	| ResponseLoadRepoInfo
+	| ResponseLoadFileIconTheme
 	| ResponseLoadRepos
 	| ResponseMerge
 	| ResponseOpenExtensionSettings

@@ -91,6 +91,10 @@ export const env = {
 	openExternal: jest.fn()
 };
 
+export const extensions = {
+	all: <any[]>[]
+};
+
 export const EventEmitter = jest.fn(() => ({
 	dispose: jest.fn(),
 	event: jest.fn()

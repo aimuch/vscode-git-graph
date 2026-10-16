@@ -67,6 +67,16 @@
 						]
 					}
 				};
+			case 'loadFileIconTheme':
+				// A file icon theme with a font icon for Markdown files, and a default icon for other files
+				return {
+					command: 'loadFileIconTheme',
+					theme: {
+						id: 'e2e', fonts: [], light: null, highContrast: null,
+						definitions: { '_md': { fontCharacter: 'M', fontColor: '#123456', fontId: null, fontSize: null, iconPath: null }, '_file': { fontCharacter: 'F', fontColor: null, fontId: null, fontSize: null, iconPath: null } },
+						file: '_file', folder: null, folderExpanded: null, fileExtensions: { 'md': '_md' }, fileNames: {}, folderNames: {}, folderNamesExpanded: {}
+					}
+				};
 			case 'searchCommits':
 				// The commits that change a file whose path contains "README" are the even commits
 				return { command: 'searchCommits', id: msg.id, error: null, hashes: msg.files.some((file) => 'readme.md'.includes(file.toLowerCase())) ? makeCommits(25).filter((_, i) => i % 2 === 0).map((commit) => commit.hash) : [] };
@@ -367,6 +377,11 @@
 			assert(stats === '3 files+3\u22122', 'Unexpected stats: ' + stats);
 			const badges = Array.from(document.querySelectorAll('#cdvFileView .fileTreeFileRecord')).map((elem) => elem.querySelector('.fileTreeFileBadge').textContent + (elem.querySelector('.changeBar') !== null ? ' bar' : ''));
 			assert(badges.length === 3 && badges.every((badge) => badge.endsWith(' bar')) && badges.filter((badge) => badge.startsWith('R')).length === 2, 'Unexpected files: ' + JSON.stringify(badges));
+			// The icons of the files are from the file icon theme of Visual Studio Code
+			const icons = Array.from(document.querySelectorAll('#cdvFileView .fileTreeFileRecord')).map((elem) => elem.querySelector('.gitFileName').textContent + '=' + elem.querySelector('.fileTypeIcon').textContent).sort();
+			assert(JSON.stringify(icons) === JSON.stringify(['README.md=M', 'moved.ts=F', 'new-name.ts=F']), 'Unexpected file icons: ' + JSON.stringify(icons));
+			const readmeIcon = Array.from(document.querySelectorAll('#cdvFileView .fileTypeIcon')).find((elem) => elem.textContent === 'M');
+			assert(getComputedStyle(readmeIcon).color === 'rgb(18, 52, 86)', 'The colour of the icon isn\'t from the theme: ' + getComputedStyle(readmeIcon).color);
 
 			mouse(document.querySelector('.cdvTab[data-tab="message"]'), 'click');
 			const messageView = document.getElementById('cdvMessageView');
@@ -387,7 +402,7 @@
 			await waitFor('the header to show the comparison', () => document.querySelector('#cdvHeader .cdvHeaderTitle').textContent === 'Commit Comparison');
 			mouse(document.getElementById('cdvClose'), 'click');
 			await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
-			return 'Chips: ' + chips.join(' | ') + '; branches: ' + branches.join(', ') + '; stats: ' + stats + '; files: ' + badges.join(', ');
+			return 'Chips: ' + chips.join(' | ') + '; branches: ' + branches.join(', ') + '; stats: ' + stats + '; files: ' + badges.join(', ') + '; icons: ' + icons.join(', ');
 		});
 
 		await check('ui-branch-highlight', '[GitLens] Hovering over a commit highlights the branch it is on in the graph', async () => {

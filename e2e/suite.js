@@ -176,6 +176,24 @@ async function run() {
 		return 'script src: ' + scriptSrc;
 	});
 
+	await check('ui-file-icon-theme', '[Redesign] The file icon theme of Visual Studio Code (Seti) is sent to the Webview, with its language ids mapped to file extensions and its font loadable by the Webview', async () => {
+		const view = await getView();
+		const count = record.responses.filter((msg) => msg.command === 'loadFileIconTheme').length;
+		await view.respondToMessage({ command: 'loadFileIconTheme' });
+		const response = await waitFor('the file icon theme', () => {
+			const responses = record.responses.filter((msg) => msg.command === 'loadFileIconTheme');
+			return responses.length > count ? responses[responses.length - 1] : null;
+		});
+		const theme = response.theme, iconTheme = vscode.workspace.getConfiguration('workbench').get('iconTheme');
+		assert(theme !== null && theme.id === iconTheme, 'Unexpected file icon theme: ' + (theme && theme.id) + ' (workbench.iconTheme: ' + iconTheme + ')');
+		const tsIcon = theme.definitions[theme.fileExtensions['ts']];
+		assert(tsIcon && typeof tsIcon.fontCharacter === 'string' && tsIcon.fontCharacter.length === 1 && tsIcon.fontColor !== null, 'TypeScript files don\'t have a font icon: ' + JSON.stringify(tsIcon));
+		assert(theme.fonts.length > 0 && !theme.fonts[0].src.startsWith('file:') && theme.fonts[0].src.includes('seti'), 'The font isn\'t loadable by the Webview: ' + (theme.fonts[0] && theme.fonts[0].src));
+		const html = record.html.slice().reverse().find((html) => html.includes('id="view"'));
+		assert(/font-src [^;"]+/.test(html), 'The CSP doesn\'t allow the font to be loaded');
+		return theme.id + ': ' + Object.keys(theme.definitions).length + ' icons, .ts → ' + theme.fileExtensions['ts'] + ', font ' + theme.fonts[0].id;
+	});
+
 	await check('#668', 'Repositories, submodules and worktrees in the workspace are all discovered', async () => {
 		const view = await getView();
 		const repos = await waitFor('the repositories to be discovered', () => {
