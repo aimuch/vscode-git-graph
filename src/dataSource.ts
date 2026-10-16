@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -151,6 +151,37 @@ export class DataSource extends Disposable {
 		}).catch((errorMessage) => {
 			return { branches: [], head: null, remotes: [], stashes: [], upstreams: {}, error: errorMessage };
 		});
+	}
+
+	/**
+	 * Get the number of files changed by commits (compared to their first parent), and the lines they add & delete.
+	 * @param repo The path of the repository.
+	 * @param hashes The hashes of the commits (the uncommitted changes are requested with the hash "*").
+	 * @returns The stats of each commit (NULL if a commit doesn't change any files, e.g. a merge commit).
+	 */
+	public getCommitStats(repo: string, hashes: ReadonlyArray<string>): Promise<{ stats: { [hash: string]: GitCommitStats | null }, error: ErrorInfo }> {
+		const parseShortstat = (line: string): GitCommitStats | null => {
+			const files = line.match(/(\d+) files? changed/), additions = line.match(/(\d+) insertions?\(\+\)/), deletions = line.match(/(\d+) deletions?\(-\)/);
+			return files !== null ? { files: parseInt(files[1]), additions: additions !== null ? parseInt(additions[1]) : 0, deletions: deletions !== null ? parseInt(deletions[1]) : 0 } : null;
+		};
+		const commits = hashes.filter((hash) => hash !== UNCOMMITTED), batches: string[][] = [];
+		for (let i = 0; i < commits.length; i += 100) batches.push(commits.slice(i, i + 100));
+		return Promise.all(batches.map((batch) => this.spawnGit(['-c', 'log.showSignature=false', 'log', '--no-walk=unsorted', '-m', '--first-parent', '--format=' + GIT_LOG_SEPARATOR + '%H', '--shortstat', ...batch, '--'], repo, (stdout) => {
+			const stats: { [hash: string]: GitCommitStats | null } = {};
+			let hash: string | null = null;
+			stdout.split(LF_REGEX).forEach((line) => {
+				if (line.startsWith(GIT_LOG_SEPARATOR)) {
+					hash = line.substring(GIT_LOG_SEPARATOR.length);
+					stats[hash] = null;
+				} else if (hash !== null && line.trim() !== '') {
+					stats[hash] = parseShortstat(line);
+				}
+			});
+			return stats;
+		})).concat(hashes.includes(UNCOMMITTED)
+			? [this.spawnGit(['diff', '--shortstat', 'HEAD', '--'], repo, (stdout) => ({ [UNCOMMITTED]: parseShortstat(stdout) }))]
+			: []
+		)).then((results) => ({ stats: Object.assign({}, ...results), error: null }), (errorMessage: string) => ({ stats: {}, error: errorMessage }));
 	}
 
 	/**

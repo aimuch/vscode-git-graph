@@ -80,6 +80,12 @@
 						]
 					}
 				};
+			case 'loadCommitStats':
+				// Each commit changes 1 file (the 3rd commit changes 2), with lines added & deleted based on its index
+				return { command: 'loadCommitStats', error: null, stats: Object.fromEntries(msg.hashes.map((commitHash) => {
+					const index = parseInt(commitHash, 16) - 1;
+					return [commitHash, { files: index === 2 ? 2 : 1, additions: index * 10, deletions: index }];
+				})) };
 			case 'loadFileDiff':
 				return { command: 'loadFileDiff', commitHash: msg.commitHash, filePath: msg.newFilePath, error: null, diff: 'diff --git a/' + msg.oldFilePath + ' b/' + msg.newFilePath + '\n--- a/' + msg.oldFilePath + '\n+++ b/' + msg.newFilePath + '\n@@ -1,3 +1,3 @@\n line 1\n-line <2>\n+line <two>\n line 3\n' };
 			case 'loadStashStats':
@@ -178,7 +184,7 @@
 			assert(JSON.stringify(labels) === JSON.stringify(['仓库', '分支', '作者']), 'Unexpected dropdown labels: ' + JSON.stringify(labels));
 			['显示远程分支', '提取', '拉取', '推送'].forEach((text) => assert(controls.includes(text), 'The control bar doesn\'t include "' + text + '": ' + controls));
 			const headers = Array.from(document.querySelectorAll('#tableColHeaders th')).map((elem) => elem.textContent.trim());
-			assert(JSON.stringify(headers) === JSON.stringify(['图形', '说明', '日期', '作者', '提交']), 'Unexpected column headers: ' + JSON.stringify(headers));
+			assert(JSON.stringify(headers) === JSON.stringify(['分支 / 标签', '图形', '说明', '日期', '作者', '改动', '提交']), 'Unexpected column headers: ' + JSON.stringify(headers));
 			const date = commitRow(0).querySelector('.dateCol');
 			assert(/^\d{4}年\d{1,2}月\d{1,2}日 \d{2}:\d{2}$/.test(date.textContent), 'Unexpected date: ' + date.textContent);
 			assert(date.title.includes('年'), 'Unexpected date tooltip: ' + date.title);
@@ -420,6 +426,38 @@
 			mouse(document.getElementById('cdvClose'), 'click');
 			await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
 			return 'Chips: ' + chips.join(' | ') + '; branches: ' + branches.join(', ') + '; stats: ' + stats + '; files: ' + badges.join(', ') + '; icons: ' + icons.join(', ');
+		});
+
+		await check('ui-commit-list', '[Redesign] The commits have a Branches / Tags column (with how far branches are ahead / behind their upstream) and a Changes column (loaded on demand, which can be hidden), and a footer', async () => {
+			const headers = Array.from(document.querySelectorAll('#tableColHeaders th')).map((elem) => elem.textContent.trim());
+			assert(JSON.stringify(headers) === JSON.stringify(['Branches / Tags', 'Graph', 'Description', 'Date', 'Author', 'Changes', 'Commit']), 'Unexpected column headers: ' + JSON.stringify(headers));
+			assert(commitRow(0).querySelector('td.refsCol .gitRef.head').textContent === 'feature' && commitRow(0).querySelector('td.descriptionCol .gitRef') === null, 'The branch label isn\'t in the Branches / Tags column');
+			const main = commitRow(HEAD_INDEX).querySelector('td.refsCol .gitRef.head');
+			assert(main.textContent === 'main\u21912\u21931' && main.querySelector('.gitRefTrack').title === '2 commit(s) ahead of origin/main, 1 commit(s) behind origin/main', 'Unexpected label of main: ' + main.textContent);
+			const graphLeft = document.querySelector('#commitGraph').getBoundingClientRect().left, graphColLeft = document.getElementById('tableHeaderGraphCol').getBoundingClientRect().left;
+			assert(Math.abs(graphLeft - graphColLeft) < 1, 'The graph isn\'t in the Graph column: ' + graphLeft + ' / ' + graphColLeft);
+
+			const stats = await waitFor('the changes of the commits', () => {
+				const cells = Array.from(document.querySelectorAll('#commitTable tr.commit td.changesCol')).map((cell) => cell.textContent);
+				return cells.length > 0 && cells.every((cell) => cell !== '') ? cells : null;
+			});
+			assert(stats[0] === '+0\u22120' && stats[3] === '+30\u22123' && commitRow(2).querySelector('td.changesCol > span').title === '2 files', 'Unexpected changes: ' + JSON.stringify(stats.slice(0, 4)));
+			const requested = requestsOf('loadCommitStats').reduce((hashes, msg) => hashes.concat(msg.hashes), []);
+			assert(new Set(requested).size === requested.length, 'The changes of a commit were requested more than once');
+
+			mouse(document.getElementById('columnSettingsBtn'), 'click');
+			const menu = await waitFor('the column menu', () => document.querySelector('.contextMenu'));
+			const changesItem = Array.from(menu.querySelectorAll('.contextMenuItem')).find((item) => item.textContent === 'Changes');
+			assert(changesItem && changesItem.querySelector('svg') !== null, 'The Changes column isn\'t checked in the column menu');
+			mouse(changesItem, 'click');
+			await waitFor('the Changes column to be hidden', () => document.querySelector('#commitTable td.changesCol') === null);
+			mouse(document.getElementById('columnSettingsBtn'), 'click');
+			mouse(Array.from((await waitFor('the column menu', () => document.querySelector('.contextMenu'))).querySelectorAll('.contextMenuItem')).find((item) => item.textContent === 'Changes'), 'click');
+			await waitFor('the Changes column to be shown', () => document.querySelector('#commitTable tr.commit td.changesCol') !== null && commitRow(0).querySelector('td.changesCol').textContent !== '');
+
+			const footer = document.getElementById('listFooter').textContent;
+			assert(footer.includes(document.querySelectorAll('#commitTable tr.commit').length + ' commits loaded') && footer.includes('Scrollbar markers:'), 'Unexpected footer: ' + footer);
+			return 'Columns: ' + headers.join(' | ') + '; main: ' + main.textContent + '; footer: ' + footer;
 		});
 
 		await check('ui-stash-list', '[Redesign] The Stashes button lists the stashes (with their branch, date & changes), applies / pops / drops them, and goes to them', async () => {

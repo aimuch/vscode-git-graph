@@ -457,6 +457,12 @@ export class GitGraphView extends Disposable {
 					...await this.dataSource.searchCommits(msg.repo, msg.files, msg.changes, msg.isRegex, msg.isCaseSensitive, msg.since)
 				});
 				break;
+			case 'loadCommitStats':
+				this.sendMessage({
+					command: 'loadCommitStats',
+					...await this.dataSource.getCommitStats(msg.repo, msg.hashes)
+				});
+				break;
 			case 'loadFileDiff':
 				this.sendMessage({
 					command: 'loadFileDiff',

@@ -122,6 +122,7 @@
 	"config.referenceLabels.alignment.enumDescriptions.0": "Show branch & tag labels on the left of the commit message in the 'Description' column.",
 	"config.referenceLabels.alignment.enumDescriptions.1": "Show branch labels on the left of the commit message in the 'Description' column, and tag labels on the right.",
 	"config.referenceLabels.alignment.enumDescriptions.2": "Show branch labels aligned to the graph in the 'Graph' column, and tag labels on the right in the 'Description' column.",
+	"config.referenceLabels.alignment.enumDescriptions.3": "Show branch & tag labels in a separate 'Branches / Tags' column on the left of the graph, with how many commits each branch is ahead / behind its upstream branch.",
 	"config.referenceLabels.combineLocalAndRemoteBranchLabels.description": "Combine local and remote branch labels if they refer to the same branch, and are on the same commit.",
 	"config.repository.commits.fetchAvatars.description": "Fetch avatars of commit authors and committers. By enabling this setting, you consent to commit author and committer email addresses being sent GitHub, GitLab or Gravatar, depending on the repositories remote origin.",
 	"config.repository.commits.initialLoad.description": "Specifies the number of commits to initially load.",

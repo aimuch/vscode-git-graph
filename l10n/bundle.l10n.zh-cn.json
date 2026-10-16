@@ -736,5 +736,17 @@
 	"There are no changes to display": "没有可显示的改动",
 	"{0} more changes": "还有 {0} 处改动",
 	"1 more change": "还有 1 处改动",
-	"Open in Diff Editor to view all of the changes": "在编辑器中对比查看全部"
+	"Open in Diff Editor to view all of the changes": "在编辑器中对比查看全部",
+	"Branches / Tags": "分支 / 标签",
+	"Changes": "改动",
+	"Choose the columns that are shown": "选择要显示的列",
+	"{0} is at this commit": "{0} 也在此提交",
+	"{0} commits loaded": "已加载 {0} 个提交",
+	"1 commit loaded": "已加载 1 个提交",
+	"{0} shown": "显示 {0} 个",
+	"Scrollbar markers:": "滚动条标记：",
+	"Tags": "标签",
+	"Find Matches": "搜索匹配",
+	"{0} commit(s) ahead of {1}": "领先 {1} {0} 个提交",
+	"{0} commit(s) behind {1}": "落后 {1} {0} 个提交"
 }

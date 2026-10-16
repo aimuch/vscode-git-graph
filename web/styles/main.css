@@ -281,11 +281,11 @@ code{
 #commitTable.fixedLayout table{
 	table-layout:fixed;
 }
-#commitTable.autoLayout.limitGraphWidth td:first-child, #commitTable.autoLayout.limitGraphWidth th:first-child{
+#commitTable.autoLayout.limitGraphWidth td.graphCol, #commitTable.autoLayout.limitGraphWidth th.graphCol{
 	max-width:var(--limitGraphWidth);
 	box-sizing:border-box;
 }
-#commitTable.autoLayout td:nth-child(2), #commitTable.autoLayout th:nth-child(2){
+#commitTable.autoLayout td.descriptionCol, #commitTable.autoLayout th.descriptionCol{
 	width:100%;
 	max-width:0;
 }
@@ -1320,7 +1320,15 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	background-color:var(--vscode-list-hoverBackground, rgba(128,128,128,0.15));
 }
 #commitTable tr.commit.commitDetailsOpen, #commitTable tr.commit.commitDetailsOpen:hover, #commitTable tr.commit.commitDetailsOpen.contextMenuActive, #commitTable tr.commit.commitDetailsOpen.dialogActive, #commitTable tr.commit.commitDetailsOpen.graphVertexActive{
-	background-color:var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25));
+	background-color:var(--vscode-list-activeSelectionBackground, var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25)));
+	color:var(--vscode-list-activeSelectionForeground, inherit);
+}
+
+/* The uncommitted changes */
+#commitTable tr.commit#uncommittedChanges span.description .text{
+	color:var(--vscode-descriptionForeground);
+	font-style:italic;
+	font-weight:normal;
 }
 #commitTable tr.commit.commitDetailsOpen td:first-child{
 	box-shadow:inset 3px 0 0 var(--vscode-focusBorder);
@@ -1398,6 +1406,63 @@ body.vscode-high-contrast #commitTable tr.commit.findCurrentCommit{
 .gitRef.tag > svg{
 	fill:var(--vscode-foreground);
 	opacity:0.75;
+}
+.gitRef svg.refIcon{
+	stroke:var(--git-graph-color);
+}
+.gitRefHeadRemote.icon{
+	display:inline-flex;
+	align-items:center;
+	padding:0 6px;
+	font-style:normal;
+}
+.gitRefHeadRemote.icon svg{
+	pointer-events:none;
+}
+.gitRefTrack{
+	padding-right:7px;
+	margin-left:-3px;
+	font-size:11px;
+	font-weight:600;
+	color:var(--git-graph-color);
+	filter:brightness(1.25);
+	white-space:nowrap;
+}
+
+/* The Branches / Tags column (on the left of the graph) */
+body{
+	--git-graph-refsColWidth:172px;
+}
+body.refsColumn #commitGraph{
+	left:var(--git-graph-refsColWidth);
+}
+#commitTable th.refsCol, #commitTable td.refsCol{
+	box-sizing:border-box;
+	width:var(--git-graph-refsColWidth);
+	min-width:var(--git-graph-refsColWidth);
+	max-width:var(--git-graph-refsColWidth);
+}
+#commitTable td.refsCol{
+	padding:0 8px 0 12px;
+}
+.refsColLabels{
+	display:flex;
+	align-items:center;
+	gap:4px;
+	height:28px;
+	overflow:hidden;
+}
+.refsColLabels .gitRef{
+	flex:0 0 auto;
+	max-width:100%;
+	margin:0;
+}
+.refsColLabels .gitRef:first-child{
+	flex-shrink:1;
+	min-width:0;
+}
+.refsColLabels .gitRefName{
+	min-width:0;
 }
 
 .gitRefName, .gitRefHeadRemote{
@@ -2049,6 +2114,86 @@ body.tagLabelsRightAligned .gitRef.tag{
 }
 #loadMoreCommitsBtn{
 	width:180px;
+}
+
+/* The footer of the commits: the number of commits loaded, the legend of the markers alongside the scrollbar, and the Load More Commits button */
+#listFooter{
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:8px 20px;
+	min-height:44px;
+	padding:6px 24px 6px 16px;
+	box-sizing:border-box;
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+}
+.listFooterLegend{
+	display:inline-flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:4px 12px;
+}
+.listFooterLegend > span{
+	display:inline-flex;
+	align-items:center;
+	gap:5px;
+}
+.listFooterLegend i{
+	display:inline-block;
+	width:10px;
+	height:3px;
+	border-radius:1px;
+}
+.listFooterSpacer{
+	flex:1 1 auto;
+}
+#listFooter #loadMoreCommitsBtn{
+	width:auto;
+	margin:0;
+	padding:0 14px;
+}
+
+/* The files & lines changed by each commit */
+#commitTable th.changesCol{
+	width:136px;
+}
+#commitTable td.changesCol{
+	white-space:nowrap;
+	font-family:var(--vscode-editor-font-family);
+	font-size:11.5px;
+}
+#commitTable td.changesCol .changeBar{
+	margin-right:6px;
+	vertical-align:middle;
+}
+#commitTable td.changesCol .fileTreeFileAdd{
+	margin-right:5px;
+}
+#commitTable td.changesCol .fileTreeFileAdd, #commitTable td.changesCol .fileTreeFileDel{
+	cursor:inherit;
+}
+
+/* The button to choose the columns that are shown */
+#columnSettingsBtn{
+	position:relative;
+	float:right;
+	width:20px;
+	height:18px;
+	margin-right:-6px;
+	border-radius:4px;
+	color:var(--vscode-descriptionForeground);
+	cursor:pointer;
+}
+#columnSettingsBtn:hover{
+	color:var(--vscode-foreground);
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+#columnSettingsBtn svg{
+	position:absolute;
+	left:3.5px;
+	top:2.5px;
 }
 #rescanForReposBtn{
 	width:350px;

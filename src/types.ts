@@ -195,6 +195,15 @@ export interface GitFileHistoryCommit {
 }
 
 /**
+ * The number of files changed by a commit (compared to its first parent), and the lines added & deleted.
+ */
+export interface GitCommitStats {
+	readonly files: number;
+	readonly additions: number;
+	readonly deletions: number;
+}
+
+/**
  * The number of files changed by a stash, and the lines they add & delete.
  */
 export interface GitStashStats {
@@ -278,6 +287,7 @@ interface PullRequestConfigCustom extends PullRequestConfigBase {
 export type PullRequestConfig = PullRequestConfigBuiltIn | PullRequestConfigCustom;
 
 export interface GitRepoState {
+	showChangesColumn?: boolean;
 	cdvDivider: number;
 	cdvHeight: number;
 	cdvWidth: number;
@@ -413,6 +423,7 @@ export interface OnRepoLoadConfig {
 export interface ReferenceLabelsConfig {
 	readonly branchLabelsAlignedToGraph: boolean;
 	readonly combineLocalAndRemoteBranchLabels: boolean;
+	readonly inSeparateColumn: boolean;
 	readonly tagLabelsOnRight: boolean;
 }
 
@@ -623,7 +634,8 @@ export const enum GraphUncommittedChangesStyle {
 export const enum RefLabelAlignment {
 	Normal,
 	BranchesOnLeftAndTagsOnRight,
-	BranchesAlignedToGraphAndTagsOnRight
+	BranchesAlignedToGraphAndTagsOnRight,
+	SeparateColumn
 }
 
 export const enum RepoCommitOrdering {
@@ -1078,6 +1090,15 @@ export interface ResponseLoadFileIconTheme extends BaseMessage {
 	readonly theme: FileIconTheme | null;
 }
 
+export interface RequestLoadCommitStats extends RepoRequest {
+	readonly command: 'loadCommitStats';
+	readonly hashes: ReadonlyArray<string>; // The uncommitted changes are requested with the hash "*"
+}
+export interface ResponseLoadCommitStats extends ResponseWithErrorInfo {
+	readonly command: 'loadCommitStats';
+	readonly stats: { readonly [hash: string]: GitCommitStats | null }; // NULL => The commit doesn't change any files (e.g. a merge commit)
+}
+
 export interface RequestLoadFileDiff extends RepoRequest {
 	readonly command: 'loadFileDiff';
 	readonly commitHash: string;
@@ -1447,6 +1468,7 @@ export type RequestMessage =
 	| RequestLoadConfig
 	| RequestLoadRepoInfo
 	| RequestLoadFileIconTheme
+	| RequestLoadCommitStats
 	| RequestLoadFileDiff
 	| RequestLoadRepos
 	| RequestLoadStashStats
@@ -1516,6 +1538,7 @@ export type ResponseMessage =
 	| ResponseLoadConfig
 	| ResponseLoadRepoInfo
 	| ResponseLoadFileIconTheme
+	| ResponseLoadCommitStats
 	| ResponseLoadFileDiff
 	| ResponseLoadRepos
 	| ResponseLoadStashStats

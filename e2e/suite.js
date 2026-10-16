@@ -269,6 +269,36 @@ async function run() {
 		}
 	});
 
+	await check('ui-commit-stats', '[Redesign] The files & lines changed by commits (merge commits compared to their first parent) and the uncommitted changes are loaded for the Changes column', async () => {
+		const dataSource = (await getView()).dataSource;
+		const result = await dataSource.getCommitStats(main, [fixtures.firstCommit, fixtures.secondAuthorCommit, fixtures.headCommit, '*']);
+		assert(result.error === null, 'Loading the stats failed: ' + result.error);
+		const stats = result.stats;
+		assert(JSON.stringify(stats[fixtures.firstCommit]) === JSON.stringify({ files: 1, additions: 1, deletions: 0 }) && JSON.stringify(stats[fixtures.secondAuthorCommit]) === JSON.stringify({ files: 1, additions: 1, deletions: 1 }) && stats[fixtures.headCommit].files === 2 && stats['*'] === null, 'Unexpected stats: ' + JSON.stringify(stats));
+		// A merge commit is compared to its first parent
+		const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'git-map-e2e-merge-'));
+		try {
+			git(repo, 'init', '-q', '-b', 'main');
+			fs.writeFileSync(path.join(repo, 'a.txt'), '1\n');
+			git(repo, 'add', '-A');
+			git(repo, 'commit', '-q', '-m', 'a');
+			git(repo, 'checkout', '-q', '-b', 'feature');
+			fs.writeFileSync(path.join(repo, 'b.txt'), '1\n2\n3\n');
+			git(repo, 'add', '-A');
+			git(repo, 'commit', '-q', '-m', 'b');
+			git(repo, 'checkout', '-q', 'main');
+			fs.writeFileSync(path.join(repo, 'a.txt'), '1\nx\n');
+			git(repo, 'commit', '-q', '-a', '-m', 'c');
+			git(repo, 'merge', '-q', '--no-edit', 'feature');
+			const merge = git(repo, 'rev-parse', 'HEAD');
+			const mergeStats = (await dataSource.getCommitStats(repo, [merge])).stats[merge];
+			assert(JSON.stringify(mergeStats) === JSON.stringify({ files: 1, additions: 3, deletions: 0 }), 'Unexpected stats of the merge commit: ' + JSON.stringify(mergeStats));
+			return JSON.stringify(stats[fixtures.secondAuthorCommit]) + ', merge: ' + JSON.stringify(mergeStats);
+		} finally {
+			fs.rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	await check('ui-stash-stats', '[Redesign] The stats of a stash (the files it changes, lines added & deleted, and untracked files it includes) are loaded for the list of stashes', async () => {
 		const dataSource = (await getView()).dataSource;
 		fs.writeFileSync(path.join(main, 'file.txt'), 'four\nfive\nsix\n');

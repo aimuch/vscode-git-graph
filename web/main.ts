@@ -13,6 +13,8 @@ class GitGraphView {
 	private fileHistory: string | null = null; // The path of the file whose history is shown (NULL => all commits are shown)
 	private fileHistoryData: GG.GitFileHistory | null = null;
 	private cdvShowWholeCommit: boolean = false;
+	private commitStats: { [hash: string]: GG.GitCommitStats | null } = {}; // The files & lines changed by the loaded commits (shown in the Changes column)
+	private readonly commitStatsRequested: Set<string> = new Set();
 	private cdvFileDiff: { key: string, diff: string | null, error: GG.ErrorInfo } | null = null;
 	private commitHead: string | null = null;
 	private commitLookup: { [hash: string]: number } = {};
@@ -268,6 +270,8 @@ class GitGraphView {
 		this.gitStashes = [];
 		this.gitUpstreams = {};
 		this.stashStats = {};
+		this.commitStats = {};
+		this.commitStatsRequested.clear();
 		this.scrollToStashPending = null;
 		this.closeStashList();
 		this.gitTags = [];
@@ -461,6 +465,7 @@ class GitGraphView {
 		this.graph.loadCommits(this.commits, this.commitHead, this.commitLookup, this.onlyFollowFirstParent);
 		this.render();
 		this.updateKnownAuthors();
+		this.requestCommitStats(true);
 		return avatarsNeeded;
 	}
 
@@ -1074,12 +1079,24 @@ class GitGraphView {
 			Object.keys(fileHistory).forEach((hash) => maxLinesChanged = Math.max(maxLinesChanged, (fileHistory[hash].additions || 0) + (fileHistory[hash].deletions || 0)));
 		}
 
-		let html = '<tr id="tableColHeaders"><th id="tableHeaderGraphCol" class="tableColHeader" data-col="0">' + t('Graph') + '</th><th class="tableColHeader" data-col="1">' + t('Description') + '</th>' +
-			(fileHistory !== null ? '<th class="fileChangesCol">' + t('Changes to this File') + '</th>' : '') +
-			(colVisibility.date ? '<th class="tableColHeader dateCol" data-col="2">' + t('Date') + '</th>' : '') +
-			(colVisibility.author ? '<th class="tableColHeader authorCol" data-col="3">' + t('Author') + '</th>' : '') +
-			(colVisibility.commit ? '<th class="tableColHeader" data-col="4">' + t('Commit') + '</th>' : '') +
-			'</tr>';
+		const refsInColumn = this.config.referenceLabels.inSeparateColumn, showChanges = this.isChangesColumnShown();
+		alterClass(document.body, 'refsColumn', refsInColumn);
+		const headers = [
+			'<th id="tableHeaderGraphCol" class="tableColHeader graphCol" data-col="0">' + t('Graph') + '</th>',
+			'<th class="tableColHeader descriptionCol" data-col="1">' + t('Description') + '</th>'
+		];
+		if (refsInColumn) headers.unshift('<th class="refsCol">' + t('Branches / Tags') + '</th>');
+		if (colVisibility.date) headers.push('<th class="tableColHeader dateCol" data-col="2">' + t('Date') + '</th>');
+		if (colVisibility.author) headers.push('<th class="tableColHeader authorCol" data-col="3">' + t('Author') + '</th>');
+		if (fileHistory !== null) {
+			headers.push('<th class="fileChangesCol">' + t('Changes to this File') + '</th>');
+		} else if (showChanges) {
+			headers.push('<th class="changesCol">' + t('Changes') + '</th>');
+		}
+		if (colVisibility.commit) headers.push('<th class="tableColHeader" data-col="4">' + t('Commit') + '</th>');
+		// The button to choose the columns is in the last column header
+		headers[headers.length - 1] = headers[headers.length - 1].replace(/<\/th>$/, '<span id="columnSettingsBtn" title="' + t('Choose the columns that are shown') + '">' + SVG_ICONS.columns + '</span></th>');
+		let html = '<tr id="tableColHeaders">' + headers.join('') + '</tr>';
 
 		for (let i = 0; i < this.commits.length; i++) {
 			let commit = this.commits[i];
@@ -1092,18 +1109,21 @@ class GitGraphView {
 			for (j = 0; j < branchLabels.heads.length; j++) {
 				refName = escapeHtml(branchLabels.heads[j].name);
 				refActive = branchLabels.heads[j].name === this.gitBranchHead;
-				refHtml = '<span class="gitRef head' + (refActive ? ' active' : '') + '" data-name="' + refName + '">' + SVG_ICONS.branch + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span>';
+				refHtml = '<span class="gitRef head' + (refActive ? ' active' : '') + '" data-name="' + refName + '">' + (refActive && refsInColumn ? SVG_ICONS.check : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span>';
 				for (k = 0; k < branchLabels.heads[j].remotes.length; k++) {
 					remoteName = escapeHtml(branchLabels.heads[j].remotes[k]);
-					refHtml += '<span class="gitRefHeadRemote" data-remote="' + remoteName + '" data-fullref="' + escapeHtml(branchLabels.heads[j].remotes[k] + '/' + branchLabels.heads[j].name) + '">' + remoteName + '</span>';
+					const remoteFullRef = escapeHtml(branchLabels.heads[j].remotes[k] + '/' + branchLabels.heads[j].name);
+					refHtml += refsInColumn
+						? '<span class="gitRefHeadRemote icon" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '" title="' + t('{0} is at this commit', remoteFullRef) + '">' + SVG_ICONS.cloud + '</span>'
+						: '<span class="gitRefHeadRemote" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '">' + remoteName + '</span>';
 				}
-				refHtml += '</span>';
+				refHtml += generateTrackingHtml(this.gitUpstreams[branchLabels.heads[j].name]) + '</span>';
 				refBranches = refActive ? refHtml + refBranches : refBranches + refHtml;
 				if (refActive) branchCheckedOutAtCommit = this.gitBranchHead;
 			}
 			for (j = 0; j < branchLabels.remotes.length; j++) {
 				refName = escapeHtml(branchLabels.remotes[j].name);
-				refBranches += '<span class="gitRef remote" data-name="' + refName + '" data-remote="' + (branchLabels.remotes[j].remote !== null ? escapeHtml(branchLabels.remotes[j].remote!) : '') + '">' + SVG_ICONS.branch + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
+				refBranches += '<span class="gitRef remote" data-name="' + refName + '" data-remote="' + (branchLabels.remotes[j].remote !== null ? escapeHtml(branchLabels.remotes[j].remote!) : '') + '">' + (refsInColumn ? SVG_ICONS.cloud : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
 			}
 
 			for (j = 0; j < commit.tags.length; j++) {
@@ -1124,20 +1144,38 @@ class GitGraphView {
 				: '';
 
 			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
-				(this.config.referenceLabels.branchLabelsAlignedToGraph ? '<td>' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td><span class="description">' + commitDot : '<td></td><td><span class="description">' + commitDot + refBranches) + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message) + '</span></td>' +
+				(refsInColumn
+					? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
+					: this.config.referenceLabels.branchLabelsAlignedToGraph
+						? '<td class="graphCol">' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td class="descriptionCol"><span class="description">' + commitDot + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)
+						: '<td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + refBranches + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)) + '</span></td>' +
+				(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
+				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
 				(fileHistory !== null ? '<td class="fileChangesCol">' + (typeof fileChange !== 'undefined'
 					? (fileChange.additions !== null && fileChange.deletions !== null
 						? generateChangeBarHtml(fileChange.additions, fileChange.deletions, Math.round(8 + 52 * (fileChange.additions + fileChange.deletions) / maxLinesChanged)) + '<span class="fileTreeFileAdd">+' + fileChange.additions + '</span><span class="fileTreeFileDel">\u2212' + fileChange.deletions + '</span>'
 						: '<span class="fileChangesBinary">' + t('Binary') + '</span>')
-					: '') + '</td>' : '') +
-				(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
-				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
+					: '') + '</td>' : showChanges ? '<td class="changesCol">' + (commit.stash === null && typeof this.commitStats[commit.hash] !== 'undefined' ? generateCommitStatsHtml(this.commitStats[commit.hash]) : '') + '</td>' : '') +
 				(colVisibility.commit ? '<td class="hashCol text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
 				'</tr>';
 		}
 		this.tableElem.innerHTML = '<table>' + html + '</table>';
-		this.footerElem.innerHTML = this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '';
+		const countCommits = (commits: ReadonlyArray<GG.GitCommit>) => commits.filter((commit) => commit.hash !== UNCOMMITTED && commit.stash === null).length;
+		const loaded = countCommits(this.loadedCommits), shown = countCommits(this.commits);
+		this.footerElem.innerHTML = this.commits.length > 0
+			? '<div id="listFooter"><span class="listFooterCount">' + (loaded !== 1 ? t('{0} commits loaded', loaded) : t('1 commit loaded')) + (shown !== loaded ? ' · ' + t('{0} shown', shown) : '') + '</span>' +
+				'<span class="listFooterLegend">' + t('Scrollbar markers:') + '<span><i style="background-color:var(--vscode-focusBorder)"></i>HEAD</span><span><i style="background-color:' + escapeHtml(this.config.graph.colours[1 % this.config.graph.colours.length]) + '"></i>' + t('Branches') + '</span><span><i style="background-color:var(--vscode-descriptionForeground)"></i>' + t('Tags') + '</span><span><i style="background-color:var(--vscode-editorOverviewRuler-findMatchForeground, #d18616)"></i>' + t('Find Matches') + '</span></span>' +
+				'<span class="listFooterSpacer"></span>' + (this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '') + '</div>'
+			: '';
 		this.makeTableResizable();
+		const columnSettingsBtn = document.getElementById('columnSettingsBtn');
+		if (columnSettingsBtn !== null) {
+			columnSettingsBtn.addEventListener('click', (e) => {
+				handledEvent(e); // Don't let the click propagate to the document, which closes context menus
+				const bounds = columnSettingsBtn.getBoundingClientRect();
+				document.getElementById('tableColHeaders')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: bounds.left, clientY: bounds.bottom }));
+			});
+		}
 		this.findWidget.refresh();
 		this.renderedGitBranchHead = this.gitBranchHead;
 
@@ -1186,11 +1224,54 @@ class GitGraphView {
 	}
 
 	private renderUncommittedChanges() {
-		const colVisibility = this.getColumnVisibility(), date = formatShortDate(this.commits[0].date);
-		document.getElementById('uncommittedChanges')!.innerHTML = '<td></td><td><b>' + escapeHtml(this.commits[0].message) + '</b></td>' +
-			(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
-			(colVisibility.author ? '<td class="authorCol text" title="* <>">*</td>' : '') +
-			(colVisibility.commit ? '<td class="hashCol text" title="*">*</td>' : '');
+		const rowElem = document.getElementById('uncommittedChanges');
+		if (rowElem === null) return;
+		const date = formatShortDate(this.commits[0].date), textElem = rowElem.querySelector('.description .text'), dateElem = <HTMLElement | null>rowElem.querySelector('.dateCol');
+		if (textElem !== null) textElem.textContent = this.commits[0].message;
+		if (dateElem !== null) {
+			dateElem.title = date.title;
+			dateElem.textContent = date.formatted;
+		}
+		this.requestCommitStats(true);
+	}
+
+	/**
+	 * Is the Changes column (the files & lines changed by each commit) shown.
+	 * @returns TRUE => The column is shown, FALSE => The column isn't shown (e.g. the history of a file is shown, which has its own column).
+	 */
+	private isChangesColumnShown() {
+		return this.fileHistory === null && this.gitRepos[this.currentRepo].showChangesColumn !== false;
+	}
+
+	/**
+	 * Request the files & lines changed by the commits that are shown, which haven't been loaded.
+	 * @param refreshUncommitted Should the stats of the uncommitted changes be refreshed (as they may have changed).
+	 */
+	private requestCommitStats(refreshUncommitted: boolean) {
+		if (!this.isChangesColumnShown()) return;
+		if (refreshUncommitted) {
+			delete this.commitStats[UNCOMMITTED];
+			this.commitStatsRequested.delete(UNCOMMITTED);
+		}
+		const hashes = this.commits.filter((commit) => commit.stash === null && typeof this.commitStats[commit.hash] === 'undefined' && !this.commitStatsRequested.has(commit.hash)).map((commit) => commit.hash);
+		if (hashes.length === 0) return;
+		hashes.forEach((hash) => this.commitStatsRequested.add(hash));
+		sendMessage({ command: 'loadCommitStats', repo: this.currentRepo, hashes: hashes });
+	}
+
+	/**
+	 * Process the files & lines changed by commits, loaded by the extension.
+	 * @param msg The message containing the stats.
+	 */
+	public processLoadCommitStatsResponse(msg: GG.ResponseLoadCommitStats) {
+		const commitElems = getCommitElems();
+		Object.keys(msg.stats).forEach((hash) => {
+			this.commitStats[hash] = msg.stats[hash];
+			this.commitStatsRequested.delete(hash);
+			const elem = findCommitElemWithId(commitElems, this.getCommitId(hash));
+			const cellElem = elem !== null ? elem.querySelector('td.changesCol') : null;
+			if (cellElem !== null) cellElem.innerHTML = generateCommitStatsHtml(this.commitStats[hash]);
+		});
 	}
 
 	private renderFetchButton() {
@@ -2302,6 +2383,16 @@ class GitGraphView {
 			contextMenu.show([
 				[
 					{
+						title: t('Changes'),
+						visible: this.fileHistory === null,
+						checked: this.isChangesColumnShown(),
+						onClick: () => {
+							this.saveRepoStateValue(this.currentRepo, 'showChangesColumn', !this.isChangesColumnShown());
+							this.render();
+							this.requestCommitStats(false);
+						}
+					},
+					{
 						title: t('Date'),
 						visible: true,
 						checked: columnWidths[2] !== COLUMN_HIDDEN,
@@ -2356,7 +2447,7 @@ class GitGraphView {
 
 	private getNumColumns() {
 		let colVisibility = this.getColumnVisibility();
-		return 2 + (this.fileHistory !== null ? 1 : 0) + (colVisibility.date ? 1 : 0) + (colVisibility.author ? 1 : 0) + (colVisibility.commit ? 1 : 0);
+		return 2 + (this.config.referenceLabels.inSeparateColumn ? 1 : 0) + (this.fileHistory !== null || this.isChangesColumnShown() ? 1 : 0) + (colVisibility.date ? 1 : 0) + (colVisibility.author ? 1 : 0) + (colVisibility.commit ? 1 : 0);
 	}
 
 	/**
@@ -4321,6 +4412,9 @@ window.addEventListener('load', () => {
 			case 'loadFileDiff':
 				gitGraph.processLoadFileDiffResponse(msg);
 				break;
+			case 'loadCommitStats':
+				gitGraph.processLoadCommitStatsResponse(msg);
+				break;
 			case 'loadFileIconTheme':
 				fileIcons.setTheme(msg.theme);
 				gitGraph.refreshCdvFileView();
@@ -4549,6 +4643,28 @@ window.addEventListener('load', () => {
 
 
 /* File Tree Methods (for the Commit Details & Comparison Views) */
+
+/**
+ * Generate the HTML of the files & lines changed by a commit, for the Changes column.
+ * @param stats The stats of the commit (NULL if the commit doesn't change any files).
+ * @returns The HTML.
+ */
+function generateCommitStatsHtml(stats: GG.GitCommitStats | null) {
+	return stats !== null
+		? '<span title="' + (stats.files !== 1 ? t('{0} files', stats.files) : t('{0} file', stats.files)) + '">' + generateChangeBarHtml(stats.additions, stats.deletions, 36) + '<span class="fileTreeFileAdd">+' + stats.additions + '</span><span class="fileTreeFileDel">\u2212' + stats.deletions + '</span></span>'
+		: '';
+}
+
+/**
+ * Generate the HTML of how many commits a branch is ahead / behind its upstream branch.
+ * @param upstream The upstream of the branch (if it has one).
+ * @returns The HTML.
+ */
+function generateTrackingHtml(upstream: GG.GitBranchUpstream | undefined) {
+	if (typeof upstream === 'undefined' || upstream.gone || (upstream.ahead === 0 && upstream.behind === 0)) return '';
+	const title = [upstream.ahead > 0 ? t('{0} commit(s) ahead of {1}', upstream.ahead, upstream.name) : null, upstream.behind > 0 ? t('{0} commit(s) behind {1}', upstream.behind, upstream.name) : null].filter((text) => text !== null).join(', ');
+	return '<span class="gitRefTrack" title="' + escapeHtml(title) + '">' + (upstream.ahead > 0 ? '\u2191' + upstream.ahead : '') + (upstream.behind > 0 ? '\u2193' + upstream.behind : '') + '</span>';
+}
 
 /**
  * Get the commits that match a filter, with their parents rewritten to be their nearest ancestors that also match (as Git does when it

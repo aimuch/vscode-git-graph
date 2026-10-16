@@ -1031,14 +1031,16 @@
 					"enum": [
 						"Normal",
 						"Branches (on the left) & Tags (on the right)",
-						"Branches (aligned to the graph) & Tags (on the right)"
+						"Branches (aligned to the graph) & Tags (on the right)",
+						"Branches & Tags (in a separate column)"
 					],
 					"enumDescriptions": [
 						"%config.referenceLabels.alignment.enumDescriptions.0%",
 						"%config.referenceLabels.alignment.enumDescriptions.1%",
-						"%config.referenceLabels.alignment.enumDescriptions.2%"
+						"%config.referenceLabels.alignment.enumDescriptions.2%",
+						"%config.referenceLabels.alignment.enumDescriptions.3%"
 					],
-					"default": "Normal",
+					"default": "Branches & Tags (in a separate column)",
 					"description": "%config.referenceLabels.alignment.description%"
 				},
 				"git-graph.referenceLabels.combineLocalAndRemoteBranchLabels": {

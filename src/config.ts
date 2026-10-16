@@ -388,16 +388,19 @@ class Config {
 	 * Get the reference label configuration from the Extension Settings.
 	 */
 	get referenceLabels(): ReferenceLabelsConfig {
-		const alignmentConfigValue = this.getRenamedExtensionSetting<string>('referenceLabels.alignment', 'referenceLabelAlignment', 'Normal');
+		const alignmentConfigValue = this.getRenamedExtensionSetting<string>('referenceLabels.alignment', 'referenceLabelAlignment', 'Branches & Tags (in a separate column)');
 		const alignment = alignmentConfigValue === 'Branches (on the left) & Tags (on the right)'
 			? RefLabelAlignment.BranchesOnLeftAndTagsOnRight
 			: alignmentConfigValue === 'Branches (aligned to the graph) & Tags (on the right)'
 				? RefLabelAlignment.BranchesAlignedToGraphAndTagsOnRight
-				: RefLabelAlignment.Normal;
+				: alignmentConfigValue === 'Branches & Tags (in a separate column)'
+					? RefLabelAlignment.SeparateColumn
+					: RefLabelAlignment.Normal;
 		return {
 			branchLabelsAlignedToGraph: alignment === RefLabelAlignment.BranchesAlignedToGraphAndTagsOnRight,
 			combineLocalAndRemoteBranchLabels: !!this.getRenamedExtensionSetting('referenceLabels.combineLocalAndRemoteBranchLabels', 'combineLocalAndRemoteBranchLabels', true),
-			tagLabelsOnRight: alignment !== RefLabelAlignment.Normal
+			inSeparateColumn: alignment === RefLabelAlignment.SeparateColumn,
+			tagLabelsOnRight: alignment === RefLabelAlignment.BranchesOnLeftAndTagsOnRight || alignment === RefLabelAlignment.BranchesAlignedToGraphAndTagsOnRight
 		};
 	}
 
