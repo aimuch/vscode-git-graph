@@ -178,6 +178,16 @@ export interface GitBranchUpstreams {
 	readonly [branchName: string]: GitBranchUpstream;
 }
 
+/**
+ * The number of files changed by a stash, and the lines they add & delete.
+ */
+export interface GitStashStats {
+	readonly files: number;
+	readonly additions: number;
+	readonly deletions: number;
+	readonly untrackedFiles: number;
+}
+
 export interface GitStash {
 	readonly hash: string;
 	readonly baseHash: string;
@@ -1049,6 +1059,15 @@ export interface ResponseLoadFileIconTheme extends BaseMessage {
 	readonly theme: FileIconTheme | null;
 }
 
+export interface RequestLoadStashStats extends RepoRequest {
+	readonly command: 'loadStashStats';
+	readonly stashes: ReadonlyArray<{ readonly hash: string, readonly baseHash: string, readonly untrackedFilesHash: string | null }>;
+}
+export interface ResponseLoadStashStats extends ResponseWithErrorInfo {
+	readonly command: 'loadStashStats';
+	readonly stats: { readonly [hash: string]: GitStashStats };
+}
+
 export interface RequestLoadRepos extends BaseMessage {
 	readonly command: 'loadRepos';
 	readonly check: boolean;
@@ -1396,6 +1415,7 @@ export type RequestMessage =
 	| RequestLoadRepoInfo
 	| RequestLoadFileIconTheme
 	| RequestLoadRepos
+	| RequestLoadStashStats
 	| RequestMerge
 	| RequestNavigateEditorHistory
 	| RequestOpenExtensionSettings
@@ -1463,6 +1483,7 @@ export type ResponseMessage =
 	| ResponseLoadRepoInfo
 	| ResponseLoadFileIconTheme
 	| ResponseLoadRepos
+	| ResponseLoadStashStats
 	| ResponseMerge
 	| ResponseOpenExtensionSettings
 	| ResponseUpdateExtensionSetting

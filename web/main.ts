@@ -38,6 +38,8 @@ class GitGraphView {
 	private moreCommitsAvailable: boolean = false;
 	private scrollToHeadPending: boolean = false;
 	private cdvComparePending: boolean = false;
+	private scrollToStashPending: { stash: GG.GitStash, attempts: number } | null = null;
+	private stashStats: { [hash: string]: GG.GitStashStats } = {};
 	private expandedCommit: ExpandedCommit | null = null;
 	private maxCommits: number;
 	private scrollTop = 0;
@@ -182,6 +184,7 @@ class GitGraphView {
 			if (this.gitBranchHead !== null && this.gitRemotes.length > 0) this.pushBranchAction(this.gitBranchHead, null);
 		});
 		document.getElementById('stashBtn')!.addEventListener('click', (e) => this.showStashList(<HTMLElement>e.currentTarget, e));
+		document.addEventListener('click', () => this.closeStashList());
 		scrollToHeadBtn.innerHTML = SVG_ICONS.head + '<span>HEAD</span>';
 		scrollToHeadBtn.addEventListener('click', () => this.scrollToHead());
 		settingsBtn.innerHTML = SVG_ICONS.gear;
@@ -247,6 +250,9 @@ class GitGraphView {
 		this.gitRemotes = [];
 		this.gitStashes = [];
 		this.gitUpstreams = {};
+		this.stashStats = {};
+		this.scrollToStashPending = null;
+		this.closeStashList();
 		this.gitTags = [];
 		this.currentBranches = null;
 		this.currentAuthors = null;
@@ -266,6 +272,7 @@ class GitGraphView {
 		this.gitStashes = stashes;
 		this.gitUpstreams = upstreams;
 		this.renderStashButton();
+		if (stashes.length === 0) this.closeStashList(); else this.renderStashList();
 		if (isRepo) this.renderSyncButtons(branchHead);
 
 		if (!isRepo || (!this.currentRepoRefreshState.hard && arraysStrictlyEqual(this.gitBranches, branchOptions) && this.gitBranchHead === branchHead && arraysStrictlyEqual(this.gitRemotes, remotes))) {
@@ -507,6 +514,9 @@ class GitGraphView {
 
 		if (this.scrollToHeadPending) {
 			this.scrollToHead();
+		}
+		if (this.scrollToStashPending !== null) {
+			this.goToStash(this.scrollToStashPending.stash);
 		}
 	}
 
@@ -1186,31 +1196,131 @@ class GitGraphView {
 	}
 
 	/**
-	 * Show the list of stashes in the repository below the Stashes button. Clicking on a stash scrolls to it, and opens its Commit Details View.
+	 * Show (or hide) the list of the stashes in the repository below the Stashes button.
 	 * @param stashBtn The Stashes button.
 	 * @param e The click event on the Stashes button.
 	 */
 	private showStashList(stashBtn: HTMLElement, e: Event) {
-		handledEvent(e); // Don't let the click propagate to the document, which closes context menus
-		if (contextMenu.isOpen()) {
-			contextMenu.close();
+		handledEvent(e); // Don't let the click propagate to the document, which closes the list
+		if (document.getElementById('stashList') !== null) {
+			this.closeStashList();
 			return;
 		}
+		closeDialogAndContextMenu();
+		const listElem = document.createElement('div');
+		listElem.id = 'stashList';
 		const bounds = stashBtn.getBoundingClientRect();
-		const position = <MouseEvent>{ pageX: bounds.left + 2, pageY: bounds.bottom + 6 };
-		contextMenu.show([this.gitStashes.map((stash) => ({
-			title: '<span class="stashListSelector">' + escapeHtml(stash.selector) + '</span><span class="stashListMessage">' + escapeHtml(stash.message) + '</span><span class="stashListDate">' + escapeHtml(formatRelativeDate(stash.date)) + '</span>',
-			visible: true,
-			onClick: () => {
-				const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(stash.hash));
-				if (elem !== null) {
-					this.scrollToCommit(stash.hash, true, true);
-					if (!this.isCdvOpen(stash.hash, null)) this.loadCommitDetails(elem);
-				} else {
-					dialog.showMessage(t('The stash <b><i>{0}</i></b> isn\'t in the commits that are currently shown. Load more commits (or clear the search) to view it.', escapeHtml(stash.selector)));
+		listElem.style.left = Math.max(Math.min(bounds.left, window.innerWidth - 572), 8) + 'px';
+		listElem.style.top = (bounds.bottom + 6) + 'px';
+		document.body.appendChild(listElem);
+		stashBtn.classList.add(CLASS_ACTIVE);
+		this.renderStashList();
+
+		// Request the stats of the stashes that haven't been loaded
+		const stashes = this.gitStashes.filter((stash) => typeof this.stashStats[stash.hash] === 'undefined');
+		if (stashes.length > 0) {
+			sendMessage({ command: 'loadStashStats', repo: this.currentRepo, stashes: stashes.map((stash) => ({ hash: stash.hash, baseHash: stash.baseHash, untrackedFilesHash: stash.untrackedFilesHash })) });
+		}
+
+		listElem.addEventListener('click', (e) => {
+			handledEvent(e);
+			const target = <Element>e.target, itemElem = <HTMLElement | null>target.closest('.stashListItem');
+			if (target.closest('#stashListStashChanges') !== null) {
+				if (this.loadedCommits.length > 0 && this.loadedCommits[0].hash === UNCOMMITTED) {
+					this.closeStashList();
+					this.stashUncommittedChangesAction(null);
 				}
+				return;
 			}
-		}))], false, null, position, document.body, null, 'stashList');
+			if (itemElem === null) return;
+			const stash = this.gitStashes[parseInt(itemElem.dataset.index!)];
+			if (typeof stash === 'undefined') return;
+			const actionElem = <HTMLElement | null>target.closest('.stashListAction');
+			const rowElem = findCommitElemWithId(getCommitElems(), this.getCommitId(stash.hash));
+			const dialogTarget: DialogTarget | null = rowElem !== null ? { type: TargetType.Ref, elem: rowElem, hash: stash.hash, ref: stash.selector } : null;
+			this.closeStashList();
+			if (actionElem === null) {
+				this.goToStash(stash);
+			} else if (actionElem.dataset.action === 'apply') {
+				this.applyStashAction(stash.selector, dialogTarget);
+			} else if (actionElem.dataset.action === 'pop') {
+				this.popStashAction(stash.selector, dialogTarget);
+			} else if (actionElem.dataset.action === 'drop') {
+				this.dropStashAction(stash.selector, dialogTarget);
+			}
+		});
+	}
+
+	/**
+	 * Render the list of the stashes in the repository (if it's open).
+	 */
+	private renderStashList() {
+		const listElem = document.getElementById('stashList');
+		if (listElem === null) return;
+		const keybinding = this.config.keybindings.scrollToStash, isMac = /Mac/.test(navigator.platform), canStash = this.loadedCommits.length > 0 && this.loadedCommits[0].hash === UNCOMMITTED;
+		const modifier = isMac ? '\u2318' : 'Ctrl+', shift = isMac ? '\u21e7' : 'Shift+';
+		listElem.innerHTML = '<div class="stashListHeader"><b>' + t('Stashes') + ' · ' + this.gitStashes.length + '</b><span>' + t('Click on a stash to go to it on the graph, and open its details') + '</span></div>' +
+			'<div class="stashListItems">' + this.gitStashes.map((stash, index) => {
+			const stats = this.stashStats[stash.hash], branch = stash.message.match(/^(?:WIP on|On) ([^:]+):/);
+			return '<div class="stashListItem" data-index="' + index + '"><span class="stashListSelector">' + escapeHtml(stash.selector.substring(5)) + '</span>' +
+					'<span class="stashListMessage" title="' + escapeHtml(stash.message) + '">' + escapeHtml(stash.message) + '</span>' +
+					'<span class="stashListActions"><button type="button" class="stashListAction primary" data-action="apply" tabindex="-1">' + t('Apply') + '</button><button type="button" class="stashListAction" data-action="pop" tabindex="-1">' + t('Pop') + '</button><button type="button" class="stashListAction danger" data-action="drop" tabindex="-1">' + t('Drop') + '</button></span>' +
+					'<span class="stashListMeta">' + (branch !== null ? '<span>' + escapeHtml(branch[1]) + '</span>' : '') + '<span title="' + escapeHtml(formatLongDate(stash.date)) + '">' + escapeHtml(formatRelativeDate(stash.date)) + '</span>' +
+					'<span>' + (typeof stats !== 'undefined'
+				? (stats.files !== 1 ? t('{0} files', stats.files) : t('{0} file', stats.files)) + ' · <span class="fileTreeFileAdd">+' + stats.additions + '</span> <span class="fileTreeFileDel">\u2212' + stats.deletions + '</span>'
+				: t('Loading') + ELLIPSIS) + '</span>' +
+					(stash.untrackedFilesHash !== null ? '<span>' + t('Includes untracked files') + '</span>' : '') +
+					(typeof this.commitLookup[stash.hash] !== 'number' ? '<span class="stashListNotLoaded">' + t('Not in the loaded commits') + '</span>' : '') +
+					'</span></div>';
+		}).join('') + '</div>' +
+			'<div class="stashListFooter"><button type="button" id="stashListStashChanges" class="stashListAction' + (canStash ? '' : ' ' + CLASS_DISABLED) + '" title="' + (canStash ? t('Stash the uncommitted changes') : t('There aren\'t any uncommitted changes to stash')) + '" tabindex="-1">' + t('Stash Current Changes') + ELLIPSIS + '</button><span class="stashListSpacer"></span>' +
+			(keybinding !== null ? '<span>' + t('{0} / {1}: go to the next / previous stash', modifier + keybinding.toUpperCase(), modifier + shift + keybinding.toUpperCase()) + '</span>' : '') + '</div>';
+	}
+
+	/**
+	 * Close the list of the stashes in the repository (if it's open).
+	 */
+	public closeStashList() {
+		const listElem = document.getElementById('stashList');
+		if (listElem === null) return;
+		listElem.remove();
+		document.getElementById('stashBtn')!.classList.remove(CLASS_ACTIVE);
+	}
+
+	/**
+	 * Is the list of the stashes in the repository open.
+	 */
+	public isStashListOpen() {
+		return document.getElementById('stashList') !== null;
+	}
+
+	/**
+	 * Process the stats of the stashes loaded by the extension.
+	 * @param msg The message containing the stats.
+	 */
+	public processLoadStashStatsResponse(msg: GG.ResponseLoadStashStats) {
+		Object.keys(msg.stats).forEach((hash) => this.stashStats[hash] = msg.stats[hash]);
+		this.renderStashList();
+	}
+
+	/**
+	 * Scroll to a stash on the graph, and open its Commit Details View. If the stash isn't in the loaded commits, more commits are loaded until it is.
+	 * @param stash The stash.
+	 */
+	private goToStash(stash: GG.GitStash) {
+		const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(stash.hash));
+		const attempts = this.scrollToStashPending !== null && this.scrollToStashPending.stash.hash === stash.hash ? this.scrollToStashPending.attempts : 0;
+		if (elem !== null) {
+			this.scrollToStashPending = null;
+			this.scrollToCommit(stash.hash, true, true);
+			if (!this.isCdvOpen(stash.hash, null)) this.loadCommitDetails(elem);
+		} else if (this.moreCommitsAvailable && this.commitFilter === null && attempts < 10) {
+			this.scrollToStashPending = { stash: stash, attempts: attempts + 1 };
+			if (!this.currentRepoRefreshState.inProgress) this.loadMoreCommits();
+		} else {
+			this.scrollToStashPending = null;
+			dialog.showMessage(t('The stash <b><i>{0}</i></b> isn\'t in the commits that are currently shown. Load more commits (or clear the search) to view it.', escapeHtml(stash.selector.substring(5))));
+		}
 	}
 
 	/**
@@ -1585,16 +1695,7 @@ class GitGraphView {
 			{
 				title: t('Apply Stash') + ELLIPSIS,
 				visible: visibility.apply,
-				onClick: () => {
-					dialog.showForm(t('Are you sure you want to apply the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), [{
-						type: DialogInputType.Checkbox,
-						name: t('Reinstate Index'),
-						value: this.config.dialogDefaults.applyStash.reinstateIndex,
-						info: t('Attempt to reinstate the indexed changes, in addition to the working tree\'s changes.')
-					}], t('Yes, apply stash'), (values) => {
-						runAction({ command: 'applyStash', repo: this.currentRepo, selector: selector, reinstateIndex: <boolean>values[0] }, t('Applying Stash'));
-					}, target);
-				}
+				onClick: () => this.applyStashAction(selector, target)
 			}, {
 				title: t('Create Branch from Stash') + ELLIPSIS,
 				visible: visibility.createBranch,
@@ -1606,24 +1707,11 @@ class GitGraphView {
 			}, {
 				title: t('Pop Stash') + ELLIPSIS,
 				visible: visibility.pop,
-				onClick: () => {
-					dialog.showForm(t('Are you sure you want to pop the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), [{
-						type: DialogInputType.Checkbox,
-						name: t('Reinstate Index'),
-						value: this.config.dialogDefaults.popStash.reinstateIndex,
-						info: t('Attempt to reinstate the indexed changes, in addition to the working tree\'s changes.')
-					}], t('Yes, pop stash'), (values) => {
-						runAction({ command: 'popStash', repo: this.currentRepo, selector: selector, reinstateIndex: <boolean>values[0] }, t('Popping Stash'));
-					}, target);
-				}
+				onClick: () => this.popStashAction(selector, target)
 			}, {
 				title: t('Drop Stash') + ELLIPSIS,
 				visible: visibility.drop,
-				onClick: () => {
-					dialog.showConfirmation(t('Are you sure you want to drop the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), t('Yes, drop'), () => {
-						runAction({ command: 'dropStash', repo: this.currentRepo, selector: selector }, t('Dropping Stash'));
-					}, target);
-				}
+				onClick: () => this.dropStashAction(selector, target)
 			}
 		], [
 			{
@@ -1724,14 +1812,7 @@ class GitGraphView {
 			{
 				title: t('Stash uncommitted changes') + ELLIPSIS,
 				visible: visibility.stash,
-				onClick: () => {
-					dialog.showForm(t('Are you sure you want to stash the <b>uncommitted changes</b>?'), [
-						{ type: DialogInputType.Text, name: t('Message'), default: '', placeholder: t('Optional') },
-						{ type: DialogInputType.Checkbox, name: t('Include Untracked'), value: this.config.dialogDefaults.stashUncommittedChanges.includeUntracked, info: t('Include all untracked files in the stash, and then clean them from the working directory.') }
-					], t('Yes, stash'), (values) => {
-						runAction({ command: 'pushStash', repo: this.currentRepo, message: <string>values[0], includeUntracked: <boolean>values[1] }, t('Stashing uncommitted changes'));
-					}, target);
-				}
+				onClick: () => this.stashUncommittedChangesAction(target)
 			}
 		], [
 			{
@@ -1975,6 +2056,62 @@ class GitGraphView {
 			{ type: DialogInputType.Checkbox, name: t('Squash Commits'), value: this.config.dialogDefaults.pullBranch.squash, info: t('Create a single commit on the current branch whose effect is the same as merging this remote branch.') }
 		], t('Yes, pull'), (values) => {
 			runAction({ command: 'pullBranch', repo: this.currentRepo, branchName: branchName, remote: remote, createNewCommit: <boolean>values[0], squash: <boolean>values[1] }, t('Pulling Branch'));
+		}, target);
+	}
+
+	/**
+	 * Show the dialog to apply a stash.
+	 * @param selector The selector of the stash (e.g. "refs/stash@{0}").
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private applyStashAction(selector: string, target: DialogTarget | null) {
+		dialog.showForm(t('Are you sure you want to apply the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), [{
+			type: DialogInputType.Checkbox,
+			name: t('Reinstate Index'),
+			value: this.config.dialogDefaults.applyStash.reinstateIndex,
+			info: t('Attempt to reinstate the indexed changes, in addition to the working tree\'s changes.')
+		}], t('Yes, apply stash'), (values) => {
+			runAction({ command: 'applyStash', repo: this.currentRepo, selector: selector, reinstateIndex: <boolean>values[0] }, t('Applying Stash'));
+		}, target);
+	}
+
+	/**
+	 * Show the dialog to pop a stash.
+	 * @param selector The selector of the stash (e.g. "refs/stash@{0}").
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private popStashAction(selector: string, target: DialogTarget | null) {
+		dialog.showForm(t('Are you sure you want to pop the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), [{
+			type: DialogInputType.Checkbox,
+			name: t('Reinstate Index'),
+			value: this.config.dialogDefaults.popStash.reinstateIndex,
+			info: t('Attempt to reinstate the indexed changes, in addition to the working tree\'s changes.')
+		}], t('Yes, pop stash'), (values) => {
+			runAction({ command: 'popStash', repo: this.currentRepo, selector: selector, reinstateIndex: <boolean>values[0] }, t('Popping Stash'));
+		}, target);
+	}
+
+	/**
+	 * Show the dialog to drop a stash.
+	 * @param selector The selector of the stash (e.g. "refs/stash@{0}").
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private dropStashAction(selector: string, target: DialogTarget | null) {
+		dialog.showConfirmation(t('Are you sure you want to drop the stash <b><i>{0}</i></b>?', escapeHtml(selector.substring(5))), t('Yes, drop'), () => {
+			runAction({ command: 'dropStash', repo: this.currentRepo, selector: selector }, t('Dropping Stash'));
+		}, target);
+	}
+
+	/**
+	 * Show the dialog to stash the uncommitted changes.
+	 * @param target The target of the dialog (NULL if the dialog isn't for an element in the view).
+	 */
+	private stashUncommittedChangesAction(target: DialogTarget | null) {
+		dialog.showForm(t('Are you sure you want to stash the <b>uncommitted changes</b>?'), [
+			{ type: DialogInputType.Text, name: t('Message'), default: '', placeholder: t('Optional') },
+			{ type: DialogInputType.Checkbox, name: t('Include Untracked'), value: this.config.dialogDefaults.stashUncommittedChanges.includeUntracked, info: t('Include all untracked files in the stash, and then clean them from the working directory.') }
+		], t('Yes, stash'), (values) => {
+			runAction({ command: 'pushStash', repo: this.currentRepo, message: <string>values[0], includeUntracked: <boolean>values[1] }, t('Stashing uncommitted changes'));
 		}, target);
 	}
 
@@ -2444,7 +2581,10 @@ class GitGraphView {
 					possibleChordStart = Date.now();
 				}
 			} else if (e.key === 'Escape') {
-				if (this.repoDropdown.isOpen()) {
+				if (this.isStashListOpen()) {
+					this.closeStashList();
+					handledEvent(e);
+				} else if (this.repoDropdown.isOpen()) {
 					this.repoDropdown.close();
 					handledEvent(e);
 				} else if (this.branchDropdown.isOpen()) {
@@ -3978,6 +4118,9 @@ window.addEventListener('load', () => {
 				break;
 			case 'loadRepoInfo':
 				gitGraph.processLoadRepoInfoResponse(msg);
+				break;
+			case 'loadStashStats':
+				gitGraph.processLoadStashStatsResponse(msg);
 				break;
 			case 'loadFileIconTheme':
 				fileIcons.setTheme(msg.theme);

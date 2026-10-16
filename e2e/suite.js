@@ -268,6 +268,24 @@ async function run() {
 		}
 	});
 
+	await check('ui-stash-stats', '[Redesign] The stats of a stash (the files it changes, lines added & deleted, and untracked files it includes) are loaded for the list of stashes', async () => {
+		const dataSource = (await getView()).dataSource;
+		fs.writeFileSync(path.join(main, 'file.txt'), 'four\nfive\nsix\n');
+		fs.writeFileSync(path.join(main, 'e2e-untracked.txt'), 'untracked\n');
+		git(main, 'stash', 'push', '--include-untracked', '-m', 'E2E stash');
+		try {
+			const info = await dataSource.getRepoInfo(main, true, true, []);
+			const stash = info.stashes.find((stash) => stash.message.includes('E2E stash'));
+			assert(stash && stash.untrackedFilesHash !== null, 'The stash with untracked files is missing: ' + JSON.stringify(info.stashes));
+			const result = await dataSource.getStashStats(main, [stash]);
+			const stats = result.stats[stash.hash];
+			assert(result.error === null && stats && stats.files === 2 && stats.additions === 2 && stats.deletions === 0 && stats.untrackedFiles === 1, 'Unexpected stats: ' + JSON.stringify(result));
+			return stash.selector + ': ' + JSON.stringify(stats);
+		} finally {
+			git(main, 'stash', 'drop');
+		}
+	});
+
 	await check('#940', 'Interactive rebase on a branch whose name contains shell syntax does not execute it', async () => {
 		const dataSource = (await getView()).dataSource;
 		assert(!fs.existsSync(fixtures.injectionMarker), 'The marker exists before the rebase');

@@ -12,6 +12,11 @@
 	const ISSUE_URL = 'gitgraph-e2e://issue/$1';
 	const hash = (n) => n.toString(16).padStart(40, '0');
 	const HEAD_INDEX = 19;
+	// Stashes that aren't in the loaded commits (so the commits are the same as without stashes)
+	const STASHES = [
+		{ hash: 'a'.repeat(40), baseHash: 'f'.repeat(40), untrackedFilesHash: null, selector: 'refs/stash@{0}', author: 'E2E Author', email: 'author@example.com', date: NOW - 600, message: 'WIP on main: 0000001 Fix #12' },
+		{ hash: 'b'.repeat(40), baseHash: 'f'.repeat(40), untrackedFilesHash: 'c'.repeat(40), selector: 'refs/stash@{1}', author: 'E2E Author', email: 'author@example.com', date: NOW - 7200, message: 'On feature: Experiment' }
+	];
 
 	/* Fixture Data */
 
@@ -37,7 +42,7 @@
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
-				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: [], upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
+				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: STASHES, upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
 			case 'loadCommits':
 				// HEAD is the 20th commit, which isn't included in the first load of 10 commits
 				return msg.maxCommits <= 10
@@ -67,6 +72,8 @@
 						]
 					}
 				};
+			case 'loadStashStats':
+				return { command: 'loadStashStats', error: null, stats: Object.fromEntries(msg.stashes.map((stash) => [stash.hash, stash.hash === STASHES[0].hash ? { files: 3, additions: 46, deletions: 8, untrackedFiles: 0 } : { files: 2, additions: 5, deletions: 0, untrackedFiles: 1 }])) };
 			case 'loadFileIconTheme':
 				// A file icon theme with a font icon for Markdown files, and a default icon for other files
 				return {
@@ -403,6 +410,51 @@
 			mouse(document.getElementById('cdvClose'), 'click');
 			await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
 			return 'Chips: ' + chips.join(' | ') + '; branches: ' + branches.join(', ') + '; stats: ' + stats + '; files: ' + badges.join(', ') + '; icons: ' + icons.join(', ');
+		});
+
+		await check('ui-stash-list', '[Redesign] The Stashes button lists the stashes (with their branch, date & changes), applies / pops / drops them, and goes to them', async () => {
+			const stashBtn = document.getElementById('stashBtn');
+			assert(!stashBtn.classList.contains('hidden') && stashBtn.textContent === 'Stashes2', 'Unexpected Stashes button: ' + stashBtn.textContent);
+			mouse(stashBtn, 'click');
+			const list = await waitFor('the list of stashes', () => document.getElementById('stashList'));
+			const items = () => Array.from(list.querySelectorAll('.stashListItem'));
+			assert(JSON.stringify(items().map((item) => item.querySelector('.stashListSelector').textContent)) === JSON.stringify(['stash@{0}', 'stash@{1}']), 'Unexpected stashes');
+			const stats = requestsOf('loadStashStats').pop();
+			assert(stats && stats.stashes.length === 2 && stats.stashes[1].untrackedFilesHash === 'c'.repeat(40), 'The stats of the stashes weren\'t requested: ' + JSON.stringify(stats));
+			const metas = await waitFor('the stats of the stashes', () => {
+				const metas = items().map((item) => item.querySelector('.stashListMeta').textContent);
+				return metas.every((meta) => meta.includes(' files · ')) ? metas : null;
+			});
+			assert(metas[0].startsWith('main') && metas[0].includes('3 files · +46 \u22128') && metas[1].startsWith('feature') && metas[1].includes('Includes untracked files') && metas.every((meta) => meta.includes('Not in the loaded commits')), 'Unexpected stashes: ' + JSON.stringify(metas));
+			assert(document.getElementById('stashListStashChanges').classList.contains('disabled'), 'Stashing is possible without uncommitted changes');
+
+			mouse(items()[0].querySelector('.stashListAction[data-action="apply"]'), 'click');
+			const applyDialog = await waitFor('the Apply Stash dialog', () => document.querySelector('.dialog'));
+			assert(applyDialog.textContent.includes('apply the stash stash@{0}') && document.getElementById('stashList') === null, 'Unexpected Apply Stash dialog: ' + applyDialog.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+
+			mouse(stashBtn, 'click');
+			await waitFor('the list of stashes', () => document.getElementById('stashList'));
+			mouse(document.querySelectorAll('#stashList .stashListItem')[1].querySelector('.stashListAction[data-action="drop"]'), 'click');
+			const dropDialog = await waitFor('the Drop Stash dialog', () => document.querySelector('.dialog'));
+			assert(dropDialog.textContent.includes('drop the stash stash@{1}'), 'Unexpected Drop Stash dialog: ' + dropDialog.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+
+			// The stash isn't in the commits (and all commits are loaded), so it can't be gone to
+			mouse(stashBtn, 'click');
+			await waitFor('the list of stashes', () => document.getElementById('stashList'));
+			mouse(document.querySelector('#stashList .stashListMessage'), 'click');
+			const message = await waitFor('the message', () => document.querySelector('.dialog'));
+			assert(message.textContent.includes('stash@{0} isn\'t in the commits that are currently shown'), 'Unexpected message: ' + message.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+			mouse(stashBtn, 'click');
+			await waitFor('the list of stashes', () => document.getElementById('stashList'));
+			key(document.body, 'Escape');
+			await waitFor('the list to close', () => document.getElementById('stashList') === null && !stashBtn.classList.contains('active'));
+			return metas.join(' | ');
 		});
 
 		await check('ui-branch-highlight', '[GitLens] Hovering over a commit highlights the branch it is on in the graph', async () => {

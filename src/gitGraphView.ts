@@ -457,6 +457,12 @@ export class GitGraphView extends Disposable {
 					...await this.dataSource.searchCommits(msg.repo, msg.files, msg.changes, msg.isRegex, msg.isCaseSensitive, msg.since)
 				});
 				break;
+			case 'loadStashStats':
+				this.sendMessage({
+					command: 'loadStashStats',
+					...await this.dataSource.getStashStats(msg.repo, msg.stashes)
+				});
+				break;
 			case 'loadFileIconTheme':
 				this.sendMessage({ command: 'loadFileIconTheme', theme: this.getFileIconTheme() });
 				break;

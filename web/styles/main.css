@@ -1475,28 +1475,128 @@ body.tagLabelsRightAligned .gitRef.tag{
 	font-weight:700;
 }
 
-/* The list of stashes (shown by the Stashes button) */
-.contextMenu.stashList{
-	max-width:min(560px, calc(100vw - 24px));
+/* The list of the stashes in the repository (shown by the Stashes button) */
+.controlPill.active{
+	border-color:var(--vscode-focusBorder);
 }
-.contextMenu.stashList .contextMenuItem{
+#stashList{
+	position:fixed;
+	z-index:20;
+	width:min(560px, calc(100vw - 16px));
+	box-sizing:border-box;
+	border:1px solid var(--vscode-menu-border, var(--vscode-widget-border, rgba(128,128,128,0.35)));
+	border-radius:8px;
+	background-color:var(--vscode-editorWidget-background, var(--vscode-menu-background));
+	color:var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+	box-shadow:0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.5));
+	font-size:13px;
+	overflow:hidden;
+	-webkit-user-select:none;
+	user-select:none;
+}
+.stashListHeader, .stashListFooter{
 	display:flex;
-	gap:10px;
+	align-items:center;
+	gap:8px;
+	padding:9px 12px;
+	font-size:12px;
+	color:var(--vscode-descriptionForeground);
+}
+.stashListHeader{
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+}
+.stashListHeader b{
+	color:var(--vscode-foreground);
+}
+.stashListItems{
+	max-height:min(60vh, 420px);
+	overflow-y:auto;
+}
+.stashListItem{
+	display:grid;
+	grid-template-columns:auto minmax(0, 1fr) auto;
+	column-gap:10px;
+	align-items:center;
+	padding:8px 12px;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.15));
+	cursor:pointer;
+}
+.stashListItem:hover{
+	background-color:var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground));
+	color:var(--vscode-list-activeSelectionForeground, inherit);
 }
 .stashListSelector{
-	flex:0 0 auto;
+	grid-row:1 / span 2;
+	justify-self:start;
+	padding:2px 6px;
+	border-radius:4px;
+	background-color:rgba(128,128,128,0.15);
 	font-family:var(--vscode-editor-font-family);
 	font-size:12px;
 }
 .stashListMessage{
-	flex:1 1 auto;
-	min-width:0;
 	overflow:hidden;
 	text-overflow:ellipsis;
+	white-space:nowrap;
 }
-.stashListDate{
-	flex:0 0 auto;
-	opacity:0.7;
+.stashListMeta{
+	grid-column:2;
+	display:flex;
+	flex-wrap:wrap;
+	gap:2px 8px;
+	margin-top:2px;
+	font-size:11.5px;
+	color:var(--vscode-descriptionForeground);
+}
+.stashListItem:hover .stashListMeta{
+	color:inherit;
+	opacity:0.8;
+}
+.stashListMeta .fileTreeFileAdd, .stashListMeta .fileTreeFileDel{
+	cursor:inherit;
+}
+.stashListNotLoaded{
+	color:var(--vscode-editorWarning-foreground, #cca700);
+}
+.stashListActions{
+	grid-column:3;
+	grid-row:1 / span 2;
+	display:flex;
+	gap:4px;
+	visibility:hidden;
+}
+.stashListItem:hover .stashListActions{
+	visibility:visible;
+}
+.stashListAction{
+	height:24px;
+	padding:0 9px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:5px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.15));
+	color:var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+	font-family:inherit;
+	font-size:12px;
+	cursor:pointer;
+}
+.stashListAction:hover{
+	background-color:var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,0.25));
+}
+.stashListAction.primary{
+	border-color:var(--vscode-button-background);
+	background-color:var(--vscode-button-background);
+	color:var(--vscode-button-foreground);
+}
+.stashListAction.danger{
+	color:var(--vscode-errorForeground, #f48771);
+}
+.stashListAction.disabled{
+	opacity:0.5;
+	cursor:default;
+}
+.stashListSpacer{
+	flex:1 1 auto;
 }
 
 .controlBtn{

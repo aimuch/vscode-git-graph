@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitConfigLocation, GitFileChange, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitConfigLocation, GitFileChange, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -148,6 +148,37 @@ export class DataSource extends Disposable {
 			return { branches: results[0].branches, head: results[0].head, remotes: results[1], stashes: results[2], upstreams: results[3], error: null };
 		}).catch((errorMessage) => {
 			return { branches: [], head: null, remotes: [], stashes: [], upstreams: {}, error: errorMessage };
+		});
+	}
+
+	/**
+	 * Get the number of files changed by each stash (compared to the commit it was created on), the lines they add & delete, and the number of untracked files it includes.
+	 * @param repo The path of the repository.
+	 * @param stashes The stashes.
+	 * @returns The stats of each stash (stashes whose stats couldn't be read are omitted).
+	 */
+	public getStashStats(repo: string, stashes: ReadonlyArray<{ hash: string, baseHash: string, untrackedFilesHash: string | null }>): Promise<{ stats: { [hash: string]: GitStashStats }, error: ErrorInfo }> {
+		return Promise.all(stashes.map((stash) => Promise.all([
+			this.spawnGit(['diff', '--numstat', '--no-renames', '--no-ext-diff', stash.baseHash, stash.hash, '--'], repo, (stdout) => {
+				let files = 0, additions = 0, deletions = 0;
+				stdout.split(LF_REGEX).forEach((line) => {
+					const fields = line.split('\t');
+					if (fields.length < 3) return;
+					files++;
+					additions += parseInt(fields[0]) || 0;
+					deletions += parseInt(fields[1]) || 0;
+				});
+				return { files: files, additions: additions, deletions: deletions };
+			}),
+			stash.untrackedFilesHash !== null
+				? this.spawnGit(['ls-tree', '-r', '--name-only', stash.untrackedFilesHash, '--'], repo, (stdout) => stdout.split(LF_REGEX).filter((line) => line !== '').length)
+				: Promise.resolve(0)
+		]).then((results) => ({ hash: stash.hash, stats: <GitStashStats>{ files: results[0].files + results[1], additions: results[0].additions, deletions: results[0].deletions, untrackedFiles: results[1] } }), () => null))).then((results) => {
+			const stats: { [hash: string]: GitStashStats } = {};
+			results.forEach((result) => {
+				if (result !== null) stats[result.hash] = result.stats;
+			});
+			return { stats: stats, error: null };
 		});
 	}
 

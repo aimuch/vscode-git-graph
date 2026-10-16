@@ -696,5 +696,15 @@
 	"Push {0}": "推送 {0}",
 	"Stashes": "储藏",
 	"View the stashes in this repository": "查看此仓库的储藏",
-	"The stash <b><i>{0}</i></b> isn't in the commits that are currently shown. Load more commits (or clear the search) to view it.": "储藏 <b><i>{0}</i></b> 不在当前显示的提交中。请加载更多提交（或清除搜索）后再查看。"
+	"The stash <b><i>{0}</i></b> isn't in the commits that are currently shown. Load more commits (or clear the search) to view it.": "储藏 <b><i>{0}</i></b> 不在当前显示的提交中。请加载更多提交（或清除搜索）后再查看。",
+	"Click on a stash to go to it on the graph, and open its details": "点击跳到它在图中的位置并打开详情",
+	"Apply": "应用",
+	"Pop": "弹出",
+	"Loading": "正在加载",
+	"Includes untracked files": "含未跟踪的文件",
+	"Not in the loaded commits": "不在已加载的提交中",
+	"Stash the uncommitted changes": "储藏未提交的更改",
+	"There aren't any uncommitted changes to stash": "没有可储藏的未提交更改",
+	"Stash Current Changes": "储藏当前更改",
+	"{0} / {1}: go to the next / previous stash": "{0} / {1} 跳到下一个 / 上一个储藏"
 }
