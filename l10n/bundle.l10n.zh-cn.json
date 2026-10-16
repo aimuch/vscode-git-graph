@@ -775,5 +775,7 @@
 	"Column Headers": "列标题",
 	"Frozen": "冻结",
 	"Scroll with the Commits": "随列表滚动",
-	"Footer": "底部状态栏"
+	"Footer": "底部状态栏",
+	"{0} matching commits": "{0} 个匹配的提交",
+	"{0} matching commit": "{0} 个匹配的提交"
 }

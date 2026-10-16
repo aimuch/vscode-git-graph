@@ -316,8 +316,8 @@ class Vertex {
 			circle.setAttribute('class', 'avatar' + (this.isCurrent ? ' current' : ''));
 			circle.style.fill = getAuthorColour(avatar.author);
 			circle.style.stroke = colour;
-			if (avatar.image !== null) {
-				avatarElem = createAvatarImageElem(cx, cy, avatar.image);
+			if (avatar.pattern !== null) {
+				avatarElem = createAvatarElem(cx, cy, avatar.pattern);
 			} else {
 				avatarElem = document.createElementNS(SVG_NAMESPACE, 'text');
 				avatarElem.setAttribute('x', cx);
@@ -359,25 +359,24 @@ class Vertex {
 interface VertexAvatar {
 	readonly author: string;
 	readonly email: string;
-	readonly image: string | null; // The data URI of the author's avatar, or NULL if it isn't available
+	readonly pattern: string | null; // The id of the pattern of the author's avatar, or NULL if their avatar isn't available
 }
 
 /**
- * Create the element of an author's avatar on the graph (inside the circle of the commit, within its outline).
+ * Create the element of an author's avatar on the graph: a circle filled with the pattern of their avatar (inside the circle of the
+ * commit, within its outline). Each author's avatar image is only included once in the graph (in its pattern), however many commits
+ * they have.
  * @param cx The x coordinate of the centre of the circle.
  * @param cy The y coordinate of the centre of the circle.
- * @param image The data URI of the avatar.
+ * @param pattern The id of the pattern of the avatar.
  * @returns The element.
  */
-function createAvatarImageElem(cx: string, cy: string, image: string) {
-	const elem = document.createElementNS(SVG_NAMESPACE, 'image');
-	elem.setAttribute('x', (parseFloat(cx) - 8).toString());
-	elem.setAttribute('y', (parseFloat(cy) - 8).toString());
-	elem.setAttribute('width', '16');
-	elem.setAttribute('height', '16');
-	elem.setAttribute('href', image);
-	elem.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-	elem.setAttribute('clip-path', 'url(#AvatarClip)');
+function createAvatarElem(cx: string, cy: string, pattern: string) {
+	const elem = document.createElementNS(SVG_NAMESPACE, 'circle');
+	elem.setAttribute('cx', cx);
+	elem.setAttribute('cy', cy);
+	elem.setAttribute('r', '8');
+	elem.setAttribute('fill', 'url(#' + pattern + ')');
 	elem.setAttribute('class', 'avatarImage');
 	return elem;
 }
@@ -402,10 +401,12 @@ class Graph {
 	private onlyFollowFirstParent: boolean = false;
 	private expandedCommitIndex: number = -1;
 	private getAvatar: (email: string) => string | null = () => null;
+	private readonly avatarPatterns: { [email: string]: { readonly id: string, readonly image: SVGImageElement } } = {};
 
 	private readonly viewElem: HTMLElement;
 	private readonly contentElem: HTMLElement;
 	private readonly svg: SVGElement;
+	private readonly defs: SVGDefsElement;
 	private readonly maskRect: SVGRectElement;
 	private readonly gradientStop1: SVGStopElement;
 	private readonly gradientStop2: SVGStopElement;
@@ -440,15 +441,7 @@ class Graph {
 		this.maskRect = mask.appendChild(document.createElementNS(SVG_NAMESPACE, 'rect'));
 		this.maskRect.setAttribute('fill', 'url(#GraphGradient)');
 
-		// The avatars of the authors are clipped to a circle (drawn as a rounded rectangle, as the circles of the graph are its commits)
-		const avatarClip = defs.appendChild(document.createElementNS(SVG_NAMESPACE, 'clipPath'));
-		avatarClip.setAttribute('id', 'AvatarClip');
-		avatarClip.setAttribute('clipPathUnits', 'objectBoundingBox');
-		const avatarClipShape = avatarClip.appendChild(document.createElementNS(SVG_NAMESPACE, 'rect'));
-		avatarClipShape.setAttribute('width', '1');
-		avatarClipShape.setAttribute('height', '1');
-		avatarClipShape.setAttribute('rx', '0.5');
-		avatarClipShape.setAttribute('ry', '0.5');
+		this.defs = defs;
 
 		this.setDimensions(0, 0);
 		elem.appendChild(this.svg);
@@ -519,7 +512,7 @@ class Graph {
 		const overListener = (e: MouseEvent) => this.vertexOver(e), outListener = (e: MouseEvent) => this.vertexOut(e), avatars = this.config.nodeStyle === GG.GraphNodeStyle.Avatar;
 		for (i = 0; i < this.vertices.length; i++) {
 			const branch = this.vertices[i].getBranch(), commit = avatars && i < this.commits.length ? this.commits[i] : null;
-			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener, commit !== null ? { author: commit.author, email: commit.email, image: this.getAvatar(commit.email) } : null);
+			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener, commit !== null ? { author: commit.author, email: commit.email, pattern: this.getAvatarPattern(commit.email, null) } : null);
 		}
 
 		if (this.group !== null) this.svg.removeChild(this.group);
@@ -540,7 +533,7 @@ class Graph {
 		const branch = id !== null && id < this.vertices.length ? this.vertices[id].getBranch() : null;
 		const branchIndex = branch !== null ? this.branches.indexOf(branch).toString() : null;
 		this.svg.classList.toggle('branchHighlight', branchIndex !== null);
-		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch], text[data-branch], image[data-branch]').forEach((elem) => {
+		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch], text[data-branch]').forEach((elem) => {
 			elem.classList.toggle('highlight', branchIndex !== null && elem.dataset.branch === branchIndex);
 		});
 	}
@@ -784,19 +777,43 @@ class Graph {
 	 * @param image The data URI of the avatar.
 	 */
 	public loadAvatar(email: string, image: string) {
-		if (this.group === null) return;
-		this.group.querySelectorAll<SVGElement>('[data-email]').forEach((elem) => {
+		const pattern = this.getAvatarPattern(email, image);
+		if (this.group === null || pattern === null) return;
+		this.group.querySelectorAll<SVGElement>('text.avatarInitial[data-email]').forEach((elem) => {
 			if (elem.dataset.email !== email) return;
-			if (elem.tagName === 'image') {
-				elem.setAttribute('href', image);
-			} else {
-				const imageElem = createAvatarImageElem(elem.getAttribute('x')!, elem.getAttribute('y')!, image);
-				imageElem.dataset.branch = elem.dataset.branch;
-				imageElem.dataset.email = email;
-				if (elem.classList.contains('highlight')) imageElem.classList.add('highlight');
-				elem.replaceWith(imageElem);
-			}
+			const avatarElem = createAvatarElem(elem.getAttribute('x')!, elem.getAttribute('y')!, pattern);
+			avatarElem.dataset.branch = elem.dataset.branch;
+			avatarElem.dataset.email = email;
+			if (elem.classList.contains('highlight')) avatarElem.classList.add('highlight');
+			elem.replaceWith(avatarElem);
 		});
+	}
+
+	/**
+	 * Get the pattern of an author's avatar (in the definitions of the graph), creating or updating it if required.
+	 * @param email The email address of the author.
+	 * @param image The data URI of the avatar, or NULL to use the avatar from the source of avatars.
+	 * @returns The id of the pattern, or NULL if the avatar isn't available.
+	 */
+	private getAvatarPattern(email: string, image: string | null) {
+		const avatar = image !== null ? image : this.getAvatar(email);
+		if (avatar === null) return null;
+		let pattern = this.avatarPatterns[email];
+		if (typeof pattern === 'undefined') {
+			const patternElem = this.defs.appendChild(document.createElementNS(SVG_NAMESPACE, 'pattern'));
+			const id = 'Avatar' + Object.keys(this.avatarPatterns).length;
+			patternElem.setAttribute('id', id);
+			patternElem.setAttribute('width', '1');
+			patternElem.setAttribute('height', '1');
+			patternElem.setAttribute('patternContentUnits', 'objectBoundingBox');
+			const imageElem = patternElem.appendChild(document.createElementNS(SVG_NAMESPACE, 'image'));
+			imageElem.setAttribute('width', '1');
+			imageElem.setAttribute('height', '1');
+			imageElem.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+			pattern = this.avatarPatterns[email] = { id: id, image: imageElem };
+		}
+		if (pattern.image.getAttribute('href') !== avatar) pattern.image.setAttribute('href', avatar);
+		return pattern.id;
 	}
 
 

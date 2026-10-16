@@ -127,11 +127,13 @@ body.freezeColumnHeaders #scrollShadow.active{
 	dominant-baseline:central;
 	pointer-events:none;
 }
-#commitGraph image.avatarImage{
-	pointer-events:none;
-}
-#commitGraph svg.branchHighlight text[data-branch]:not(.highlight), #commitGraph svg.branchHighlight image[data-branch]:not(.highlight){
+#commitGraph svg.branchHighlight text[data-branch]:not(.highlight){
 	opacity:0.25;
+}
+/* The avatar of the author, inside the circle of the commit (the circle of the commit receives the mouse events) */
+#commitGraph circle.avatarImage{
+	stroke:none;
+	pointer-events:none;
 }
 #commitGraph circle.stashInner{
 	stroke-opacity:1;
@@ -2101,9 +2103,18 @@ body.tagLabelsRightAligned .gitRef.tag{
 	justify-content:center;
 	width:17px;
 	height:16px;
+	margin:0;
+	padding:0;
+	border:none;
 	border-radius:3px;
+	background-color:transparent;
 	color:var(--vscode-descriptionForeground);
+	font:inherit;
 	cursor:pointer;
+}
+.minimapZoomBtn:focus-visible{
+	outline:1px solid var(--vscode-focusBorder);
+	outline-offset:-1px;
 }
 .minimapZoomBtn:hover{
 	color:var(--vscode-foreground);
@@ -2205,6 +2216,23 @@ body.tagLabelsRightAligned .gitRef.tag{
 #minimapViewport:hover, #minimap.dragging #minimapViewport{
 	background-color:color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
 }
+/* The commits that match the Find Widget's criteria are marked below their bars */
+.minimapFindMatches{
+	position:absolute;
+	left:0;
+	right:0;
+	bottom:12px;
+	height:3px;
+	pointer-events:none;
+}
+.minimapFindMatch{
+	position:absolute;
+	top:0;
+	height:3px;
+	border-radius:1px;
+	background-color:var(--vscode-editorOverviewRuler-findMatchForeground, #d18616);
+	pointer-events:auto;
+}
 /* The labels of the axis (positioned below their bars) */
 .minimapAxis{
 	position:absolute;
@@ -2223,12 +2251,15 @@ body.tagLabelsRightAligned .gitRef.tag{
 	top:0;
 }
 /* The legend of the minimap */
+/* The legend has at most 4 rows (another column is added for the Find Matches) */
 .minimapLegend{
-	display:flex;
-	flex-direction:column;
-	justify-content:center;
+	display:grid;
+	grid-auto-flow:column;
+	grid-template-rows:repeat(4, auto);
+	align-content:center;
+	column-gap:12px;
+	row-gap:1px;
 	flex:0 0 auto;
-	gap:1px;
 	color:var(--vscode-descriptionForeground);
 	font-size:10.5px;
 	line-height:13px;
@@ -2259,6 +2290,13 @@ body.tagLabelsRightAligned .gitRef.tag{
 }
 .minimapLegend .minimapMarker.tag{
 	background-color:var(--vscode-descriptionForeground);
+}
+.minimapLegend i.findMatch{
+	width:10px;
+	height:3px;
+	border-radius:1px;
+	margin:0;
+	background-color:var(--vscode-editorOverviewRuler-findMatchForeground, #d18616);
 }
 
 

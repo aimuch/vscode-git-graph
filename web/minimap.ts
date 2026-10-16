@@ -69,6 +69,8 @@ class Minimap {
 	private viewportElem: HTMLElement | null = null;
 	private viewport: { first: number, last: number } | null = null; // The indices of the first & last commits in view
 	private axisWidth: number = -1;
+	private findMatches: ReadonlySet<string> = new Set(); // The hashes of the commits that match the Find Widget's criteria
+	private renderChartFrame: number | null = null;
 	private lastDragEnd: number = 0; // When a drag (or a click handled as part of one) last ended
 	private lastResizeClick: number = 0; // When the bottom edge was last clicked (without being dragged)
 
@@ -139,12 +141,43 @@ class Minimap {
 	}
 
 	/**
+	 * Set the commits that match the Find Widget's criteria, which are marked below their bars.
+	 * @param hashes The hashes of the matching commits.
+	 */
+	public setFindMatches(hashes: ReadonlyArray<string>) {
+		if (hashes.length === this.findMatches.size && hashes.every((hash) => this.findMatches.has(hash))) return;
+		this.findMatches = new Set(hashes);
+		this.scheduleRender();
+	}
+
+	/**
+	 * Render the minimap in the next frame (so that it's rendered at most once each frame while it's zoomed, panned or dragged).
+	 */
+	private scheduleRender() {
+		if (this.renderChartFrame !== null || this.data === null) return;
+		this.renderChartFrame = requestAnimationFrame(() => {
+			this.renderChartFrame = null;
+			this.renderChart();
+		});
+	}
+
+	/**
+	 * Cancel the rendering of the minimap that's scheduled for the next frame (as it's rendered now).
+	 */
+	private cancelScheduledRender() {
+		if (this.renderChartFrame === null) return;
+		cancelAnimationFrame(this.renderChartFrame);
+		this.renderChartFrame = null;
+	}
+
+	/**
 	 * Render the bars, markers & axis of the range of dates that is shown.
 	 */
 	private renderChart() {
 		const data = this.data;
 		if (data === null) return;
 		// The range can be fractional (as it's panned), but the bars are whole days
+		this.cancelScheduledRender();
 		const range = this.range !== null ? this.range : this.fullRange;
 		const startDay = Math.round(range.start), endDay = startDay + Math.round(range.end - range.start) - 1;
 
@@ -168,13 +201,14 @@ class Minimap {
 				markers.push(marker);
 			}
 		};
-		const commits = data.commits, colours = data.colours;
+		const commits = data.commits, colours = data.colours, findMatches: number[] = this.buckets.map(() => 0);
 		for (let i = 0; i < commits.length; i++) {
 			if (commits[i].hash === UNCOMMITTED) continue;
 			const bucketIndex = this.getBucketIndex(this.commitDays[i]), bucket = this.buckets[bucketIndex];
 			if (typeof bucket === 'undefined') continue;
 			bucket.count++;
 			if (bucket.firstIndex === -1) bucket.firstIndex = i;
+			if (this.findMatches.has(commits[i].hash)) findMatches[bucketIndex]++;
 
 			if (commits[i].hash === data.commitHead) {
 				addMarker({ bucket: bucketIndex, kind: 'head', colour: 'var(--vscode-focusBorder)', title: 'HEAD' });
@@ -191,7 +225,8 @@ class Minimap {
 		const left = (bucketIndex: number) => ((bucketIndex + 0.5) / this.buckets.length * 100).toFixed(3) + '%';
 		const unit = this.period === MinimapPeriod.Day ? t('Commits per day') : this.period === MinimapPeriod.Week ? t('Commits per week') : this.period === MinimapPeriod.Month ? t('Commits per month') : t('Commits per year');
 		const zoomedIn = this.range !== null, canZoomIn = range.end - range.start > MINIMAP_MIN_ZOOM_DAYS;
-		const zoomBtn = (zoom: string, title: string, icon: string, enabled: boolean) => '<span class="minimapZoomBtn' + (enabled ? '' : ' ' + CLASS_DISABLED) + '" data-zoom="' + zoom + '" title="' + title + '">' + icon + '</span>';
+		const zoomBtn = (zoom: string, title: string, icon: string, enabled: boolean) => '<button type="button" class="minimapZoomBtn' + (enabled ? '' : ' ' + CLASS_DISABLED) + '" data-zoom="' + zoom + '" title="' + title + '" aria-label="' + title + '" aria-disabled="' + !enabled + '">' + icon + '</button>';
+		const barWidth = 100 / this.buckets.length, hasFindMatches = findMatches.some((count) => count > 0);
 		const modifier = /Mac/.test(navigator.platform) ? '⌘' : 'Ctrl';
 		this.elem.innerHTML = '<div class="minimapTitle"><div class="minimapTitleRow"><span>' + t('Activity') + '</span><span class="minimapZoom">'
 			+ zoomBtn('out', t('Zoom Out'), MINIMAP_ICONS.zoomOut, zoomedIn)
@@ -201,10 +236,11 @@ class Minimap {
 			+ '<div class="minimapChart' + (zoomedIn ? ' zoomedIn' : '') + '" title="' + escapeHtml(t('{0} + scroll (or pinch) to zoom in on a range of dates.', modifier) + (zoomedIn ? ' ' + t('Drag to pan.') : '')) + '">'
 			+ '<div class="minimapMarkers">' + markers.map((marker) => '<span class="minimapMarker ' + marker.kind + '" style="left:' + left(marker.bucket) + ';background-color:' + escapeHtml(marker.colour) + '" title="' + escapeHtml(marker.title) + '"></span>').join('') + '</div>'
 			+ '<div class="minimapBars' + (this.buckets.length > 60 ? ' thin' : '') + '">' + this.buckets.map((bucket, i) => '<span class="minimapBar' + (bucket.count > 0 ? '' : ' empty') + '" data-index="' + i + '" title="' + escapeHtml(this.getBucketLabel(bucket, false) + ': ' + (bucket.count !== 1 ? t('{0} commits', bucket.count) : t('{0} commit', bucket.count))) + '" style="height:' + (bucket.count > 0 ? 'max(3px, ' + (100 * Math.sqrt(bucket.count / maxCount)).toFixed(1) + '%)' : '1px') + '"></span>').join('') + '</div>'
+			+ '<div class="minimapFindMatches">' + findMatches.map((count, i) => count > 0 ? '<span class="minimapFindMatch" style="left:' + (i * barWidth).toFixed(3) + '%;width:' + barWidth.toFixed(3) + '%" title="' + escapeHtml(this.getBucketLabel(this.buckets[i], false) + ': ' + (count !== 1 ? t('{0} matching commits', count) : t('{0} matching commit', count))) + '"></span>' : '').join('') + '</div>'
 			+ '<div id="minimapViewport"></div>'
 			+ '<div class="minimapAxis"></div>'
 			+ '</div>'
-			+ '<div class="minimapLegend"><span><i class="viewport"></i>' + t('In view') + '</span><span><i class="minimapMarker head"></i>HEAD</span><span><i class="minimapMarker branch" style="background-color:' + escapeHtml(colours[1 % colours.length]) + '"></i>' + t('Branches') + '</span><span><i class="minimapMarker tag"></i>' + t('Tags') + '</span></div>'
+			+ '<div class="minimapLegend"><span><i class="viewport"></i>' + t('In view') + '</span><span><i class="minimapMarker head"></i>HEAD</span><span><i class="minimapMarker branch" style="background-color:' + escapeHtml(colours[1 % colours.length]) + '"></i>' + t('Branches') + '</span><span><i class="minimapMarker tag"></i>' + t('Tags') + '</span>' + (hasFindMatches ? '<span><i class="findMatch"></i>' + t('Find Matches') + '</span>' : '') + '</div>'
 			+ '<div class="minimapResize" title="' + t('Drag to resize the minimap, double-click to reset its height') + '"></div>';
 		this.chartElem = <HTMLElement>this.elem.querySelector('.minimapChart');
 		this.viewportElem = document.getElementById('minimapViewport');
@@ -267,7 +303,7 @@ class Minimap {
 				// Pan the minimap to the commits in view
 				const span = this.range.end - this.range.start;
 				this.range = this.clampRange(newestBucket < 0 ? newestDay + 1 - span : oldestDay, span);
-				this.renderChart();
+				this.scheduleRender();
 			} else {
 				this.viewportElem.style.display = 'none';
 				this.elem.querySelectorAll<HTMLElement>('.minimapBar.visible').forEach((barElem) => barElem.classList.remove('visible'));
@@ -326,7 +362,7 @@ class Minimap {
 		if (range === null && this.range === null) return;
 		if (range !== null && this.range !== null && Math.abs(range.start - this.range.start) < 1e-6 && Math.abs(range.end - this.range.end) < 1e-6) return;
 		this.range = range;
-		this.renderChart();
+		this.scheduleRender();
 	}
 
 	/**
@@ -336,7 +372,7 @@ class Minimap {
 	private zoomWithButton(zoom: string) {
 		if (zoom === 'all') {
 			this.range = null;
-			this.renderChart();
+			this.scheduleRender();
 			return;
 		}
 		let fraction = 0.5;
@@ -356,7 +392,7 @@ class Minimap {
 		const range = this.clampRange(this.range.start + days, this.range.end - this.range.start);
 		if (range === null || Math.abs(range.start - this.range.start) < 1e-6) return;
 		this.range = range;
-		this.renderChart();
+		this.scheduleRender();
 	}
 
 	/**
@@ -427,13 +463,14 @@ class Minimap {
 			if (chartRect.width === 0) return;
 			if (onViewport) {
 				// The right edge of the box (the newest commit in view) follows the mouse, panning the minimap when it's dragged past its edges
-				let fraction = (mouseEvent.clientX + grabOffset - chartRect.left) / chartRect.width;
+				const fraction = (mouseEvent.clientX + grabOffset - chartRect.left) / chartRect.width;
 				if (this.range !== null && (fraction < 0 || fraction > 1)) {
 					const day = this.getDayAt(fraction);
 					this.pan(fraction < 0 ? day - this.range.start : day - this.range.end);
-					fraction = Math.min(Math.max(fraction, 0), 1);
+					this.scrollToDay(Math.min(Math.max(day, this.fullRange.start), this.fullRange.end));
+				} else {
+					this.scrollToDay(this.getDayAt(Math.min(Math.max(fraction, 0), 1)));
 				}
-				this.scrollToDay(this.getDayAt(Math.min(Math.max(fraction, 0), 1)));
 			} else {
 				this.pan((prevX - mouseEvent.clientX) / chartRect.width * (this.getDayAt(1) - this.getDayAt(0)));
 			}

@@ -1009,7 +1009,11 @@ class GitGraphView {
 		this.renderScrollMarkers();
 	}
 
+	/**
+	 * Render the markers alongside the scrollbar, and the find matches on the minimap.
+	 */
 	public renderScrollMarkers() {
+		this.minimap.setFindMatches(this.findWidget.getMatchHashes());
 		this.scrollMarkers.render(this.commits, this.commitHead, this.graph.getVertexColours(), this.config.graph.colours, this.findWidget.getMatchHashes());
 	}
 

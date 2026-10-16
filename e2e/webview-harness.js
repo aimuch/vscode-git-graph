@@ -931,9 +931,16 @@
 			await expect('commit:' + hash(5), 1);
 			const view = document.getElementById('view'), markers = document.querySelectorAll('#scrollMarkers .scrollMarker.findMatch').length;
 			assert(view.scrollHeight <= view.clientHeight || markers === 1, 'The find match isn\'t shown alongside the scrollbar: ' + markers + ' markers');
+			// The find match is also marked below its day on the minimap (and its legend explains it)
+			const minimapMatches = () => Array.from(document.querySelectorAll('#minimap .minimapFindMatch'));
+			const legend = () => Array.from(document.querySelectorAll('.minimapLegend > span')).map((elem) => elem.textContent);
+			await waitFor('the find match to be marked on the minimap', () => minimapMatches().length === 1 && minimapMatches()[0].title.endsWith(': 1 matching commit') && legend().includes('Find Matches'))
+				.catch((err) => { throw new Error(err.message + ': ' + minimapMatches().map((elem) => elem.title).join(', ') + ' / ' + legend().join(', ')); });
+			const minimapMatch = minimapMatches()[0].title;
 			mouse(document.getElementById('findClose'), 'click');
 			await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
-			return JSON.stringify(results) + (view.scrollHeight > view.clientHeight ? ', scrollbar markers shown' : ', the view isn\'t scrollable (no scrollbar markers)');
+			await waitFor('the find match to be removed from the minimap', () => minimapMatches().length === 0 && legend().length === 4);
+			return JSON.stringify(results) + (view.scrollHeight > view.clientHeight ? ', scrollbar markers shown' : ', the view isn\'t scrollable (no scrollbar markers)') + ', minimap: ' + minimapMatch;
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {
