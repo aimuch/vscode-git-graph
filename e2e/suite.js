@@ -334,6 +334,26 @@ async function run() {
 
 	// Display the Git Map View, Status Bar Item & Webview UI in Simplified Chinese (git-graph.language), as a user who has set it would see them
 	let chineseHtml = null;
+	await check('ui-settings-update', '[Redesign] The Repository Settings panel can only update its whitelisted Extension Settings, for all repositories', async () => {
+		const view = await getView();
+		const responses = () => record.responses.filter((msg) => msg.command === 'updateExtensionSetting');
+		const send = async (key, value) => {
+			const count = responses().length;
+			await view.respondToMessage({ command: 'updateExtensionSetting', key: key, value: value });
+			return waitFor('the response', () => responses().length > count ? responses()[responses().length - 1] : null);
+		};
+		try {
+			const valid = await send('statusBarItemDisplay', 'Text');
+			assert(valid.error === null && vscode.workspace.getConfiguration('git-graph').inspect('statusBarItemDisplay').globalValue === 'Text', 'The valid setting wasn\'t updated: ' + valid.error);
+			const invalidValue = await send('statusBarItemDisplay', 'Huge');
+			const invalidKey = await send('repository.commits.initialLoad', '1');
+			assert(invalidValue.error !== null && invalidKey.error !== null && vscode.workspace.getConfiguration('git-graph').inspect('repository.commits.initialLoad').globalValue === undefined, 'An invalid setting was updated');
+			return 'Valid: updated; invalid value: "' + invalidValue.error + '"; other setting: "' + invalidKey.error + '"';
+		} finally {
+			await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
+		}
+	});
+
 	await check('l10n', 'Setting git-graph.language to Simplified Chinese re-renders the open Git Map View & Status Bar Item in Simplified Chinese', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
 		const nlsKeys = (file) => Object.keys(JSON.parse(fs.readFileSync(path.join(extension.extensionPath, file), 'utf8')));

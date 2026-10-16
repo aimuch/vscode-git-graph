@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import {
+	AppearanceConfig,
 	CommitDetailsViewConfig,
 	CommitDetailsViewLocation,
 	CommitOrdering,
@@ -289,13 +290,8 @@ class Config {
 	 */
 	get graph(): GraphConfig {
 		const preset = GRAPH_COLOUR_PRESETS[this.graphColourPreset];
-		const colours = this.getRenamedExtensionSetting<string[]>('graph.colours', 'graphColours', []);
 		return {
-			colours: typeof preset !== 'undefined'
-				? preset.slice()
-				: Array.isArray(colours) && colours.length > 0
-					? colours.filter((v) => v.match(/^\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\s*\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\))\s*$/) !== null)
-					: ['#0085d9', '#d9008f', '#00d90a', '#d98500', '#a300d9', '#ff0000', '#00d9cc', '#e138e8', '#85d900', '#dc5b23', '#6f24d6', '#ffcc00'],
+			colours: typeof preset !== 'undefined' ? preset.slice() : this.defaultGraphColours,
 			minimap: !!this.config.get('graph.minimap', true),
 			style: this.getRenamedExtensionSetting<string>('graph.style', 'graphStyle', 'rounded') === 'angular'
 				? GraphStyle.Angular
@@ -304,6 +300,29 @@ class Config {
 			uncommittedChanges: this.config.get<string>('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes') === 'Open Circle at the Checked Out Commit'
 				? GraphUncommittedChangesStyle.OpenCircleAtTheCheckedOutCommit
 				: GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges
+		};
+	}
+
+	/**
+	 * Get the colours of the "Default" graph colour preset (the `git-graph.graph.colours` Extension Setting).
+	 */
+	private get defaultGraphColours() {
+		const colours = this.getRenamedExtensionSetting<string[]>('graph.colours', 'graphColours', []);
+		return Array.isArray(colours) && colours.length > 0
+			? colours.filter((v) => v.match(/^\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgb[a]?\s*\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\))\s*$/) !== null)
+			: ['#0085d9', '#d9008f', '#00d90a', '#d98500', '#a300d9', '#ff0000', '#00d9cc', '#e138e8', '#85d900', '#dc5b23', '#6f24d6', '#ffcc00'];
+	}
+
+	/**
+	 * Get the appearance settings that apply to all repositories, which can be changed in the Repository Settings Widget.
+	 */
+	get appearance(): AppearanceConfig {
+		return {
+			colourPreset: this.graphColourPreset,
+			colourPresets: GRAPH_COLOUR_PRESET_NAMES.map((name) => ({ name: name, colours: (GRAPH_COLOUR_PRESETS[name] || this.defaultGraphColours).slice(0, 6) })),
+			displayLanguage: vscode.env.language || 'en',
+			language: this.language,
+			statusBarItemDisplay: this.statusBarItemDisplay
 		};
 	}
 

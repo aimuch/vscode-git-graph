@@ -8,7 +8,7 @@ import { Logger } from './logger';
 import { RepoFileWatcher } from './repoFileWatcher';
 import { RepoManager } from './repoManager';
 import { ErrorInfo, GitConfigLocation, GitGraphViewInitialState, GitPushBranchMode, GitRepoSet, LoadGitGraphViewTo, RequestMessage, ResponseMessage, TabIconColourTheme } from './types';
-import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, showErrorMessage, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
+import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, showErrorMessage, updateExtensionSetting, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
 import { Disposable, toDisposable } from './utils/disposable';
 import { getL10nBundle, getLanguage, t } from './l10n';
 
@@ -471,6 +471,12 @@ export class GitGraphView extends Disposable {
 					error: await openExtensionSettings()
 				});
 				break;
+			case 'updateExtensionSetting':
+				this.sendMessage({
+					command: 'updateExtensionSetting',
+					error: await updateExtensionSetting(msg.key, msg.value)
+				});
+				break;
 			case 'openExternalDirDiff':
 				this.sendMessage({
 					command: 'openExternalDirDiff',
@@ -678,6 +684,7 @@ export class GitGraphView extends Disposable {
 		const config = getConfig(), nonce = getNonce();
 		const initialState: GitGraphViewInitialState = {
 			config: {
+				appearance: config.appearance,
 				commitDetailsView: config.commitDetailsView,
 				commitOrdering: config.commitOrder,
 				contextMenuActionsVisibility: config.contextMenuActionsVisibility,

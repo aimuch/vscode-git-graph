@@ -235,7 +235,16 @@ export interface GitGraphViewInitialState {
 	readonly loadCommitsRefreshId: number;
 }
 
+export interface AppearanceConfig {
+	readonly colourPreset: string;
+	readonly colourPresets: ReadonlyArray<{ readonly name: string, readonly colours: ReadonlyArray<string> }>;
+	readonly displayLanguage: string; // The display language of Visual Studio Code
+	readonly language: string; // The value of the git-graph.language Extension Setting
+	readonly statusBarItemDisplay: StatusBarItemDisplay;
+}
+
 export interface GitGraphViewConfig {
+	readonly appearance: AppearanceConfig;
 	readonly commitDetailsView: CommitDetailsViewConfig;
 	readonly commitOrdering: CommitOrdering;
 	readonly contextMenuActionsVisibility: ContextMenuActionsVisibility;
@@ -991,6 +1000,15 @@ export interface ResponseMerge extends ResponseWithErrorInfo {
 	readonly actionOn: MergeActionOn;
 }
 
+export interface RequestUpdateExtensionSetting extends BaseMessage {
+	readonly command: 'updateExtensionSetting';
+	readonly key: 'graph.colourPreset' | 'graph.style' | 'language' | 'statusBarItemDisplay';
+	readonly value: string;
+}
+export interface ResponseUpdateExtensionSetting extends ResponseWithErrorInfo {
+	readonly command: 'updateExtensionSetting';
+}
+
 export interface RequestOpenExtensionSettings extends BaseMessage {
 	readonly command: 'openExtensionSettings';
 }
@@ -1302,6 +1320,7 @@ export type RequestMessage =
 	| RequestMerge
 	| RequestNavigateEditorHistory
 	| RequestOpenExtensionSettings
+	| RequestUpdateExtensionSetting
 	| RequestOpenExternalDirDiff
 	| RequestOpenExternalUrl
 	| RequestOpenFile
@@ -1365,6 +1384,7 @@ export type ResponseMessage =
 	| ResponseLoadRepos
 	| ResponseMerge
 	| ResponseOpenExtensionSettings
+	| ResponseUpdateExtensionSetting
 	| ResponseOpenExternalDirDiff
 	| ResponseOpenExternalUrl
 	| ResponseOpenFile

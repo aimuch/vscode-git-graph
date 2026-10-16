@@ -140,7 +140,7 @@ body.vscode-high-contrast .findMatch{
 	outline-style:dotted;
 }
 
-body.cdvDockedRight .findWidget, body.cdvDockedRight #settingsWidget{
+body.cdvDockedRight .findWidget{
 	right:calc(var(--git-graph-cdvWidth, 0px) + 20px);
 }
 .findWidget:not(.active){

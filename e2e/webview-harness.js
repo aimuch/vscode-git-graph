@@ -203,8 +203,9 @@
 		await check('l10n-settings', 'The Repository Settings Widget and its dialogs are displayed in Simplified Chinese', async () => {
 			mouse(document.getElementById('settingsBtn'), 'click');
 			const widget = await waitFor('the Repository Settings Widget to load', () => document.getElementById('editIssueLinking') ? document.getElementById('settingsWidget') : null);
-			const sections = Array.from(widget.querySelectorAll('h3')).map((elem) => elem.textContent.trim());
-			['常规', '用户信息', '远程仓库配置', 'Issue 链接'].forEach((text) => assert(sections.includes(text), 'Unexpected sections: ' + JSON.stringify(sections)));
+			const sections = Array.from(widget.querySelectorAll('h3, h4')).map((elem) => elem.textContent.trim());
+			['外观 · 所有仓库', '界面语言 · 所有仓库', '状态栏 · 所有仓库', '此仓库', 'Issue 链接', '远程仓库', '常规', '用户信息', '拉取请求创建'].forEach((text) => assert(sections.includes(text), 'Unexpected sections: ' + JSON.stringify(sections)));
+			assert(widget.querySelector('#settingsHeader h2').textContent === '设置', 'Unexpected title: ' + widget.querySelector('#settingsHeader h2').textContent);
 			mouse(document.getElementById('editIssueLinking'), 'click');
 			await waitFor('the Issue Linking dialog', () => document.getElementById('dialogInput1'));
 			const action = document.getElementById('dialogAction').textContent, cancel = document.getElementById('dialogSecondaryAction').textContent;
@@ -428,6 +429,33 @@
 			await waitFor('the commits of all authors to be requested', () => requestsOf('loadCommits').slice(-1)[0].authors === null);
 			key(document.body, 'Escape');
 			return 'Options: ' + options.join(', ') + ' → requested authors ' + JSON.stringify(filtered.authors);
+		});
+
+		await check('ui-settings-panel', '[Redesign] The Repository Settings panel changes the colour preset, line style, language & Status Bar Item for all repositories', async () => {
+			if (document.querySelector('.dialog') !== null) {
+				key(document.body, 'Escape');
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+			}
+			if (!document.getElementById('settingsWidget').classList.contains('active')) mouse(document.getElementById('settingsBtn'), 'click');
+			const widget = await waitFor('the Repository Settings panel to load', () => document.querySelector('#settingsWidget.active .settingsPreset') ? document.getElementById('settingsWidget') : null);
+			const bounds = widget.getBoundingClientRect();
+			assert(Math.round(bounds.right) === window.innerWidth && Math.round(bounds.top) === 0 && Math.round(bounds.bottom) === window.innerHeight, 'The panel isn\'t docked to the right: ' + JSON.stringify(bounds));
+			const presets = Array.from(widget.querySelectorAll('.settingsPreset')), selected = presets.filter((elem) => elem.classList.contains('selected'));
+			assert(presets.length === 6 && selected.length === 1, 'Unexpected colour presets: ' + presets.length + ' (' + selected.length + ' selected)');
+			const updates = () => requestsOf('updateExtensionSetting').map((msg) => msg.key + '=' + msg.value);
+			const before = updates().length;
+			mouse(presets.find((elem) => elem.dataset.preset === 'Tokyo Subway'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.style"] .settingsSegment[data-value="angular"]'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="statusBarItemDisplay"] .settingsSegment[data-value="Icon"]'), 'click');
+			const english = Array.from(widget.querySelectorAll('input[name="settingsLanguage"]')).find((elem) => elem.value === 'English');
+			english.checked = true;
+			english.dispatchEvent(new Event('change', { bubbles: true }));
+			const sent = await waitFor('the settings to be sent to the extension', () => updates().length >= before + 4 ? updates().slice(before) : null);
+			assert(JSON.stringify(sent) === JSON.stringify(['graph.colourPreset=Tokyo Subway', 'graph.style=angular', 'statusBarItemDisplay=Icon', 'language=English']), 'Unexpected updates: ' + JSON.stringify(sent));
+			assert(document.querySelector('.settingsStatusBarPreview svg') !== null && !document.querySelector('.settingsStatusBarPreview').textContent.includes('Git Map'), 'The Status Bar Item preview wasn\'t updated');
+			mouse(document.getElementById('settingsClose'), 'click');
+			await waitFor('the panel to close', () => !document.getElementById('settingsWidget').classList.contains('active'));
+			return 'Sent: ' + sent.join(', ');
 		});
 
 		await check('ui-find-operators', '[GitLens] The Find Widget supports the author:, message: & commit: search operators, shown alongside the scrollbar', async () => {

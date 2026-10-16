@@ -14,9 +14,12 @@ class SettingsWidget {
 	private config: Readonly<GG.GitRepoConfig> | null = null;
 	private loading: boolean = false;
 	private scrollTop: number = 0;
+	private appearance: GG.AppearanceConfig = initialState.config.appearance;
 
 	private readonly widgetElem: HTMLElement;
+	private readonly repoNameElem: HTMLElement;
 	private readonly contentsElem: HTMLElement;
+	private readonly footerElem: HTMLElement;
 	private readonly loadingElem: HTMLElement;
 
 	/**
@@ -29,10 +32,10 @@ class SettingsWidget {
 
 		this.widgetElem = document.createElement('div');
 		this.widgetElem.id = 'settingsWidget';
-		this.widgetElem.innerHTML = '<h2>' + t('Repository Settings') + '</h2><div id="settingsContent"></div><div id="settingsLoading"></div><div id="settingsClose"></div>';
+		this.widgetElem.innerHTML = '<div id="settingsHeader"><h2>' + t('Settings') + '</h2><span id="settingsRepoName"></span><div id="settingsClose" title="' + t('Close') + '"></div></div><div id="settingsContent"></div><div id="settingsFooter"></div><div id="settingsLoading"></div>';
 		document.body.appendChild(this.widgetElem);
 
-		observeElemScroll('settingsWidget', this.scrollTop, (scrollTop) => {
+		observeElemScroll('settingsContent', this.scrollTop, (scrollTop) => {
 			this.scrollTop = scrollTop;
 		}, () => {
 			if (this.currentRepo !== null) {
@@ -40,7 +43,9 @@ class SettingsWidget {
 			}
 		});
 
+		this.repoNameElem = document.getElementById('settingsRepoName')!;
 		this.contentsElem = document.getElementById('settingsContent')!;
+		this.footerElem = document.getElementById('settingsFooter')!;
 		this.loadingElem = document.getElementById('settingsLoading')!;
 
 		const settingsClose = document.getElementById('settingsClose')!;
@@ -91,6 +96,7 @@ class SettingsWidget {
 		this.widgetElem.classList.remove(CLASS_ACTIVE);
 		this.widgetElem.classList.remove(CLASS_LOADING);
 		this.contentsElem.innerHTML = '';
+		this.footerElem.innerHTML = '';
 		this.loadingElem.innerHTML = '';
 		this.view.saveState();
 	}
@@ -151,69 +157,93 @@ class SettingsWidget {
 				? escapeHtml(formatCommaSeparatedList(initialBranches))
 				: t('Show All');
 
-			let html = '<div class="settingsSection general"><h3>' + t('General') + '</h3>' +
-				'<table>' +
-				'<tr class="lineAbove"><td class="left">' + t('Name:') + '</td><td class="leftWithEllipsis" title="' + escapedRepoName + (this.repo.name === null ? t(' (Default Name from the File System)') : '') + '">' + escapedRepoName + '</td><td class="btns right"><div id="editRepoName" title="' + t('Edit Name') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div>' + (this.repo.name !== null ? ' <div id="deleteRepoName" title="' + t('Delete Name') + ELLIPSIS + '">' + SVG_ICONS.close + '</div>' : '') + '</td></tr>' +
-				'<tr class="lineAbove lineBelow"><td class="left">' + t('Initial Branches:') + '</td><td class="leftWithEllipsis" title="' + initialBranchesStr + ' (' + (initialBranchesLocallyConfigured ? t('Local') : t('Global')) + ')">' + initialBranchesStr + '</td><td class="btns right"><div id="editInitialBranches" title="' + t('Edit Initial Branches') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div>' + (initialBranchesLocallyConfigured ? ' <div id="clearInitialBranches" title="' + t('Clear Initial Branches') + ELLIPSIS + '">' + SVG_ICONS.close + '</div>' : '') + '</td></tr>' +
-				'</table>' +
-				'<label id="settingsShowStashes"><input type="checkbox" id="settingsShowStashesCheckbox" tabindex="-1"><span class="customCheckbox"></span>' + t('Show Stashes') + '</label><br/>' +
-				'<label id="settingsShowTags"><input type="checkbox" id="settingsShowTagsCheckbox" tabindex="-1"><span class="customCheckbox"></span>' + t('Show Tags') + '</label><br/>' +
-				'<label id="settingsIncludeCommitsMentionedByReflogs"><input type="checkbox" id="settingsIncludeCommitsMentionedByReflogsCheckbox" tabindex="-1"><span class="customCheckbox"></span>' + t('Include commits only mentioned by reflogs') + '</label><span class="settingsWidgetInfo" title="' + t('Only applies when showing all branches.') + '">' + SVG_ICONS.info + '</span><br/>' +
-				'<label id="settingsOnlyFollowFirstParent"><input type="checkbox" id="settingsOnlyFollowFirstParentCheckbox" tabindex="-1"><span class="customCheckbox"></span>' + t('Only follow the first parent of commits') + '</label><span class="settingsWidgetInfo" title="' + t('Instead of following all parents of commits, only follow the first parent when discovering the commits to load.') + '">' + SVG_ICONS.info + '</span>' +
+			const appearance = this.appearance, card = (title: string, buttons: string, body: string) => '<div class="settingsCard"><div class="settingsCardHeader"><h4>' + title + '</h4><span class="settingsCardButtons">' + buttons + '</span></div>' + body + '</div>';
+			const button = (id: string, className: string, label: string) => '<button type="button" id="' + id + '" class="settingsBtn ' + className + '" tabindex="-1">' + label + '</button>';
+			const segmented = (setting: string, options: ReadonlyArray<[string, string]>, selected: string) => '<div class="settingsSegmented" role="radiogroup" data-setting="' + setting + '">' + options.map((option) => '<button type="button" role="radio" aria-checked="' + (option[0] === selected) + '" class="settingsSegment' + (option[0] === selected ? ' selected' : '') + '" data-value="' + escapeHtml(option[0]) + '" tabindex="-1">' + option[1] + '</button>').join('') + '</div>';
+			const checkbox = (id: string, label: string, info: string | null) => '<label id="' + id + '"><input type="checkbox" id="' + id + 'Checkbox" tabindex="-1"><span class="customCheckbox"></span>' + label + '</label>' + (info !== null ? '<span class="settingsWidgetInfo" title="' + info + '">' + SVG_ICONS.info + '</span>' : '');
+			const displayLanguage = /^zh(-(cn|sg|hans.*))?$/i.test(appearance.displayLanguage) ? '简体中文' : /^en\b/i.test(appearance.displayLanguage) ? 'English' : appearance.displayLanguage;
+			const statusBarDisplay = appearance.statusBarItemDisplay === GG.StatusBarItemDisplay.Icon ? 'Icon' : appearance.statusBarItemDisplay === GG.StatusBarItemDisplay.Text ? 'Text' : 'Icon & Text';
+
+			let html = '<div class="settingsSection"><h3>' + t('Appearance · All Repositories') + '</h3>' +
+				'<div class="settingsLabel">' + t('Branch Line Colours') + '</div>' +
+				'<div class="settingsPresets">' + appearance.colourPresets.map((preset) => '<button type="button" class="settingsPreset' + (preset.name === appearance.colourPreset ? ' selected' : '') + '" data-preset="' + escapeHtml(preset.name) + '" aria-pressed="' + (preset.name === appearance.colourPreset) + '" tabindex="-1"><span class="settingsPresetColours">' + preset.colours.map((colour) => '<span style="background-color:' + escapeHtml(colour) + '"></span>').join('') + '</span><span class="settingsPresetName">' + escapeHtml(t(preset.name)) + '</span></button>').join('') + '</div>' +
+				'<div class="settingsRow"><span class="settingsLabel">' + t('Line Style') + '</span>' + segmented('graph.style', [['rounded', t('Rounded')], ['angular', t('Angular')]], initialState.config.graph.style === GG.GraphStyle.Angular ? 'angular' : 'rounded') + '</div>' +
 				'</div>';
+
+			html += '<div class="settingsSection"><h3>' + t('Language · All Repositories') + '</h3><div class="settingsChoices" data-setting="language">' +
+				[['Auto', t('Follow Visual Studio Code (Current: {0})', escapeHtml(displayLanguage))], ['English', 'English'], ['Simplified Chinese', '简体中文']].map((option) => '<label class="settingsChoice' + (appearance.language === option[0] ? ' selected' : '') + '"><input type="radio" name="settingsLanguage" value="' + option[0] + '"' + (appearance.language === option[0] ? ' checked' : '') + ' tabindex="-1"><span class="customRadio"></span>' + option[1] + '</label>').join('') +
+				'</div></div>';
+
+			html += '<div class="settingsSection"><h3>' + t('Status Bar · All Repositories') + '</h3><div class="settingsRow">' +
+				segmented('statusBarItemDisplay', [['Icon & Text', t('Icon & Text')], ['Icon', t('Icon Only')], ['Text', t('Text Only')]], statusBarDisplay) +
+				'<span class="settingsStatusBarPreview" title="' + t('Preview') + '">' + (statusBarDisplay !== 'Text' ? SVG_ICONS.logo : '') + (statusBarDisplay !== 'Icon' ? '<span>Git Map</span>' : '') + '</span>' +
+				'</div></div>';
+
+			html += '<div class="settingsSection"><h3>' + t('This Repository') + '</h3>' +
+				'<div class="settingsCheckboxes">' +
+				'<span>' + checkbox('settingsShowRemoteBranches', t('Show Remote Branches'), null) + '</span>' +
+				'<span>' + checkbox('settingsShowStashes', t('Show Stashes'), null) + '</span>' +
+				'<span>' + checkbox('settingsShowTags', t('Show Tags'), null) + '</span>' +
+				'</div>';
+
+			let generalHtml = card(t('General'), '', '<div class="settingsGrid">' +
+				'<span class="settingsKey">' + t('Name:') + '</span><span class="settingsValue" title="' + escapedRepoName + (this.repo.name === null ? t(' (Default Name from the File System)') : '') + '">' + escapedRepoName + '</span><span class="btns"><div id="editRepoName" title="' + t('Edit Name') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div>' + (this.repo.name !== null ? ' <div id="deleteRepoName" title="' + t('Delete Name') + ELLIPSIS + '">' + SVG_ICONS.close + '</div>' : '') + '</span>' +
+				'<span class="settingsKey">' + t('Initial Branches:') + '</span><span class="settingsValue" title="' + initialBranchesStr + ' (' + (initialBranchesLocallyConfigured ? t('Local') : t('Global')) + ')">' + initialBranchesStr + '</span><span class="btns"><div id="editInitialBranches" title="' + t('Edit Initial Branches') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div>' + (initialBranchesLocallyConfigured ? ' <div id="clearInitialBranches" title="' + t('Clear Initial Branches') + ELLIPSIS + '">' + SVG_ICONS.close + '</div>' : '') + '</span>' +
+				'</div>' +
+				'<div class="settingsOptions">' +
+				'<span>' + checkbox('settingsIncludeCommitsMentionedByReflogs', t('Include commits only mentioned by reflogs'), t('Only applies when showing all branches.')) + '</span>' +
+				'<span>' + checkbox('settingsOnlyFollowFirstParent', t('Only follow the first parent of commits'), t('Instead of following all parents of commits, only follow the first parent when discovering the commits to load.')) + '</span>' +
+				'</div>');
 
 			let userNameSet = false, userEmailSet = false;
 			if (this.config !== null) {
-				html += '<div class="settingsSection centered"><h3>' + t('User Details') + '</h3>';
 				const userName = this.config.user.name, userEmail = this.config.user.email;
 				userNameSet = userName.local !== null || userName.global !== null;
 				userEmailSet = userEmail.local !== null || userEmail.global !== null;
 				if (userNameSet || userEmailSet) {
 					const escapedUserName = escapeHtml(userName.local ?? userName.global ?? t('Not Set'));
 					const escapedUserEmail = escapeHtml(userEmail.local ?? userEmail.global ?? t('Not Set'));
-					html += '<table>' +
-						'<tr><td class="left">' + t('User Name:') + '</td><td class="leftWithEllipsis" title="' + escapedUserName + (userNameSet ? ' (' + (userName.local !== null ? t('Local') : t('Global')) + ')' : '') + '">' + escapedUserName + '</td></tr>' +
-						'<tr><td class="left">' + t('User Email:') + '</td><td class="leftWithEllipsis" title="' + escapedUserEmail + (userEmailSet ? ' (' + (userEmail.local !== null ? t('Local') : t('Global')) + ')' : '') + '">' + escapedUserEmail + '</td></tr>' +
-						'</table>' +
-						'<div class="settingsSectionButtons"><div id="editUserDetails" class="editBtn">' + SVG_ICONS.pencil + t('Edit') + '</div><div id="removeUserDetails" class="removeBtn">' + SVG_ICONS.close + t('Remove') + '</div></div>';
+					generalHtml += card(t('User Details'), button('editUserDetails', 'editBtn', t('Edit')) + button('removeUserDetails', 'removeBtn', t('Remove')), '<div class="settingsGrid two">' +
+						'<span class="settingsKey">' + t('User Name:') + '</span><span class="settingsValue" title="' + escapedUserName + (userNameSet ? ' (' + (userName.local !== null ? t('Local') : t('Global')) + ')' : '') + '">' + escapedUserName + '</span>' +
+						'<span class="settingsKey">' + t('User Email:') + '</span><span class="settingsValue" title="' + escapedUserEmail + (userEmailSet ? ' (' + (userEmail.local !== null ? t('Local') : t('Global')) + ')' : '') + '">' + escapedUserEmail + '</span>' +
+						'</div>');
 				} else {
-					html += '<span>' + t('User Details (such as name and email) are used by Git to record the Author and Committer of commit objects.') + '</span>' +
-						'<div class="settingsSectionButtons"><div id="editUserDetails" class="addBtn">' + SVG_ICONS.plus + t('Add User Details') + '</div></div>';
+					generalHtml += card(t('User Details'), button('editUserDetails', 'addBtn', t('Add User Details')), '<p class="settingsDescription">' + t('User Details (such as name and email) are used by Git to record the Author and Committer of commit objects.') + '</p>');
 				}
-				html += '</div>';
+			}
 
-				html += '<div class="settingsSection"><h3>' + t('Remote Configuration') + '</h3><table><tr><th>' + t('Remote') + '</th><th>URL</th><th>' + t('Type') + '</th><th>' + t('Action') + '</th></tr>';
+			const issueLinkingConfig = this.repo.issueLinkingConfig || globalState.issueLinkingConfig;
+			if (issueLinkingConfig !== null) {
+				const escapedIssue = escapeHtml(issueLinkingConfig.issue), escapedUrl = escapeHtml(issueLinkingConfig.url);
+				html += card(t('Issue Linking'), button('editIssueLinking', 'editBtn', t('Edit')) + button('removeIssueLinking', 'removeBtn', t('Remove')), '<div class="settingsGrid two">' +
+					'<span class="settingsKey">' + t('Issue Regex:') + '</span><span class="settingsValue mono" title="' + escapedIssue + '">' + escapedIssue + '</span>' +
+					'<span class="settingsKey">' + t('Issue URL:') + '</span><span class="settingsValue mono" title="' + escapedUrl + '">' + escapedUrl + '</span>' +
+					'</div>');
+			} else {
+				html += card(t('Issue Linking'), button('editIssueLinking', 'addBtn', t('Add Issue Linking')), '<p class="settingsDescription">' + t('Issue Linking converts issue numbers in commit &amp; tag messages into hyperlinks, that open the issue in your issue tracking system. If a branch\'s name contains an issue number, the issue can be viewed via the branch\'s context menu.') + '</p>');
+			}
+
+			if (this.config !== null) {
+				let remotesHtml = '';
 				if (this.config.remotes.length > 0) {
 					const hideRemotes = this.repo.hideRemotes;
 					this.config.remotes.forEach((remote, i) => {
 						const hidden = hideRemotes.includes(remote.name);
 						const fetchUrl = escapeHtml(remote.url || t('Not Set')), pushUrl = escapeHtml(remote.pushUrl || remote.url || t('Not Set'));
-						html += '<tr class="lineAbove">' +
-							'<td class="left" rowspan="2"><span class="hideRemoteBtn" data-index="' + i + '" title="' + (hidden ? t('Click to show branches of this remote.') : t('Click to hide branches of this remote.')) + '">' + (hidden ? SVG_ICONS.eyeClosed : SVG_ICONS.eyeOpen) + '</span>' + escapeHtml(remote.name) + '</td>' +
-							'<td class="leftWithEllipsis" title="' + t('Fetch URL:') + ' ' + fetchUrl + '">' + fetchUrl + '</td><td>' + t('Fetch') + '</td>' +
-							'<td class="btns remoteBtns" rowspan="2" data-index="' + i + '"><div class="fetchRemote" title="' + t('Fetch from Remote') + ELLIPSIS + '">' + SVG_ICONS.download + '</div> <div class="pruneRemote" title="' + t('Prune Remote') + ELLIPSIS + '">' + SVG_ICONS.branch + '</div><br><div class="editRemote" title="' + t('Edit Remote') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div> <div class="deleteRemote" title="' + t('Delete Remote') + ELLIPSIS + '">' + SVG_ICONS.close + '</div></td>' +
-							'</tr><tr><td class="leftWithEllipsis" title="' + t('Push URL:') + ' ' + pushUrl + '">' + pushUrl + '</td><td>' + t('Push') + '</td></tr>';
+						const separatePushUrl = remote.pushUrl !== null && remote.pushUrl !== remote.url;
+						remotesHtml += '<div class="settingsRemote">' +
+							'<span class="settingsRemoteName"><span class="hideRemoteBtn" data-index="' + i + '" title="' + (hidden ? t('Click to show branches of this remote.') : t('Click to hide branches of this remote.')) + '">' + (hidden ? SVG_ICONS.eyeClosed : SVG_ICONS.eyeOpen) + '</span><b>' + escapeHtml(remote.name) + '</b></span>' +
+							'<span class="settingsRemoteUrls"><span class="settingsValue mono" title="' + t('Fetch URL:') + ' ' + fetchUrl + '">' + fetchUrl + '</span>' + (separatePushUrl ? '<span class="settingsValue mono" title="' + t('Push URL:') + ' ' + pushUrl + '"><span class="settingsKey">' + t('Push') + '</span> ' + pushUrl + '</span>' : '') + '</span>' +
+							'<span class="btns remoteBtns" data-index="' + i + '"><div class="fetchRemote" title="' + t('Fetch from Remote') + ELLIPSIS + '">' + SVG_ICONS.download + '</div><div class="pruneRemote" title="' + t('Prune Remote') + ELLIPSIS + '">' + SVG_ICONS.branch + '</div><div class="editRemote" title="' + t('Edit Remote') + ELLIPSIS + '">' + SVG_ICONS.pencil + '</div><div class="deleteRemote" title="' + t('Delete Remote') + ELLIPSIS + '">' + SVG_ICONS.close + '</div></span>' +
+							'</div>';
 					});
 				} else {
-					html += '<tr class="lineAbove"><td colspan="4">' + t('There are no remotes configured for this repository.') + '</td></tr>';
+					remotesHtml = '<p class="settingsDescription">' + t('There are no remotes configured for this repository.') + '</p>';
 				}
-				html += '</table><div class="settingsSectionButtons lineAbove"><div id="settingsAddRemote" class="addBtn">' + SVG_ICONS.plus + t('Add Remote') + '</div></div></div>';
-			}
+				html += card(t('Remotes'), button('settingsAddRemote', 'addBtn', t('Add Remote') + ELLIPSIS), remotesHtml);
+				html += generalHtml;
+				generalHtml = '';
 
-			html += '<div class="settingsSection centered"><h3>' + t('Issue Linking') + '</h3>';
-			const issueLinkingConfig = this.repo.issueLinkingConfig || globalState.issueLinkingConfig;
-			if (issueLinkingConfig !== null) {
-				const escapedIssue = escapeHtml(issueLinkingConfig.issue), escapedUrl = escapeHtml(issueLinkingConfig.url);
-				html += '<table><tr><td class="left">' + t('Issue Regex:') + '</td><td class="leftWithEllipsis" title="' + escapedIssue + '">' + escapedIssue + '</td></tr><tr><td class="left">' + t('Issue URL:') + '</td><td class="leftWithEllipsis" title="' + escapedUrl + '">' + escapedUrl + '</td></tr></table>' +
-					'<div class="settingsSectionButtons"><div id="editIssueLinking" class="editBtn">' + SVG_ICONS.pencil + t('Edit') + '</div><div id="removeIssueLinking" class="removeBtn">' + SVG_ICONS.close + t('Remove') + '</div></div>';
-			} else {
-				html += '<span>' + t('Issue Linking converts issue numbers in commit &amp; tag messages into hyperlinks, that open the issue in your issue tracking system. If a branch\'s name contains an issue number, the issue can be viewed via the branch\'s context menu.') + '</span>' +
-					'<div class="settingsSectionButtons"><div id="editIssueLinking" class="addBtn">' + SVG_ICONS.plus + t('Add Issue Linking') + '</div></div>';
-			}
-			html += '</div>';
-
-			if (this.config !== null) {
-				html += '<div class="settingsSection centered"><h3>' + t('Pull Request Creation') + '</h3>';
 				const pullRequestConfig = this.repo.pullRequestConfig;
 				if (pullRequestConfig !== null) {
 					const provider = escapeHtml((pullRequestConfig.provider === GG.PullRequestProvider.Bitbucket
@@ -227,24 +257,29 @@ class SettingsWidget {
 					const source = escapeHtml(pullRequestConfig.sourceOwner + '/' + pullRequestConfig.sourceRepo + ' (' + pullRequestConfig.sourceRemote + ')');
 					const destination = escapeHtml(pullRequestConfig.destOwner + '/' + pullRequestConfig.destRepo + (pullRequestConfig.destRemote !== null ? ' (' + pullRequestConfig.destRemote + ')' : ''));
 					const destinationBranch = escapeHtml(pullRequestConfig.destBranch);
-					html += '<table><tr><td class="left">' + t('Provider:') + '</td><td class="leftWithEllipsis" title="' + provider + '">' + provider + '</td></tr>' +
-						'<tr><td class="left">' + t('Source Repo:') + '</td><td class="leftWithEllipsis" title="' + source + '">' + source + '</td></tr>' +
-						'<tr><td class="left">' + t('Destination Repo:') + '</td><td class="leftWithEllipsis" title="' + destination + '">' + destination + '</td></tr>' +
-						'<tr><td class="left">' + t('Destination Branch:') + '</td><td class="leftWithEllipsis" title="' + destinationBranch + '">' + destinationBranch + '</td></tr></table>' +
-						'<div class="settingsSectionButtons"><div id="editPullRequestIntegration" class="editBtn">' + SVG_ICONS.pencil + t('Edit') + '</div><div id="removePullRequestIntegration" class="removeBtn">' + SVG_ICONS.close + t('Remove') + '</div></div>';
+					html += card(t('Pull Request Creation'), button('editPullRequestIntegration', 'editBtn', t('Edit')) + button('removePullRequestIntegration', 'removeBtn', t('Remove')), '<div class="settingsGrid two">' +
+						'<span class="settingsKey">' + t('Provider:') + '</span><span class="settingsValue" title="' + provider + '">' + provider + '</span>' +
+						'<span class="settingsKey">' + t('Source Repo:') + '</span><span class="settingsValue" title="' + source + '">' + source + '</span>' +
+						'<span class="settingsKey">' + t('Destination Repo:') + '</span><span class="settingsValue" title="' + destination + '">' + destination + '</span>' +
+						'<span class="settingsKey">' + t('Destination Branch:') + '</span><span class="settingsValue" title="' + destinationBranch + '">' + destinationBranch + '</span>' +
+						'</div>');
 				} else {
-					html += '<span>' + t('Pull Request Creation automates the opening and pre-filling of a Pull Request form, directly from a branch\'s context menu.') + '</span>' +
-						'<div class="settingsSectionButtons"><div id="editPullRequestIntegration" class="addBtn">' + SVG_ICONS.plus + 'Configure "Pull Request Creation" Integration</div></div>';
+					html += card(t('Pull Request Creation'), button('editPullRequestIntegration', 'addBtn', t('Configure') + ELLIPSIS), '<p class="settingsDescription">' + t('Pull Request Creation automates the opening and pre-filling of a Pull Request form, directly from a branch\'s context menu.') + '</p>');
 				}
-				html += '</div>';
 			}
-
-			html += '<div class="settingsSection"><h3>' + t('Git Map Configuration') + '</h3><div class="settingsSectionButtons">' +
-				'<div id="openExtensionSettings">' + SVG_ICONS.gear + t('Open Git Map Extension Settings') + '</div><br/>' +
-				'<div id="exportRepositoryConfig">' + SVG_ICONS.package + t('Export Repository Configuration') + '</div>' +
-				'</div></div>';
+			html += generalHtml + '</div>';
 
 			this.contentsElem.innerHTML = html;
+			this.repoNameElem.textContent = this.repo.name || getRepoName(this.currentRepo);
+			this.footerElem.innerHTML = '<button type="button" id="exportRepositoryConfig" class="settingsBtn" tabindex="-1">' + SVG_ICONS.package + t('Export Repository Configuration') + '</button><span id="openExtensionSettings" class="settingsLink" tabindex="-1">' + t('Open Git Map Extension Settings') + '</span>';
+			this.renderAppearanceListeners();
+
+			const showRemoteBranchesElem = <HTMLInputElement>document.getElementById('settingsShowRemoteBranchesCheckbox');
+			showRemoteBranchesElem.checked = getShowRemoteBranches(this.repo.showRemoteBranchesV2);
+			showRemoteBranchesElem.addEventListener('change', () => {
+				if (this.currentRepo === null) return;
+				this.view.setShowRemoteBranches(showRemoteBranchesElem.checked);
+			});
 
 			document.getElementById('editRepoName')!.addEventListener('click', () => {
 				if (this.currentRepo === null || this.repo === null) return;
@@ -532,8 +567,55 @@ class SettingsWidget {
 
 		alterClass(this.widgetElem, CLASS_LOADING, this.loading);
 		this.loadingElem.innerHTML = this.loading ? '<span>' + SVG_ICONS.loading + t('Loading ...') + '</span>' : '';
-		this.widgetElem.scrollTop = this.scrollTop;
-		this.loadingElem.style.top = (this.scrollTop + (this.widgetElem.clientHeight / 2) - 12) + 'px';
+		this.contentsElem.scrollTop = this.scrollTop;
+	}
+
+	/**
+	 * Add the event listeners to the controls of the settings that apply to all repositories (the colour preset, line style, language & Status Bar Item).
+	 */
+	private renderAppearanceListeners() {
+		const update = (key: GG.RequestUpdateExtensionSetting['key'], value: string) => {
+			sendMessage({ command: 'updateExtensionSetting', key: key, value: value });
+		};
+
+		this.contentsElem.querySelectorAll<HTMLElement>('.settingsPreset').forEach((elem) => {
+			elem.addEventListener('click', () => {
+				const preset = elem.dataset.preset!;
+				if (preset === this.appearance.colourPreset) return;
+				this.appearance = Object.assign({}, this.appearance, { colourPreset: preset });
+				this.render();
+				update('graph.colourPreset', preset);
+			});
+		});
+
+		this.contentsElem.querySelectorAll<HTMLElement>('.settingsSegmented').forEach((group) => {
+			group.querySelectorAll<HTMLElement>('.settingsSegment').forEach((elem) => {
+				elem.addEventListener('click', () => {
+					if (elem.classList.contains(CLASS_SELECTED)) return;
+					const setting = group.dataset.setting!, value = elem.dataset.value!;
+					if (setting === 'statusBarItemDisplay') {
+						this.appearance = Object.assign({}, this.appearance, { statusBarItemDisplay: value === 'Icon' ? GG.StatusBarItemDisplay.Icon : value === 'Text' ? GG.StatusBarItemDisplay.Text : GG.StatusBarItemDisplay.IconAndText });
+						update('statusBarItemDisplay', value);
+					} else {
+						update('graph.style', value);
+					}
+					group.querySelectorAll<HTMLElement>('.settingsSegment').forEach((segment) => {
+						alterClass(segment, CLASS_SELECTED, segment === elem);
+						segment.setAttribute('aria-checked', segment === elem ? 'true' : 'false');
+					});
+					if (setting === 'statusBarItemDisplay') this.render();
+				});
+			});
+		});
+
+		this.contentsElem.querySelectorAll<HTMLInputElement>('input[name="settingsLanguage"]').forEach((elem) => {
+			elem.addEventListener('change', () => {
+				if (!elem.checked || elem.value === this.appearance.language) return;
+				this.appearance = Object.assign({}, this.appearance, { language: elem.value });
+				this.render();
+				update('language', elem.value);
+			});
+		});
 	}
 
 

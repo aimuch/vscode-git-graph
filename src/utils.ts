@@ -2,7 +2,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getConfig } from './config';
+import { GRAPH_COLOUR_PRESET_NAMES, getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffSide, encodeDiffDocUri } from './diffDocProvider';
 import { ExtensionState } from './extensionState';
@@ -347,6 +347,30 @@ export function openExtensionSettings(): Thenable<ErrorInfo> {
 	return vscode.commands.executeCommand('workbench.action.openSettings', '@ext:aimdev.git-map').then(
 		() => null,
 		() => t('Visual Studio Code was unable to open the Git Map Extension Settings.')
+	);
+}
+
+const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<string> } = {
+	'graph.colourPreset': GRAPH_COLOUR_PRESET_NAMES,
+	'graph.style': ['rounded', 'angular'],
+	'language': ['Auto', 'English', 'Simplified Chinese'],
+	'statusBarItemDisplay': ['Icon & Text', 'Icon', 'Text']
+};
+
+/**
+ * Update one of the Extension Settings that can be changed from the Repository Settings Widget (globally, for all repositories).
+ * @param key The key of the Extension Setting (without the `git-graph.` prefix).
+ * @param value The new value of the Extension Setting.
+ * @returns A promise resolving to the ErrorInfo of the executed command.
+ */
+export function updateExtensionSetting(key: string, value: string): Thenable<ErrorInfo> {
+	const values = UPDATABLE_EXTENSION_SETTINGS[key];
+	if (typeof values === 'undefined' || !values.includes(value)) {
+		return Promise.resolve(t('The Extension Setting "{0}" can\'t be set to "{1}".', 'git-graph.' + key, value));
+	}
+	return vscode.workspace.getConfiguration('git-graph').update(key, value, vscode.ConfigurationTarget.Global).then(
+		() => null,
+		() => t('Visual Studio Code was unable to update the Extension Setting "{0}".', 'git-graph.' + key)
 	);
 }
 

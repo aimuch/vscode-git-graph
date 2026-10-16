@@ -830,6 +830,17 @@ class GitGraphView {
 		this.saveState();
 	}
 
+	/**
+	 * Show or hide the remote branches (from the Repository Settings Widget, keeping the control bar's checkbox in sync).
+	 * @param show TRUE => Show the remote branches, FALSE => Hide the remote branches.
+	 */
+	public setShowRemoteBranches(show: boolean) {
+		if (this.showRemoteBranchesElem.checked === show) return;
+		this.showRemoteBranchesElem.checked = show;
+		this.saveRepoStateValue(this.currentRepo, 'showRemoteBranchesV2', show ? GG.BooleanOverride.Enabled : GG.BooleanOverride.Disabled);
+		this.refresh(true);
+	}
+
 	public saveRepoStateValue<K extends keyof GG.GitRepoState>(repo: string, key: K, value: GG.GitRepoState[K]) {
 		if (repo === this.currentRepo) {
 			this.gitRepos[this.currentRepo][key] = value;
@@ -3643,6 +3654,9 @@ window.addEventListener('load', () => {
 				break;
 			case 'openExtensionSettings':
 				finishOrDisplayError(msg.error, t('Unable to Open Extension Settings'));
+				break;
+			case 'updateExtensionSetting':
+				finishOrDisplayError(msg.error, t('Unable to Update Extension Setting'));
 				break;
 			case 'openExternalDirDiff':
 				finishOrDisplayError(msg.error, t('Unable to Open External Directory Diff'), true);
