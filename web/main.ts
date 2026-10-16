@@ -697,8 +697,19 @@ class GitGraphView {
 	}
 
 	private renderAuthorDropdown() {
+		// The number of loaded commits by each author (only known for the authors whose commits are loaded)
+		const counts: { [author: string]: number } = {};
+		this.loadedCommits.forEach((commit) => {
+			if (commit.hash !== UNCOMMITTED && commit.stash === null) counts[commit.author] = (counts[commit.author] || 0) + 1;
+		});
+		const authorsLoaded = (author: string) => this.currentAuthors === null || this.currentAuthors.includes(SHOW_ALL_BRANCHES) || this.currentAuthors.includes(author);
 		this.authorDropdown.setOptions(
-			[{ name: t('Show All'), value: SHOW_ALL_BRANCHES }].concat(this.knownAuthors.map((author) => ({ name: author, value: author }))),
+			[<DropdownOption>{ name: t('Show All'), value: SHOW_ALL_BRANCHES }].concat(this.knownAuthors.map((author) => ({
+				name: author,
+				value: author,
+				icon: generateAuthorInitialHtml(author, true),
+				count: authorsLoaded(author) ? counts[author] || 0 : undefined
+			}))),
 			this.currentAuthors === null ? [SHOW_ALL_BRANCHES] : this.currentAuthors
 		);
 	}
@@ -1700,6 +1711,7 @@ class GitGraphView {
 			{
 				title: t('Copy Commit Hash to Clipboard'),
 				visible: visibility.copyHash,
+				shortcut: (/Mac/.test(navigator.platform) ? '\u2318' : 'Ctrl+') + 'C',
 				onClick: () => {
 					sendMessage({ command: 'copyToClipboard', type: t('Commit Hash'), data: hash });
 				}
@@ -2642,6 +2654,9 @@ class GitGraphView {
 				if (e.key === 'Escape') {
 					contextMenu.close();
 					handledEvent(e);
+				} else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'c' && this.copyCommitHashWithKeyboard(e)) {
+					// Copy the hash of the commit whose context menu is open (as shown in the context menu)
+					handledEvent(e);
 				}
 			} else if (dialog.isOpen()) {
 				if (e.key === 'Escape') {
@@ -2703,6 +2718,8 @@ class GitGraphView {
 				} else if (!e.shiftKey && key === keybindings.scrollToHead && this.commitHead !== null) {
 					this.scrollToHead();
 					handledEvent(e);
+				} else if (key === 'c' && !e.shiftKey && !e.altKey && this.copyCommitHashWithKeyboard(e)) {
+					handledEvent(e);
 				} else if (key.length === 1 && !['a', 'c', 'v', 'x', 'y', 'z'].includes(key)) {
 					possibleChordStart = Date.now();
 				}
@@ -2731,6 +2748,24 @@ class GitGraphView {
 				}
 			}
 		});
+	}
+
+	/**
+	 * Copy the hash of the commit whose context menu is open, or whose details are shown, to the clipboard (Ctrl/Cmd+C), unless text is selected.
+	 * @param e The keyboard event.
+	 * @returns TRUE => A commit hash was copied, FALSE => Nothing was copied (the default behaviour of the keyboard shortcut applies).
+	 */
+	private copyCommitHashWithKeyboard(e: KeyboardEvent) {
+		const selection = window.getSelection();
+		if ((selection !== null && selection.toString() !== '') || (e.target instanceof Element && e.target.closest('input, textarea') !== null)) return false;
+		const target = contextMenu.getTarget();
+		const hash = target !== null && target.type === TargetType.Commit
+			? target.hash
+			: this.expandedCommit !== null && this.expandedCommit.compareWithHash === null && !contextMenu.isOpen() ? this.expandedCommit.commitHash : null;
+		if (hash === null || hash === UNCOMMITTED) return false;
+		sendMessage({ command: 'copyToClipboard', type: t('Commit Hash'), data: hash });
+		closeDialogAndContextMenu();
+		return true;
 	}
 
 	private observeUrls() {
@@ -4565,7 +4600,7 @@ window.addEventListener('load', () => {
 				commitHash: commitHash,
 				skipRemoteCheck: true
 			}, t('Pushing Tag'));
-		}, { type: TargetType.Repo }, t('Cancel'), null, true);
+		}, { type: TargetType.Repo }, t('Cancel'), null);
 	}
 
 	function refreshOrDisplayError(error: GG.ErrorInfo, errorMessage: string, configChanges: boolean = false) {
@@ -5240,13 +5275,16 @@ function generateSignatureHtml(signature: GG.GitSignature) {
  * @param name The name of the author.
  * @returns The HTML.
  */
-function generateAuthorInitialHtml(name: string) {
+function generateAuthorInitialHtml(name: string, asPseudoElement: boolean = false) {
 	let hash = 0;
 	for (let i = 0; i < name.length; i++) {
 		hash = (hash * 31 + name.charCodeAt(i)) % 360;
 	}
 	const initial = name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : '?';
-	return '<span class="authorInitial" style="background-color:hsl(' + hash + ',45%,40%)">' + escapeHtml(initial) + '</span>';
+	// The initial can be shown by CSS, so that it isn't part of the text content of the element containing it (e.g. a dropdown option)
+	return asPseudoElement
+		? '<span class="authorInitial" data-initial="' + escapeHtml(initial) + '" style="background-color:hsl(' + hash + ',45%,40%)"></span>'
+		: '<span class="authorInitial" style="background-color:hsl(' + hash + ',45%,40%)">' + escapeHtml(initial) + '</span>';
 }
 
 function closeDialogAndContextMenu() {

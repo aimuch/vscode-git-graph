@@ -194,32 +194,30 @@ class Dialog {
 	 * @param target The target that the dialog was triggered on.
 	 * @param secondaryActionName An optional name for the secondary action.
 	 * @param secondaryActioned An optional callback to be invoked when the secondary action is selected by the user.
-	 * @param includeLineBreak Should a line break be added between the message and form inputs.
 	 */
-	public showForm(message: string, inputs: ReadonlyArray<DialogInput>, actionName: string, actioned: (values: DialogInputValue[]) => void, target: DialogTarget | null, secondaryActionName: string = t('Cancel'), secondaryActioned: ((values: DialogInputValue[]) => void) | null = null, includeLineBreak: boolean = true) {
+	public showForm(message: string, inputs: ReadonlyArray<DialogInput>, actionName: string, actioned: (values: DialogInputValue[]) => void, target: DialogTarget | null, secondaryActionName: string = t('Cancel'), secondaryActioned: ((values: DialogInputValue[]) => void) | null = null) {
 		const multiElement = inputs.length > 1;
 		const multiCheckbox = multiElement && inputs.every((input) => input.type === DialogInputType.Checkbox);
-		const infoColRequired = inputs.some((input) => input.type !== DialogInputType.Checkbox && input.type !== DialogInputType.Radio && input.info);
 		const inputRowsHtml = inputs.map((input, id) => {
+			const infoHtml = input.type !== DialogInputType.Radio && input.info ? '<span class="dialogInfo" title="' + escapeHtml(input.info) + '">' + SVG_ICONS.info + '</span>' : '';
+			// The label of an input is shown above it (a single input is labelled by the message)
+			const labelHtml = multiElement && input.type !== DialogInputType.Checkbox ? '<div class="dialogFormLabel">' + input.name + infoHtml + '</div>' : '';
 			let inputHtml;
 			if (input.type === DialogInputType.Radio) {
-				inputHtml = '<td class="inputCol"' + (infoColRequired ? ' colspan="2"' : '') + '><span class="dialogFormRadio">' +
+				inputHtml = '<span class="dialogFormRadio">' +
 					input.options.map((option, optionId) => '<label><input type="radio" name="dialogInput' + id + '" value="' + optionId + '"' + (option.value === input.default ? ' checked' : '') + ' tabindex="' + (id + 1) + '"/><span class="customRadio"></span>' + escapeHtml(option.name) + '</label>').join('<br>') +
-					'</span></td>';
+					'</span>';
+			} else if (input.type === DialogInputType.Select) {
+				inputHtml = '<div id="dialogFormSelect' + id + '"></div>' + (multiElement ? '' : infoHtml);
+			} else if (input.type === DialogInputType.Checkbox) {
+				inputHtml = '<span class="dialogFormCheckbox"><label><input id="dialogInput' + id + '" type="checkbox"' + (input.value ? ' checked' : '') + ' tabindex="' + (id + 1) + '"/><span class="customCheckbox"></span>' + input.name + infoHtml + '</label></span>';
 			} else {
-				const infoHtml = input.info ? '<span class="dialogInfo" title="' + escapeHtml(input.info) + '">' + SVG_ICONS.info + '</span>' : '';
-				if (input.type === DialogInputType.Select) {
-					inputHtml = '<td class="inputCol"><div id="dialogFormSelect' + id + '"></div></td>' + (infoColRequired ? '<td>' + infoHtml + '</td>' : '');
-				} else if (input.type === DialogInputType.Checkbox) {
-					inputHtml = '<td class="inputCol"' + (infoColRequired ? ' colspan="2"' : '') + '><span class="dialogFormCheckbox"><label><input id="dialogInput' + id + '" type="checkbox"' + (input.value ? ' checked' : '') + ' tabindex="' + (id + 1) + '"/><span class="customCheckbox"></span>' + (multiElement && !multiCheckbox ? '' : input.name) + infoHtml + '</label></span></td>';
-				} else {
-					inputHtml = '<td class="inputCol"><input id="dialogInput' + id + '" type="text" value="' + escapeHtml(input.default) + '"' + (input.type === DialogInputType.Text && input.placeholder !== null ? ' placeholder="' + escapeHtml(input.placeholder) + '"' : '') + ' tabindex="' + (id + 1) + '"/></td>' + (infoColRequired ? '<td>' + infoHtml + '</td>' : '');
-				}
+				inputHtml = '<input id="dialogInput' + id + '" type="text" value="' + escapeHtml(input.default) + '"' + (input.type === DialogInputType.Text && input.placeholder !== null ? ' placeholder="' + escapeHtml(input.placeholder) + '"' : '') + ' tabindex="' + (id + 1) + '"/>' + (multiElement ? '' : infoHtml);
 			}
-			return '<tr' + (input.type === DialogInputType.Radio ? ' class="mediumField"' : input.type !== DialogInputType.Checkbox ? ' class="largeField"' : '') + '>' + (multiElement && !multiCheckbox ? '<td>' + input.name + ': </td>' : '') + inputHtml + '</tr>';
+			return '<tr class="' + (input.type === DialogInputType.Checkbox ? 'checkboxField' : input.type === DialogInputType.Radio ? 'mediumField' : 'largeField') + '"><td class="inputCol">' + labelHtml + inputHtml + '</td></tr>';
 		});
 
-		const html = message + (includeLineBreak ? '<br>' : '') +
+		const html = '<div class="dialogMessage">' + message + '</div>' +
 			'<table class="dialogForm ' + (multiElement ? multiCheckbox ? 'multiCheckbox' : 'multi' : 'single') + '">' +
 			inputRowsHtml.join('') +
 			'</table>';
@@ -257,10 +255,10 @@ class Dialog {
 			secondaryActioned(values);
 		} : null, target);
 
-		// The buttons follow the inputs in the tab order
+		// The buttons follow the inputs in the tab order (in the order they're shown)
 		const dialogAction = document.getElementById('dialogAction'), dialogSecondaryAction = document.getElementById('dialogSecondaryAction');
-		if (dialogAction !== null) dialogAction.tabIndex = inputs.length + 1;
-		if (dialogSecondaryAction !== null) dialogSecondaryAction.tabIndex = inputs.length + 2;
+		if (dialogSecondaryAction !== null) dialogSecondaryAction.tabIndex = inputs.length + 1;
+		if (dialogAction !== null) dialogAction.tabIndex = inputs.length + 2;
 
 		// Create custom select inputs
 		inputs.forEach((input, index) => {
@@ -346,7 +344,13 @@ class Dialog {
 		const dialog = document.createElement('div'), dialogContent = document.createElement('div');
 		dialog.className = 'dialog';
 		dialogContent.className = 'dialogContent';
-		dialogContent.innerHTML = html + '<br>' + (actionName !== null ? '<div id="dialogAction" class="roundedBtn" role="button" tabindex="1">' + actionName + '</div>' : '') + '<div id="dialogSecondaryAction" class="roundedBtn" role="button" tabindex="2">' + secondaryActionName + '</div>';
+		dialogContent.innerHTML = (type === DialogType.Form && html.indexOf('<div class="dialogMessage">') !== 0 ? '<div class="dialogMessage">' + html + '</div>' : html) +
+			'<div class="dialogButtons"><div id="dialogSecondaryAction" class="roundedBtn" role="button" tabindex="1">' + secondaryActionName + '</div>' + (actionName !== null ? '<div id="dialogAction" class="roundedBtn" role="button" tabindex="2">' + actionName + '</div>' : '') + '</div>';
+		const subtitle = type === DialogType.Form ? Dialog.getTargetSubtitle(target) : null;
+		if (subtitle !== null) {
+			const messageElem = dialogContent.querySelector('.dialogMessage');
+			if (messageElem !== null) messageElem.insertAdjacentHTML('afterend', subtitle);
+		}
 		dialog.appendChild(dialogContent);
 		this.elem = dialog;
 		document.body.appendChild(dialog);
@@ -377,6 +381,18 @@ class Dialog {
 		if (this.target !== null && this.target.type !== TargetType.Repo) {
 			alterClass(this.target.elem, CLASS_DIALOG_ACTIVE, true);
 		}
+	}
+
+	/**
+	 * Get the HTML of the subtitle of a dialog, showing the commit that the dialog's target (a commit, or a reference on a commit) is on.
+	 * @param target The target of the dialog.
+	 * @returns The HTML, or NULL if the target isn't on a commit.
+	 */
+	private static getTargetSubtitle(target: DialogTarget | null) {
+		if (target === null || target.type === TargetType.Repo || target.hash === UNCOMMITTED) return null;
+		const commitElem = target.elem.closest('tr.commit'), textElem = commitElem !== null ? commitElem.querySelector('.description .text') : null;
+		if (textElem === null) return null;
+		return '<div class="dialogSubtitle">' + t('Commit') + ' <span class="dialogSubtitleHash">' + escapeHtml(abbrevCommit(target.hash)) + '</span> · ' + escapeHtml(textElem.textContent || '') + '</div>';
 	}
 
 	/**

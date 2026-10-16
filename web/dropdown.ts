@@ -2,6 +2,8 @@ interface DropdownOption {
 	readonly name: string;
 	readonly value: string;
 	readonly hint?: string;
+	readonly icon?: string; // The HTML of an icon shown before the name
+	readonly count?: number; // A count shown on the right (e.g. the number of commits by an author)
 }
 
 /**
@@ -230,7 +232,9 @@ class Dropdown {
 		for (let i = 0; i < this.options.length; i++) {
 			const escapedName = escapeHtml(this.options[i].name);
 			html += '<div class="dropdownOption' + (this.optionsSelected[i] ? ' ' + CLASS_SELECTED : '') + '" data-id="' + i + '" title="' + escapedName + '">' +
-				(this.multipleAllowed && this.optionsSelected[i] ? '<div class="dropdownOptionMultiSelected">' + SVG_ICONS.check + '</div>' : '') +
+				(this.multipleAllowed ? '<span class="dropdownOptionCheckbox' + (this.optionsSelected[i] ? ' checked' : '') + '">' + (this.optionsSelected[i] ? SVG_ICONS.check : '') + '</span>' : '') +
+				(typeof this.options[i].count === 'number' ? '<span class="dropdownOptionCount" data-count="' + this.options[i].count + '"></span>' : '') + // Floated on the right
+				(typeof this.options[i].icon === 'string' ? this.options[i].icon : '') +
 				escapedName + (typeof this.options[i].hint === 'string' && this.options[i].hint !== '' ? '<span class="dropdownOptionHint">' + escapeHtml(this.options[i].hint!) + '</span>' : '') +
 				(this.showInfo ? '<div class="dropdownOptionInfo" title="' + escapeHtml(this.options[i].value) + '">' + SVG_ICONS.info + '</div>' : '') +
 				'</div>';

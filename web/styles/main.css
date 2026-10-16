@@ -1287,6 +1287,9 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	margin-top:5px;
 	margin-right:6px;
 }
+.authorInitial[data-initial]:after{
+	content:attr(data-initial);
+}
 .authorInitial{
 	display:inline-block;
 	width:18px;

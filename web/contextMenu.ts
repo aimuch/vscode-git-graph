@@ -5,6 +5,7 @@ interface ContextMenuAction {
 	readonly visible: boolean;
 	readonly onClick: () => void;
 	readonly checked?: boolean; // Required in checked context menus
+	readonly shortcut?: string; // The keyboard shortcut of the action
 }
 
 type ContextMenuActions = ReadonlyArray<ReadonlyArray<ContextMenuAction>>;
@@ -53,7 +54,7 @@ class ContextMenu {
 			let groupHtml = '';
 			for (let j = 0; j < actions[i].length; j++) {
 				if (actions[i][j].visible) {
-					groupHtml += '<li class="contextMenuItem" data-index="' + handlerId++ + '">' + (checked ? '<span class="contextMenuItemCheck">' + (actions[i][j].checked ? SVG_ICONS.check : '') + '</span>' : '') + actions[i][j].title + '</li>';
+					groupHtml += '<li class="contextMenuItem" data-index="' + handlerId++ + '">' + (checked ? '<span class="contextMenuItemCheck">' + (actions[i][j].checked ? SVG_ICONS.check : '') + '</span>' : '') + actions[i][j].title + (typeof actions[i][j].shortcut === 'string' ? '<span class="contextMenuItemShortcut">' + escapeHtml(actions[i][j].shortcut!) + '</span>' : '') + '</li>';
 					handlers.push(actions[i][j].onClick);
 				}
 			}
@@ -166,6 +167,14 @@ class ContextMenu {
 	 * Is a context menu currently open in the Git Map View.
 	 * @returns TRUE => A context menu is open, FALSE => No context menu is open
 	 */
+	/**
+	 * Get the target of the context menu (if one is currently open).
+	 * @returns The target, or NULL if no context menu is open (or it doesn't have a target).
+	 */
+	public getTarget() {
+		return this.elem !== null ? this.target : null;
+	}
+
 	public isOpen() {
 		return this.elem !== null;
 	}

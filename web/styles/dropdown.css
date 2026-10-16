@@ -125,16 +125,46 @@ body.vscode-high-contrast .dropdownOption:hover{
 	opacity:0.35;
 }
 
-.dropdownOptionMultiSelected{
+.dropdownOptionCheckbox{
 	position:absolute;
-	width:12px;
-	height:16px;
-	top:6px;
+	box-sizing:border-box;
+	width:14px;
+	height:14px;
+	top:50%;
 	left:10px;
+	margin-top:-7px;
+	border:1px solid var(--vscode-checkbox-border, var(--vscode-input-border, rgba(128,128,128,0.6)));
+	border-radius:3px;
+	background-color:var(--vscode-checkbox-background, var(--vscode-input-background, transparent));
 }
-.dropdownOptionMultiSelected svg{
-	fill:var(--vscode-menu-foreground);
-	opacity:0.8;
+.dropdownOptionCheckbox.checked{
+	border-color:var(--vscode-button-background);
+	background-color:var(--vscode-button-background);
+}
+.dropdownOptionCheckbox svg{
+	position:absolute;
+	left:1px;
+	top:0;
+	width:10px !important;
+	height:12px !important;
+	fill:var(--vscode-button-foreground, #ffffff) !important;
+	opacity:1 !important;
+}
+.dropdownOption .authorInitial{
+	margin:0 8px 0 0;
+	vertical-align:-4px;
+}
+#authorDropdown .dropdownMenu{
+	min-width:240px;
+}
+.dropdownOptionCount{
+	float:right;
+	margin-left:12px;
+	opacity:0.6;
+	font-size:11.5px;
+}
+.dropdownOptionCount:after{
+	content:attr(data-count);
 }
 
 .dropdownOption:hover svg{

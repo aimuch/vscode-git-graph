@@ -319,7 +319,7 @@ class SettingsWidget {
 						this.view.saveRepoStateValue(this.currentRepo, 'onRepoLoadShowSpecificBranches', <string[]>values[1]);
 						this.render();
 					}
-				}, null, t('Cancel'), null, false);
+				}, null, t('Cancel'), null);
 			});
 
 			if (initialBranchesLocallyConfigured) {
@@ -699,7 +699,7 @@ class SettingsWidget {
 			} else {
 				this.setIssueLinkingConfig({ issue: issueRegex, url: issueUrl }, useGlobally);
 			}
-		}, null, t('Cancel'), null, false);
+		}, null, t('Cancel'), null);
 	}
 
 	/**

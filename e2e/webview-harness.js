@@ -548,13 +548,55 @@
 		await check('#652', 'The dialog buttons can be focused with Tab (after the inputs), and activated with Enter', async () => {
 			const inputTabIndexes = Array.from(dialogElem.querySelectorAll('input, .customSelectCurrent')).map((elem) => elem.tabIndex);
 			const actionButton = document.getElementById('dialogAction'), cancelButton = document.getElementById('dialogSecondaryAction');
-			assert(actionButton.tabIndex > Math.max.apply(null, inputTabIndexes) && cancelButton.tabIndex > actionButton.tabIndex, 'Unexpected tab order: inputs ' + JSON.stringify(inputTabIndexes) + ', buttons ' + actionButton.tabIndex + ', ' + cancelButton.tabIndex);
+			// The buttons are in the order they're shown: Cancel, then the action
+			assert(cancelButton.tabIndex > Math.max.apply(null, inputTabIndexes) && actionButton.tabIndex > cancelButton.tabIndex, 'Unexpected tab order: inputs ' + JSON.stringify(inputTabIndexes) + ', buttons ' + cancelButton.tabIndex + ', ' + actionButton.tabIndex);
 			cancelButton.focus();
 			assert(document.activeElement === cancelButton, 'The Cancel button can\'t be focused');
 			key(cancelButton, 'Enter');
 			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
 			assert(requestsOf('createBranch').length === 0, 'Enter on the Cancel button created the branch');
-			return 'Tab order: inputs ' + inputTabIndexes.join(', ') + ' → buttons ' + actionButton.tabIndex + ', ' + cancelButton.tabIndex;
+			return 'Tab order: inputs ' + inputTabIndexes.join(', ') + ' → buttons ' + cancelButton.tabIndex + ', ' + actionButton.tabIndex;
+		});
+
+		await check('ui-components', '[Redesign] Dialogs show the commit they are for, labels above inputs & the buttons on the right; context menus show keyboard shortcuts (Ctrl/Cmd+C copies the commit hash); the Authors dropdown shows initials, checkboxes & counts', async () => {
+			// The Create Branch dialog of a commit
+			mouse(commitRow(4), 'contextmenu', { button: 2 });
+			const menu = await waitFor('the context menu', () => document.querySelector('.contextMenu'));
+			const copyItem = Array.from(menu.querySelectorAll('.contextMenuItem')).find((item) => item.textContent.startsWith('Copy Commit Hash to Clipboard'));
+			const shortcut = copyItem.querySelector('.contextMenuItemShortcut').textContent;
+			assert(shortcut === '\u2318C' || shortcut === 'Ctrl+C', 'Unexpected shortcut: ' + shortcut);
+			const copies = requestsOf('copyToClipboard').length;
+			key(document.body, 'c', { ctrlKey: true });
+			await waitFor('the commit hash to be copied', () => requestsOf('copyToClipboard').length > copies && document.querySelector('.contextMenu') === null);
+			assert(requestsOf('copyToClipboard').pop().data === hash(5), 'The hash of the commit wasn\'t copied');
+			mouse(commitRow(4), 'contextmenu', { button: 2 });
+			mouse(Array.from((await waitFor('the context menu', () => document.querySelector('.contextMenu'))).querySelectorAll('.contextMenuItem')).find((item) => item.textContent === 'Create Branch\u2026'), 'click');
+			const dialog = await waitFor('the Create Branch dialog', () => document.querySelector('.dialog'));
+			const subtitle = dialog.querySelector('.dialogSubtitle').textContent;
+			assert(dialog.querySelector('.dialogMessage').textContent.includes('Create branch at commit') && subtitle === 'Commit ' + hash(5).substring(0, 8) + ' \u00b7 ' + commitRow(4).querySelector('.description .text').textContent, 'Unexpected title / subtitle: ' + subtitle);
+			const labels = Array.from(dialog.querySelectorAll('.dialogFormLabel')).map((elem) => elem.textContent), checkbox = dialog.querySelector('.dialogFormCheckbox label').textContent;
+			assert(JSON.stringify(labels) === JSON.stringify(['Name']) && checkbox === 'Check out', 'Unexpected labels: ' + JSON.stringify(labels) + ', ' + checkbox);
+			const buttons = Array.from(dialog.querySelectorAll('.dialogButtons .roundedBtn')).map((elem) => elem.id);
+			const actionBounds = document.getElementById('dialogAction').getBoundingClientRect(), contentBounds = dialog.querySelector('.dialogContent').getBoundingClientRect();
+			assert(JSON.stringify(buttons) === JSON.stringify(['dialogSecondaryAction', 'dialogAction']) && contentBounds.right - actionBounds.right < 30, 'The buttons aren\'t on the right: ' + JSON.stringify(buttons));
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+
+			// The Authors dropdown
+			const dropdown = document.getElementById('authorDropdown');
+			mouse(dropdown.querySelector('.dropdownCurrentValue'), 'click');
+			const options = await waitFor('the author options', () => {
+				const elems = Array.from(dropdown.querySelectorAll('.dropdownOption'));
+				return elems.length > 1 ? elems : null;
+			});
+			const loaded = makeCommits(document.querySelectorAll('#commitTable tr.commit').length);
+			const authors = options.slice(1).map((option) => option.textContent + ':' + option.querySelector('.authorInitial').dataset.initial + ':' + option.querySelector('.dropdownOptionCount').dataset.count);
+			const expected = ['E2E Author', 'Second Author'].map((name) => name + ':' + name.charAt(0) + ':' + loaded.filter((commit) => commit.author === name).length);
+			assert(JSON.stringify(authors) === JSON.stringify(expected), 'Unexpected authors: ' + JSON.stringify(authors) + ' (expected ' + JSON.stringify(expected) + ')');
+			assert(options.every((option) => option.querySelector('.dropdownOptionCheckbox') !== null) && options[0].querySelector('.dropdownOptionCheckbox.checked') !== null, 'The options don\'t have checkboxes');
+			key(document.body, 'Escape');
+			await waitFor('the dropdown to close', () => !dropdown.classList.contains('dropdownOpen'));
+			return 'Shortcut: ' + shortcut + '; subtitle: ' + subtitle + '; authors: ' + authors.join(', ');
 		});
 
 		await check('#707', 'Adding Issue Linking prefills the Issue URL of the repository\'s GitHub remote (not an example URL)', async () => {
