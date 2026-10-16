@@ -113,12 +113,14 @@ class ViewActions {
 				visible: visibility.addTag,
 				onClick: () => this.addTagAction(hash, '', this.view.config.dialogDefaults.addTag.type, '', null, target)
 			}, {
+				id: 'createBranch',
 				title: t('Create Branch') + ELLIPSIS,
 				visible: visibility.createBranch,
 				onClick: () => this.createBranchAction(hash, '', this.view.config.dialogDefaults.createBranch.checkout, target)
 			}
 		], [
 			{
+				id: 'checkout',
 				title: t('Checkout') + (globalState.alwaysAcceptCheckoutCommit ? '' : ELLIPSIS),
 				visible: visibility.checkout,
 				onClick: () => {
@@ -135,6 +137,7 @@ class ViewActions {
 					}
 				}
 			}, {
+				id: 'cherrypick',
 				title: t('Cherry Pick') + ELLIPSIS,
 				visible: visibility.cherrypick,
 				onClick: () => {
@@ -228,6 +231,7 @@ class ViewActions {
 			}
 		], [
 			{
+				id: 'copyHash',
 				title: t('Copy Commit Hash to Clipboard'),
 				visible: visibility.copyHash,
 				shortcut: (/Mac/.test(navigator.platform) ? '\u2318' : 'Ctrl+') + 'C',

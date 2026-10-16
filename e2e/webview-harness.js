@@ -1077,6 +1077,49 @@
 			return 'Copied: ' + copied.data.split('\n').map((h) => h.substring(32)).join(', ') + '; cherry picked: ' + request.commitHashes.map((h) => h.substring(32)).join(', ') + '; merge commit refused';
 		});
 
+		await check('ui-row-actions', '[GitLens] Hovering over a commit shows buttons of its most common actions at the end of its row (which run the actions of its context menu)', async () => {
+			if (document.getElementById('cdv') !== null) {
+				mouse(document.getElementById('cdvClose'), 'click');
+				await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
+			}
+			const row = commitRow(3);
+			mouse(row.querySelector('td.descriptionCol .text'), 'mouseover');
+			const toolbar = await waitFor('the buttons to be shown', () => row.querySelector('td.descriptionCol #rowActions'));
+			const titles = Array.from(toolbar.querySelectorAll('.rowAction')).filter((elem) => elem.style.display !== 'none').map((elem) => elem.title);
+			assert(JSON.stringify(titles) === JSON.stringify(['Create Branch…', 'Checkout…', 'Cherry Pick…', 'Copy Commit Hash to Clipboard', 'More Actions…']), 'Unexpected buttons: ' + JSON.stringify(titles));
+			const toolbarRect = toolbar.getBoundingClientRect(), cellRect = row.querySelector('td.descriptionCol').getBoundingClientRect();
+			assert(Math.abs(toolbarRect.right - cellRect.right) < 1 && toolbarRect.top >= cellRect.top - 1 && toolbarRect.bottom <= cellRect.bottom + 1, 'The buttons aren\'t at the end of the row: ' + JSON.stringify(toolbarRect));
+			const button = (action) => toolbar.querySelector('.rowAction[data-action="' + action + '"]');
+
+			// Copying the hash doesn't open the Commit Details View (the click isn't handled by the row)
+			const detailsRequests = requestsOf('commitDetails').length;
+			mouse(button('copyHash'), 'click');
+			const copied = await waitFor('the hash to be copied', () => requestsOf('copyToClipboard').slice(-1)[0]);
+			assert(copied.data === hash(4) && document.getElementById('cdv') === null && requestsOf('commitDetails').length === detailsRequests, 'Unexpected copy: ' + JSON.stringify(copied));
+
+			// Create Branch opens the same dialog as the context menu
+			mouse(button('createBranch'), 'click');
+			const dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+			assert(dialogElem.textContent.includes('Create branch at commit') && row.classList.contains('dialogActive'), 'Unexpected dialog: ' + dialogElem.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+
+			// More Actions opens the commit's context menu
+			mouse(button('more'), 'click');
+			const menu = await waitFor('the context menu', () => document.querySelector('.contextMenu'));
+			const items = Array.from(menu.querySelectorAll('.contextMenuItem')).map((item) => item.textContent);
+			assert(items[0] === 'Add Tag…' && items.includes('Cherry Pick…') && items.includes('Copy Commit Subject to Clipboard'), 'Unexpected context menu: ' + JSON.stringify(items));
+			key(document.body, 'Escape');
+			await waitFor('the context menu to close', () => document.querySelector('.contextMenu') === null);
+
+			// The buttons follow the mouse, and are hidden when it leaves the commits
+			mouse(commitRow(6).querySelector('td.dateCol'), 'mouseover');
+			assert(commitRow(6).querySelector('#rowActions') !== null && row.querySelector('#rowActions') === null, 'The buttons didn\'t move to the commit the mouse is over');
+			document.getElementById('commitTable').dispatchEvent(new MouseEvent('mouseleave'));
+			assert(document.getElementById('rowActions') === null, 'The buttons weren\'t hidden');
+			return 'Buttons: ' + titles.join(' | ') + '; copied ' + copied.data.substring(32) + ', opened the Create Branch dialog & the context menu';
+		});
+
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {
 			const rows = () => document.querySelectorAll('#commitTable tr.commit').length, total = rows(), fixture = makeCommits(total);
 			const countText = (count) => count !== 1 ? count + ' commits match' : '1 commit matches';

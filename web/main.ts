@@ -67,6 +67,7 @@ class GitGraphView {
 	public readonly cdvFileView: CdvFileView;
 	public readonly tableColumns: TableColumns;
 	public readonly stashList: StashList;
+	private readonly rowActions: RowActions;
 	private readonly findWidget: FindWidget;
 	private readonly settingsWidget: SettingsWidget;
 	private readonly minimap: Minimap;
@@ -89,6 +90,7 @@ class GitGraphView {
 		this.maxCommits = this.config.initialLoadCommits;
 		this.viewElem = viewElem;
 		this.actions = new ViewActions(this);
+		this.rowActions = new RowActions(this);
 		this.cdvFileView = new CdvFileView(this);
 		this.tableColumns = new TableColumns(this);
 		this.stashList = new StashList(this);
@@ -757,7 +759,7 @@ class GitGraphView {
 		return typeof this.commitLookup[hash] === 'number' ? this.commitLookup[hash] : null;
 	}
 
-	private getCommitOfElem(elem: HTMLElement) {
+	public getCommitOfElem(elem: HTMLElement) {
 		let id = parseInt(elem.dataset.id!);
 		return id < this.commits.length ? this.commits[id] : null;
 	}
@@ -1998,8 +2000,17 @@ class GitGraphView {
 		this.tableElem.addEventListener('mouseover', (e: MouseEvent) => {
 			const commitElem = e.target instanceof Element ? <HTMLElement | null>e.target.closest('.commit') : null;
 			highlightBranchOfCommit(commitElem !== null && typeof commitElem.dataset.id === 'string' ? parseInt(commitElem.dataset.id) : null);
+			// The buttons of the most common actions on the commit are shown at the end of its row
+			if (commitElem !== null) {
+				this.rowActions.show(commitElem);
+			} else {
+				this.rowActions.hide();
+			}
 		});
-		this.tableElem.addEventListener('mouseleave', () => highlightBranchOfCommit(null));
+		this.tableElem.addEventListener('mouseleave', () => {
+			highlightBranchOfCommit(null);
+			this.rowActions.hide();
+		});
 
 		this.tableElem.addEventListener('dblclick', (e: MouseEvent) => {
 			if (e.target === null) return;

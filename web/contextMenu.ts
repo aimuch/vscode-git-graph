@@ -1,6 +1,7 @@
 const CLASS_CONTEXT_MENU_ACTIVE = 'contextMenuActive';
 
 interface ContextMenuAction {
+	readonly id?: string; // Identifies the action (e.g. for the buttons of a commit's row, which run the actions of its context menu)
 	readonly title: string;
 	readonly visible: boolean;
 	readonly onClick: () => void;

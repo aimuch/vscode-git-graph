@@ -1396,6 +1396,51 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	box-shadow:inset 3px 0 0 var(--vscode-list-highlightForeground, var(--vscode-focusBorder));
 }
 
+/* The buttons of the most common actions on the commit the mouse is over, at the end of its Description cell. Their background is the
+   row's background (opaque, as they cover the end of the description), fading in over the description. */
+#commitTable td.descriptionCol{
+	position:relative;
+}
+#rowActions{
+	--git-graph-rowActionsTint:var(--vscode-list-hoverBackground, rgba(128,128,128,0.15));
+	position:absolute;
+	top:0;
+	right:0;
+	bottom:0;
+	display:flex;
+	align-items:center;
+	gap:1px;
+	padding:0 4px 0 22px;
+	background:linear-gradient(var(--git-graph-rowActionsTint), var(--git-graph-rowActionsTint)), var(--vscode-editor-background);
+	-webkit-mask-image:linear-gradient(to right, transparent, #000 18px);
+	mask-image:linear-gradient(to right, transparent, #000 18px);
+}
+#commitTable tr.commit.multiSelected #rowActions{
+	--git-graph-rowActionsTint:var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25));
+}
+#commitTable tr.commit.commitDetailsOpen #rowActions{
+	--git-graph-rowActionsTint:var(--vscode-list-activeSelectionBackground, var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25)));
+}
+.rowAction{
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	width:22px;
+	height:20px;
+	margin:0;
+	padding:0;
+	border:none;
+	border-radius:4px;
+	background-color:transparent;
+	color:var(--vscode-icon-foreground, var(--vscode-foreground));
+	cursor:pointer;
+	opacity:0.8;
+}
+.rowAction:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+	opacity:1;
+}
+
 /* The uncommitted changes */
 #commitTable tr.commit#uncommittedChanges span.description .text{
 	color:var(--vscode-descriptionForeground);
