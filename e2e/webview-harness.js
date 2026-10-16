@@ -332,6 +332,46 @@
 			return 'Width: ' + cdv.style.width + ', actions: ' + buttons.join(' | ');
 		});
 
+		await check('ui-cdv-panel', '[Redesign] The Commit Details View has a header with previous / next buttons, chips to copy the hash / open on the remote / compare, the branches containing the commit, and tabs of the changed files & commit message', async () => {
+			const title = document.querySelector('#cdvHeader .cdvHeaderTitle');
+			assert(title !== null && title.textContent === 'Commit Details', 'Unexpected header: ' + (title && title.textContent));
+			const chips = Array.from(document.querySelectorAll('#cdvSummary .cdvChip')).map((elem) => elem.textContent);
+			assert(JSON.stringify(chips) === JSON.stringify([hash(4).substring(0, 8), 'Open on Remote', 'Compare with\u2026']), 'Unexpected chips: ' + JSON.stringify(chips));
+			mouse(document.getElementById('cdvCopyHash'), 'click');
+			const copied = requestsOf('copyToClipboard').pop();
+			assert(copied && copied.data === hash(4), 'The hash wasn\'t copied: ' + JSON.stringify(copied));
+			mouse(document.getElementById('cdvOpenOnRemote'), 'click');
+			const opened = requestsOf('openExternalUrl').pop();
+			assert(opened && opened.url === 'https://github.com/e2e-owner/e2e-repo/commit/' + hash(4), 'Unexpected URL opened: ' + JSON.stringify(opened));
+			const branches = Array.from(document.querySelectorAll('#cdvSummary .cdvBranch')).map((elem) => elem.textContent);
+			assert(JSON.stringify(branches) === JSON.stringify(['feature']), 'Unexpected branches: ' + JSON.stringify(branches));
+			const stats = document.querySelector('#cdvSummary .cdvStats').textContent;
+			assert(stats === '3 files+3\u22122', 'Unexpected stats: ' + stats);
+			const badges = Array.from(document.querySelectorAll('#cdvFileView .fileTreeFileRecord')).map((elem) => elem.querySelector('.fileTreeFileBadge').textContent + (elem.querySelector('.changeBar') !== null ? ' bar' : ''));
+			assert(badges.length === 3 && badges.every((badge) => badge.endsWith(' bar')) && badges.filter((badge) => badge.startsWith('R')).length === 2, 'Unexpected files: ' + JSON.stringify(badges));
+
+			mouse(document.querySelector('.cdvTab[data-tab="message"]'), 'click');
+			const messageView = document.getElementById('cdvMessageView');
+			assert(!messageView.classList.contains('hidden') && document.getElementById('cdvFileView').classList.contains('hidden') && messageView.textContent.includes('Commit:'), 'The Commit Message tab wasn\'t shown');
+			mouse(document.querySelector('.cdvTab[data-tab="files"]'), 'click');
+			assert(messageView.classList.contains('hidden') && !document.getElementById('cdvFileView').classList.contains('hidden'), 'The Changed Files tab wasn\'t shown');
+
+			mouse(document.getElementById('cdvNext'), 'click');
+			await waitFor('the next commit to be loaded', () => commitRow(4).classList.contains('commitDetailsOpen') && document.querySelector('#cdv .fileTreeFileRecord'));
+			mouse(document.getElementById('cdvPrev'), 'click');
+			await waitFor('the previous commit to be loaded', () => commitRow(3).classList.contains('commitDetailsOpen') && document.getElementById('cdvCompare'));
+
+			mouse(document.getElementById('cdvCompare'), 'click');
+			assert(document.getElementById('cdvCompare').classList.contains('active'), 'The Compare chip isn\'t active');
+			mouse(commitRow(6), 'click');
+			const compare = await waitFor('the commits to be compared', () => requestsOf('compareCommits').pop());
+			assert(compare.commitHash === hash(4) && compare.compareWithHash === hash(7), 'Unexpected comparison: ' + JSON.stringify(compare));
+			await waitFor('the header to show the comparison', () => document.querySelector('#cdvHeader .cdvHeaderTitle').textContent === 'Commit Comparison');
+			mouse(document.getElementById('cdvClose'), 'click');
+			await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
+			return 'Chips: ' + chips.join(' | ') + '; branches: ' + branches.join(', ') + '; stats: ' + stats + '; files: ' + badges.join(', ');
+		});
+
 		await check('ui-branch-highlight', '[GitLens] Hovering over a commit highlights the branch it is on in the graph', async () => {
 			const graph = document.querySelector('#commitGraph > svg');
 			mouse(commitRow(5), 'mouseover');

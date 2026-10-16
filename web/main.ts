@@ -34,6 +34,7 @@ class GitGraphView {
 
 	private moreCommitsAvailable: boolean = false;
 	private scrollToHeadPending: boolean = false;
+	private cdvComparePending: boolean = false;
 	private expandedCommit: ExpandedCommit | null = null;
 	private maxCommits: number;
 	private scrollTop = 0;
@@ -2428,7 +2429,8 @@ class GitGraphView {
 
 					if (this.expandedCommit.commitHash === commit.hash) {
 						this.closeCommitDetails(true);
-					} else if ((<MouseEvent>e).ctrlKey || (<MouseEvent>e).metaKey) {
+					} else if ((<MouseEvent>e).ctrlKey || (<MouseEvent>e).metaKey || this.cdvComparePending) {
+						this.cdvComparePending = false;
 						if (this.expandedCommit.compareWithHash === commit.hash) {
 							this.closeCommitComparison(true);
 						} else if (this.expandedCommit.commitElem !== null) {
@@ -2600,6 +2602,7 @@ class GitGraphView {
 		if (expandedCommit === null) return;
 
 		const elem = document.getElementById('cdv'), isDocked = this.isCdvDocked();
+		this.cdvComparePending = false;
 		if (elem !== null) {
 			elem.remove();
 		}
@@ -2752,7 +2755,8 @@ class GitGraphView {
 		const expandedCommit = this.expandedCommit;
 		if (expandedCommit === null || expandedCommit.commitElem === null) return;
 
-		let elem = document.getElementById('cdv'), html = '<div id="cdvContent">', isDocked = this.isCdvDocked();
+		let elem = document.getElementById('cdv'), html = '<div id="cdvContent">', isDocked = this.isCdvDocked(), messageHtml = '';
+		const isRight = isDocked && this.isCdvDockedRight();
 		const commitOrder = this.getCommitOrder(expandedCommit.commitHash, expandedCommit.compareWithHash === null ? expandedCommit.commitHash : expandedCommit.compareWithHash);
 		const codeReviewPossible = !expandedCommit.loading && commitOrder.to !== UNCOMMITTED;
 		const externalDiffPossible = !expandedCommit.loading && (expandedCommit.compareWithHash !== null || this.commits[this.commitLookup[expandedCommit.commitHash]].parents.length > 0);
@@ -2797,34 +2801,53 @@ class GitGraphView {
 					const subject = subjectEnd > -1 ? commitDetails.body.substring(0, subjectEnd) : commitDetails.body;
 					const body = subjectEnd > -1 ? commitDetails.body.substring(subjectEnd + 1).trim() : '';
 					const detail = (key: string, value: string) => '<span class="cdvSummaryKey">' + key + '</span><span class="cdvSummaryValue">' + value + '</span>';
-					html += '<div class="cdvSummaryHeader">'
-						+ (expandedCommit.avatar !== null ? '<span class="cdvSummaryAvatar"><img src="' + expandedCommit.avatar + '"></span>' : generateAuthorInitialHtml(commitDetails.author))
-						+ '<span class="cdvSummaryHeaderText"><span class="cdvSummaryAuthor">' + escapeHtml(commitDetails.author) + '</span><span class="cdvSummaryDate" title="' + escapeHtml(formatLongDate(commitDetails.authorDate)) + '">' + formatShortDate(commitDetails.authorDate).formatted + '</span></span>'
-						+ '</div>'
-						+ '<div class="cdvSummarySubject">' + textFormatter.format(subject) + '</div>'
-						+ (body !== '' ? '<div class="cdvSummaryBody">' + textFormatter.format(body) + '</div>' : '')
-						+ '<div class="cdvSummaryDetails">'
+					const detailsHtml = '<div class="cdvSummaryDetails">'
 						+ detail(t('Commit:'), '<span class="cdvSummaryHash">' + escapeHtml(commitDetails.hash) + '</span>')
 						+ detail(t('Parents:'), parents)
 						+ detail(t('Author:'), escapeHtml(commitDetails.author) + (commitDetails.authorEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.authorEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.authorEmail) + '</a>&gt;' : ''))
 						+ (commitDetails.authorDate !== commitDetails.committerDate ? detail(t('Author Date:'), formatLongDate(commitDetails.authorDate)) : '')
 						+ detail(t('Committer:'), escapeHtml(commitDetails.committer) + (commitDetails.committerEmail !== '' ? ' &lt;<a class="' + CLASS_EXTERNAL_URL + '" href="mailto:' + escapeHtml(commitDetails.committerEmail) + '" tabindex="-1">' + escapeHtml(commitDetails.committerEmail) + '</a>&gt;' : '') + (commitDetails.signature !== null ? generateSignatureHtml(commitDetails.signature) : ''))
 						+ detail(commitDetails.authorDate !== commitDetails.committerDate ? t('Committer Date:') : t('Date:'), formatLongDate(commitDetails.committerDate))
-						+ '</div><div id="cdvActions"></div>';
+						+ '</div>';
+					if (isRight) {
+						html += this.generateCdvSummaryHtml(commitDetails, expandedCommit.avatar, expandedCommit.fileChanges!, textFormatter, subject, body);
+						messageHtml = '<div class="cdvMessageText">' + textFormatter.format(commitDetails.body) + '</div>' + detailsHtml;
+					} else html += '<div class="cdvSummaryHeader">'
+						+ (expandedCommit.avatar !== null ? '<span class="cdvSummaryAvatar"><img src="' + expandedCommit.avatar + '"></span>' : generateAuthorInitialHtml(commitDetails.author))
+						+ '<span class="cdvSummaryHeaderText"><span class="cdvSummaryAuthor">' + escapeHtml(commitDetails.author) + '</span><span class="cdvSummaryDate" title="' + escapeHtml(formatLongDate(commitDetails.authorDate)) + '">' + formatShortDate(commitDetails.authorDate).formatted + '</span></span>'
+						+ '</div>'
+						+ '<div class="cdvSummarySubject">' + textFormatter.format(subject) + '</div>'
+						+ (body !== '' ? '<div class="cdvSummaryBody">' + textFormatter.format(body) + '</div>' : '')
+						+ detailsHtml + '<div id="cdvActions"></div>';
 				} else {
-					html += t('Displaying all uncommitted changes.') + '<div id="cdvActions"></div>';
+					html += (isRight ? '<h2 class="cdvSubject">' + t('Uncommitted Changes') + '</h2>' : '') + '<p class="cdvSummaryText">' + t('Displaying all uncommitted changes.') + '</p>' + (isRight ? generateCdvStatsHtml(expandedCommit.fileChanges!) : '') + '<div id="cdvActions"></div>';
 				}
 			} else {
 				// Commit comparison should be shown
-				html += t('Displaying all changes from <b>{0}</b> to <b>{1}</b>.', commitOrder.from, (commitOrder.to !== UNCOMMITTED ? commitOrder.to : t('Uncommitted Changes')));
+				html += '<p class="cdvSummaryText">' + t('Displaying all changes from <b>{0}</b> to <b>{1}</b>.', commitOrder.from, (commitOrder.to !== UNCOMMITTED ? commitOrder.to : t('Uncommitted Changes'))) + '</p>' + (isRight ? generateCdvStatsHtml(expandedCommit.fileChanges!) : '');
 			}
-			html += '</div><div id="cdvFiles">' + generateFileViewHtml(expandedCommit.fileTree!, expandedCommit.fileChanges!, expandedCommit.lastViewedFile, expandedCommit.contextMenuOpen.fileView, this.getFileViewType(), commitOrder.to === UNCOMMITTED) + '</div><div id="cdvDivider"></div>';
+			const fileViewHtml = generateFileViewHtml(expandedCommit.fileTree!, expandedCommit.fileChanges!, expandedCommit.lastViewedFile, expandedCommit.contextMenuOpen.fileView, this.getFileViewType(), commitOrder.to === UNCOMMITTED);
+			html += '</div><div id="cdvFiles">' + (isRight
+				? '<div id="cdvTabs"><span class="cdvTab active" data-tab="files">' + t('Changed Files') + ' · ' + expandedCommit.fileChanges!.length + '</span>' + (messageHtml !== '' ? '<span class="cdvTab" data-tab="message">' + t('Commit Message') + '</span>' : '') + '<span class="cdvTabsSpacer"></span>' +
+					'<div id="cdvFileViewTypeTree" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File Tree View') + '">' + SVG_ICONS.fileTree + '</div><div id="cdvFileViewTypeList" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File List View') + '">' + SVG_ICONS.fileList + '</div></div>' +
+					'<div id="cdvFileView">' + fileViewHtml + '</div>' + (messageHtml !== '' ? '<div id="cdvMessageView" class="hidden">' + messageHtml + '</div>' : '')
+				: fileViewHtml) + '</div><div id="cdvDivider"></div>';
 		}
-		html += '</div><div id="cdvControls"><div id="cdvClose" class="cdvControlBtn" title="' + t('Close') + '">' + SVG_ICONS.close + '</div>' +
-			(codeReviewPossible ? '<div id="cdvCodeReview" class="cdvControlBtn">' + SVG_ICONS.review + '</div>' : '') +
-			(!expandedCommit.loading ? '<div id="cdvFileViewTypeTree" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File Tree View') + '">' + SVG_ICONS.fileTree + '</div><div id="cdvFileViewTypeList" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File List View') + '">' + SVG_ICONS.fileList + '</div>' : '') +
-			(externalDiffPossible ? '<div id="cdvExternalDiff" class="cdvControlBtn">' + SVG_ICONS.linkExternal + '</div>' : '') +
-			'</div><div class="cdvHeightResize"></div>';
+		if (isRight) {
+			const title = expandedCommit.compareWithHash !== null ? t('Commit Comparison') : expandedCommit.commitHash === UNCOMMITTED ? t('Uncommitted Changes') : t('Commit Details');
+			html = '<div id="cdvHeader"><span class="cdvHeaderTitle">' + title + '</span>' +
+				(codeReviewPossible ? '<div id="cdvCodeReview" class="cdvControlBtn">' + SVG_ICONS.review + '</div>' : '') +
+				(externalDiffPossible ? '<div id="cdvExternalDiff" class="cdvControlBtn">' + SVG_ICONS.linkExternal + '</div>' : '') +
+				(expandedCommit.compareWithHash === null ? '<div id="cdvPrev" class="cdvControlBtn" title="' + t('Previous Commit') + '">' + SVG_ICONS.arrowUp + '</div><div id="cdvNext" class="cdvControlBtn" title="' + t('Next Commit') + '">' + SVG_ICONS.arrowDown + '</div>' : '') +
+				'<div id="cdvClose" class="cdvControlBtn" title="' + t('Close') + '">' + SVG_ICONS.close + '</div></div>' +
+				html + '</div><div class="cdvHeightResize"></div>';
+		} else {
+			html += '</div><div id="cdvControls"><div id="cdvClose" class="cdvControlBtn" title="' + t('Close') + '">' + SVG_ICONS.close + '</div>' +
+				(codeReviewPossible ? '<div id="cdvCodeReview" class="cdvControlBtn">' + SVG_ICONS.review + '</div>' : '') +
+				(!expandedCommit.loading ? '<div id="cdvFileViewTypeTree" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File Tree View') + '">' + SVG_ICONS.fileTree + '</div><div id="cdvFileViewTypeList" class="cdvControlBtn cdvFileViewTypeBtn" title="' + t('File List View') + '">' + SVG_ICONS.fileList + '</div>' : '') +
+				(externalDiffPossible ? '<div id="cdvExternalDiff" class="cdvControlBtn">' + SVG_ICONS.linkExternal + '</div>' : '') +
+				'</div><div class="cdvHeightResize"></div>';
+		}
 
 		elem.innerHTML = isDocked ? html : '<td><div class="cdvHeightResize"></div></td><td colspan="' + (this.getNumColumns() - 1) + '">' + html + '</td>';
 		if (!expandedCommit.loading) this.setCdvDivider();
@@ -2863,6 +2886,8 @@ class GitGraphView {
 			this.closeCommitDetails(true);
 		});
 
+		if (isRight) this.makeCdvHeaderInteractive();
+
 		if (!expandedCommit.loading) {
 			this.makeCdvFileViewInteractive();
 			this.renderCdvActions();
@@ -2879,7 +2904,7 @@ class GitGraphView {
 				}
 			}, () => this.saveState());
 
-			observeElemScroll('cdvFiles', expandedCommit.scrollTop.fileView, (scrollTop) => {
+			observeElemScroll(isRight ? 'cdvContent' : 'cdvFiles', expandedCommit.scrollTop.fileView, (scrollTop) => {
 				if (this.expandedCommit === null) return;
 				this.expandedCommit.scrollTop.fileView = scrollTop;
 				if (this.expandedCommit.contextMenuOpen.fileView > -1) {
@@ -2936,6 +2961,144 @@ class GitGraphView {
 				});
 			}
 		}
+	}
+
+	/**
+	 * Generate the HTML of the summary of a commit, in the Commit Details View docked to the right.
+	 * @param commitDetails The details of the commit.
+	 * @param avatar The avatar of the commit's author (if available).
+	 * @param fileChanges The files changed by the commit.
+	 * @param textFormatter The TextFormatter used to format the commit message.
+	 * @param subject The subject of the commit message.
+	 * @param body The body of the commit message.
+	 * @returns The HTML.
+	 */
+	private generateCdvSummaryHtml(commitDetails: GG.GitCommitDetails, avatar: string | null, fileChanges: ReadonlyArray<GG.GitFileChange>, textFormatter: TextFormatter, subject: string, body: string) {
+		const index = this.commitLookup[commitDetails.hash];
+		const issues = this.getIssueLinks(commitDetails.body);
+		const branches = typeof index === 'number' ? this.getBranchesContainingCommit(index) : [];
+		const remoteUrl = this.getRemoteCommitUrl(commitDetails.hash);
+		return '<div class="cdvAuthor">' + (avatar !== null ? '<span class="cdvSummaryAvatar"><img src="' + avatar + '"></span>' : generateAuthorInitialHtml(commitDetails.author)) +
+			'<span class="cdvAuthorText"><span><b>' + escapeHtml(commitDetails.author) + '</b>' + (commitDetails.authorEmail !== '' ? ' <span class="cdvMuted">&lt;' + escapeHtml(commitDetails.authorEmail) + '&gt;</span>' : '') + '</span>' +
+			'<span class="cdvMuted" title="' + escapeHtml(formatLongDate(commitDetails.committerDate)) + '">' + t('Committed {0}', formatRelativeDate(commitDetails.committerDate)) + ' · ' + formatIsoDateTime(commitDetails.committerDate) + '</span></span></div>' +
+			'<div class="cdvChips"><button type="button" id="cdvCopyHash" class="cdvChip mono" title="' + t('Copy Commit Hash to Clipboard') + '" tabindex="-1">' + SVG_ICONS.copy + escapeHtml(abbrevCommit(commitDetails.hash)) + '</button>' +
+			(remoteUrl !== null ? '<button type="button" id="cdvOpenOnRemote" class="cdvChip" title="' + escapeHtml(remoteUrl) + '" tabindex="-1">' + SVG_ICONS.linkExternal + t('Open on Remote') + '</button>' : '') +
+			'<button type="button" id="cdvCompare" class="cdvChip' + (this.cdvComparePending ? ' active' : '') + '" title="' + t('Click on another commit to compare it with this commit') + '" tabindex="-1">' + SVG_ICONS.compare + (this.cdvComparePending ? t('Click on a commit to compare with') : t('Compare with…')) + '</button></div>' +
+			'<h2 class="cdvSubject">' + textFormatter.format(subject) + '</h2>' +
+			(body !== '' ? '<div class="cdvBody">' + textFormatter.format(body) + '</div>' : '') +
+			(issues.length > 0 ? '<div class="cdvLine"><span class="cdvMuted">' + t('Related Issues') + '</span>' + issues.map((issue) => '<a class="' + CLASS_EXTERNAL_URL + '" href="' + escapeHtml(issue.url) + '" tabindex="-1">' + escapeHtml(issue.label) + '</a>').join('') + '</div>' : '') +
+			(branches.length > 0 ? '<div class="cdvLine"><span class="cdvMuted">' + t('On Branches') + '</span>' + branches.map((branch) => '<span class="cdvBranch' + (branch.remote ? ' remote' : '') + '" style="--git-graph-color:' + escapeHtml(branch.colour) + '">' + escapeHtml(branch.name) + '</span>').join('') + '</div>' : '') +
+			generateCdvStatsHtml(fileChanges) +
+			'<div id="cdvActions"></div>';
+	}
+
+	/**
+	 * Get the issues linked to by a commit message, according to the repository's Issue Linking configuration.
+	 * @param message The commit message.
+	 * @returns The label & URL of each issue.
+	 */
+	private getIssueLinks(message: string) {
+		const config = this.gitRepos[this.currentRepo].issueLinkingConfig || globalState.issueLinkingConfig;
+		const links: { label: string, url: string }[] = [];
+		if (config === null) return links;
+		let regex: RegExp;
+		try {
+			regex = new RegExp(config.issue, 'gu');
+		} catch (_) {
+			return links;
+		}
+		let match: RegExpExecArray | null;
+		while ((match = regex.exec(message)) !== null) {
+			if (match[0].length === 0) {
+				regex.lastIndex++;
+				continue;
+			}
+			const groups = match;
+			if (!links.some((link) => link.label === groups[0])) {
+				links.push({ label: groups[0], url: config.url.replace(/\$([1-9])/g, (_, n) => groups[parseInt(n)] || '') });
+			}
+		}
+		return links;
+	}
+
+	/**
+	 * Get the branches (on the loaded commits) that contain a commit.
+	 * @param index The index of the commit.
+	 * @returns The name, colour (of its branch on the graph) & whether it's a remote branch, of each branch.
+	 */
+	private getBranchesContainingCommit(index: number) {
+		const colours = this.config.graph.colours, vertexColours = this.graph.getVertexColours();
+		const reachable: { [hash: string]: boolean } = {}, local: { name: string, remote: boolean, colour: string }[] = [], remote: { name: string, remote: boolean, colour: string }[] = [];
+		for (let i = index; i >= 0; i--) {
+			const commit = this.commits[i];
+			if (i !== index && !commit.parents.some((parent) => reachable[parent])) continue;
+			reachable[commit.hash] = true;
+			const colour = colours[(vertexColours[i] >= 0 ? vertexColours[i] : 0) % colours.length];
+			commit.heads.forEach((name) => local.push({ name: name, remote: false, colour: colour }));
+			commit.remotes.forEach((ref) => remote.push({ name: ref.name, remote: true, colour: colour }));
+		}
+		return local.concat(remote).slice(0, 12);
+	}
+
+	/**
+	 * Get the URL of a commit on the web page of the repository's remote (origin, or its first remote), for GitHub, GitLab, Bitbucket, Gitea & similar hosts.
+	 * @param hash The hash of the commit.
+	 * @returns The URL, or NULL if the remote's URL isn't known.
+	 */
+	private getRemoteCommitUrl(hash: string) {
+		if (this.gitConfig === null) return null;
+		const remote = this.gitConfig.remotes.find((remote) => remote.name === 'origin' && remote.url !== null) || this.gitConfig.remotes.find((remote) => remote.url !== null);
+		if (typeof remote === 'undefined' || remote.url === null) return null;
+		const url = remote.url.trim();
+		let match: RegExpMatchArray | null, webUrl: string;
+		if ((match = url.match(/^(https?):\/\/(?:[^@\/]+@)?(.+?)(?:\.git)?\/?$/)) !== null) {
+			webUrl = match[1] + '://' + match[2];
+		} else if ((match = url.match(/^ssh:\/\/(?:[^@\/]+@)?([^:\/]+)(?::\d+)?\/(.+?)(?:\.git)?\/?$/)) !== null) {
+			webUrl = 'https://' + match[1] + '/' + match[2];
+		} else if ((match = url.match(/^[^@\s\/]+@([^:\s]+):(.+?)(?:\.git)?\/?$/)) !== null) {
+			webUrl = 'https://' + match[1] + '/' + match[2];
+		} else {
+			return null;
+		}
+		return webUrl + (/bitbucket/i.test(webUrl) ? '/commits/' : '/commit/') + hash;
+	}
+
+	/**
+	 * Add the event listeners to the header & summary of the Commit Details View docked to the right.
+	 */
+	private makeCdvHeaderInteractive() {
+		const expandedCommit = this.expandedCommit;
+		if (expandedCommit === null) return;
+		const navigate = (offset: number) => {
+			if (this.expandedCommit === null || this.expandedCommit.compareWithHash !== null) return;
+			const elem = findCommitElemWithId(getCommitElems(), this.commitLookup[this.expandedCommit.commitHash] + offset);
+			if (elem !== null) this.loadCommitDetails(elem);
+		};
+		const prevElem = document.getElementById('cdvPrev'), nextElem = document.getElementById('cdvNext');
+		if (prevElem !== null) prevElem.addEventListener('click', () => navigate(-1));
+		if (nextElem !== null) nextElem.addEventListener('click', () => navigate(1));
+
+		const copyHashElem = document.getElementById('cdvCopyHash');
+		if (copyHashElem !== null) copyHashElem.addEventListener('click', () => sendMessage({ command: 'copyToClipboard', type: t('Commit Hash'), data: expandedCommit.commitHash }));
+		const openOnRemoteElem = document.getElementById('cdvOpenOnRemote');
+		if (openOnRemoteElem !== null) openOnRemoteElem.addEventListener('click', () => {
+			const url = this.getRemoteCommitUrl(expandedCommit.commitHash);
+			if (url !== null) sendMessage({ command: 'openExternalUrl', url: url });
+		});
+		const compareElem = document.getElementById('cdvCompare');
+		if (compareElem !== null) compareElem.addEventListener('click', () => {
+			this.cdvComparePending = !this.cdvComparePending;
+			alterClass(compareElem, CLASS_ACTIVE, this.cdvComparePending);
+			compareElem.innerHTML = SVG_ICONS.compare + (this.cdvComparePending ? t('Click on a commit to compare with') : t('Compare with…'));
+		});
+
+		addListenerToClass('cdvTab', 'click', (e) => {
+			const tab = (<HTMLElement>(<Element>e.target).closest('.cdvTab')!).dataset.tab;
+			document.querySelectorAll<HTMLElement>('.cdvTab').forEach((elem) => alterClass(elem, CLASS_ACTIVE, elem.dataset.tab === tab));
+			const fileViewElem = document.getElementById('cdvFileView'), messageViewElem = document.getElementById('cdvMessageView');
+			if (fileViewElem !== null) alterClass(fileViewElem, 'hidden', tab !== 'files');
+			if (messageViewElem !== null) alterClass(messageViewElem, 'hidden', tab !== 'message');
+		});
 	}
 
 	/**
@@ -3125,7 +3288,7 @@ class GitGraphView {
 	 * @param fileWasViewed Was the file viewed - if so, set it to be the last viewed file.
 	 */
 	private cdvUpdateFileState(file: GG.GitFileChange, fileElem: HTMLElement, isReviewed: boolean | null, fileWasViewed: boolean) {
-		const expandedCommit = this.expandedCommit, filesElem = document.getElementById('cdvFiles'), filePath = file.newFilePath;
+		const expandedCommit = this.expandedCommit, filesElem = getCdvFileViewElem(), filePath = file.newFilePath;
 		if (expandedCommit === null || expandedCommit.fileTree === null || filesElem === null) return;
 
 		if (fileWasViewed) {
@@ -3200,7 +3363,7 @@ class GitGraphView {
 	}
 
 	private changeFileViewType(type: GG.FileViewType) {
-		const expandedCommit = this.expandedCommit, filesElem = document.getElementById('cdvFiles');
+		const expandedCommit = this.expandedCommit, filesElem = getCdvFileViewElem();
 		if (expandedCommit === null || expandedCommit.fileTree === null || expandedCommit.fileChanges === null || filesElem === null) return;
 		GitGraphView.closeCdvContextMenuIfOpen(expandedCommit);
 		this.setFileViewType(type);
@@ -3489,7 +3652,7 @@ class GitGraphView {
 	}
 
 	private saveAndRenderCodeReview(codeReview: GG.CodeReview | null) {
-		let filesElem = document.getElementById('cdvFiles');
+		let filesElem = getCdvFileViewElem();
 		if (this.expandedCommit === null || this.expandedCommit.fileTree === null || filesElem === null) return;
 
 		this.expandedCommit.codeReview = codeReview;
@@ -3869,6 +4032,7 @@ window.addEventListener('load', () => {
 /* File Tree Methods (for the Commit Details & Comparison Views) */
 
 function generateFileViewHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG.GitFileChange>, lastViewedFile: string | null, fileContextMenuOpen: number, type: GG.FileViewType, isUncommitted: boolean) {
+	fileViewMaxLinesChanged = gitFiles.reduce((max, file) => Math.max(max, (file.additions || 0) + (file.deletions || 0)), 1);
 	return type === GG.FileViewType.List
 		? generateFileListHtml(folder, gitFiles, lastViewedFile, fileContextMenuOpen, isUncommitted)
 		: generateFileTreeHtml(folder, gitFiles, lastViewedFile, fileContextMenuOpen, isUncommitted, true);
@@ -3897,6 +4061,45 @@ function getCurrentFolderInfo(folder: FileTreeFolder, name: string, pathSeg: str
 	return keys.length === 1 && (child = folder.contents[keys[0]]).type === 'folder'
 		? getCurrentFolderInfo(<FileTreeFolder>child, name + ' / ' + child.name, pathSeg + '/' + child.name)
 		: { folder: folder, name: name, pathSeg: pathSeg };
+}
+
+/**
+ * The maximum number of lines changed in a file of the file view being generated, used to scale the bars of the lines changed in each file.
+ */
+let fileViewMaxLinesChanged = 1;
+
+/**
+ * Get the HTML Element containing the file view of the Commit Details View.
+ * @returns The HTML Element, or NULL if the Commit Details View isn't open.
+ */
+function getCdvFileViewElem() {
+	return document.getElementById('cdvFileView') || document.getElementById('cdvFiles');
+}
+
+/**
+ * Generate the HTML of a bar showing the proportion of lines added & deleted.
+ * @param additions The number of lines added.
+ * @param deletions The number of lines deleted.
+ * @param width The width of the bar (in pixels), or NULL if it fills the available space.
+ * @returns The HTML.
+ */
+function generateChangeBarHtml(additions: number, deletions: number, width: number | null) {
+	return '<span class="changeBar"' + (width !== null ? ' style="width:' + width + 'px"' : '') + '><span class="changeBarAdd" style="flex-grow:' + additions + '"></span><span class="changeBarDel" style="flex-grow:' + deletions + '"></span></span>';
+}
+
+/**
+ * Generate the HTML of the number of files changed, and the lines added & deleted, in the Commit Details View.
+ * @param fileChanges The files changed.
+ * @returns The HTML.
+ */
+function generateCdvStatsHtml(fileChanges: ReadonlyArray<GG.GitFileChange>) {
+	let additions = 0, deletions = 0;
+	fileChanges.forEach((file) => {
+		additions += file.additions || 0;
+		deletions += file.deletions || 0;
+	});
+	return '<div class="cdvStats"><span>' + (fileChanges.length !== 1 ? t('{0} files', fileChanges.length) : t('{0} file', fileChanges.length)) + '</span>' +
+		'<span class="fileTreeFileAdd">+' + additions + '</span><span class="fileTreeFileDel">\u2212' + deletions + '</span>' + generateChangeBarHtml(additions, deletions, null) + '</div>';
 }
 
 function generateFileListHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG.GitFileChange>, lastViewedFile: string | null, fileContextMenuOpen: number, isUncommitted: boolean) {
@@ -3943,9 +4146,13 @@ function generateFileTreeLeafHtml(name: string, leaf: FileTreeLeaf, gitFiles: Re
 		const diffPossible = fileTreeFile.type === GG.GitFileStatus.Untracked || textFile;
 		const changeTypeMessage = t(GIT_FILE_CHANGE_TYPES[fileTreeFile.type]) + (fileTreeFile.type === GG.GitFileStatus.Renamed ? ' (' + escapeHtml(fileTreeFile.oldFilePath) + ' → ' + escapeHtml(fileTreeFile.newFilePath) + ')' : '');
 		const renamedFromHtml = fileTreeFile.type === GG.GitFileStatus.Renamed ? '<span class="gitFileRenamedFrom">← ' + escapeHtml(getRenamedFromLabel(fileTreeFile.oldFilePath, fileTreeFile.newFilePath)) + '</span>' : '';
-		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? t('Click to View Diff') : t('Unable to View Diff{0}', (fileTreeFile.type !== GG.GitFileStatus.Deleted ? t(' (this is a binary file)') : ''))) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileIcon">' + SVG_ICONS.file + '</span><span class="gitFileName ' + fileTreeFile.type + '">' + escapedName + '</span>' + renamedFromHtml + '</span>' +
+		const dirEnd = name.lastIndexOf('/');
+		const nameHtml = dirEnd > -1
+			? '<span class="gitFileName ' + fileTreeFile.type + '">' + escapeHtml(name.substring(dirEnd + 1)) + '</span>' + renamedFromHtml + '<span class="gitFileDir">' + escapeHtml(name.substring(0, dirEnd)) + '</span>'
+			: '<span class="gitFileName ' + fileTreeFile.type + '">' + escapedName + '</span>' + renamedFromHtml;
+		return '<li data-pathseg="' + encodedName + '"><span class="fileTreeFileRecord' + (leaf.index === fileContextMenuOpen ? ' ' + CLASS_CONTEXT_MENU_ACTIVE : '') + '" data-index="' + leaf.index + '"><span class="fileTreeFile' + (diffPossible ? ' gitDiffPossible' : '') + (leaf.reviewed ? '' : ' ' + CLASS_PENDING_REVIEW) + '" title="' + (diffPossible ? t('Click to View Diff') : t('Unable to View Diff{0}', (fileTreeFile.type !== GG.GitFileStatus.Deleted ? t(' (this is a binary file)') : ''))) + ' • ' + changeTypeMessage + '"><span class="fileTreeFileBadge ' + fileTreeFile.type + '">' + fileTreeFile.type + '</span><span class="fileTreeFileText">' + nameHtml + '</span></span>' +
 			(initialState.config.enhancedAccessibility ? '<span class="fileTreeFileType" title="' + changeTypeMessage + '">' + fileTreeFile.type + '</span>' : '') +
-			(fileTreeFile.type !== GG.GitFileStatus.Added && fileTreeFile.type !== GG.GitFileStatus.Untracked && fileTreeFile.type !== GG.GitFileStatus.Deleted && textFile ? '<span class="fileTreeFileAddDel">(<span class="fileTreeFileAdd" title="' + (fileTreeFile.additions !== 1 ? t('{0} additions', fileTreeFile.additions) : t('{0} addition', fileTreeFile.additions)) + '">+' + fileTreeFile.additions + '</span>|<span class="fileTreeFileDel" title="' + (fileTreeFile.deletions !== 1 ? t('{0} deletions', fileTreeFile.deletions) : t('{0} deletion', fileTreeFile.deletions)) + '">-' + fileTreeFile.deletions + '</span>)</span>' : '') +
+			(textFile ? '<span class="fileTreeFileAddDel">' + generateChangeBarHtml(fileTreeFile.additions!, fileTreeFile.deletions!, Math.round(8 + 52 * (fileTreeFile.additions! + fileTreeFile.deletions!) / fileViewMaxLinesChanged)) + '<span class="fileTreeFileAdd" title="' + (fileTreeFile.additions !== 1 ? t('{0} additions', fileTreeFile.additions) : t('{0} addition', fileTreeFile.additions)) + '">+' + fileTreeFile.additions + '</span><span class="fileTreeFileDel" title="' + (fileTreeFile.deletions !== 1 ? t('{0} deletions', fileTreeFile.deletions) : t('{0} deletion', fileTreeFile.deletions)) + '">\u2212' + fileTreeFile.deletions + '</span></span>' : '') +
 			(fileTreeFile.newFilePath === lastViewedFile ? '<span id="cdvLastFileViewed" title="' + t('Last File Viewed') + '">' + SVG_ICONS.eyeOpen + '</span>' : '') +
 			'<span class="copyGitFile fileTreeFileAction" title="' + t('Copy Absolute File Path to Clipboard') + '">' + SVG_ICONS.copy + '</span>' +
 			(fileTreeFile.type !== GG.GitFileStatus.Deleted

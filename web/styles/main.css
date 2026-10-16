@@ -588,12 +588,12 @@ code{
 	margin:0;
 	padding:0 0 0 25px;
 }
-#cdvFiles > ul{
-	-webkit-padding-start:10px;
-	padding:0 0 0 10px;
+#cdvFiles > ul, #cdvFileView > ul{
+	-webkit-padding-start:4px;
+	padding:0 0 0 4px;
 }
 #cdvFiles li{
-	margin-top:4px;
+	margin-top:1px;
 	white-space:nowrap;
 	text-overflow:ellipsis;
 	overflow-x:hidden;
@@ -664,28 +664,298 @@ code{
 	border-left:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
 	background-color:var(--vscode-sideBar-background, var(--vscode-editor-background));
 }
-#cdv.docked.right #cdvContent, #cdv.docked.right #cdvControls{
-	top:0;
-	bottom:0;
-}
 #cdv.docked.right #cdvContent{
+	top:36px;
+	bottom:0;
 	left:6px;
+	right:0;
+	overflow-x:hidden;
+	overflow-y:auto;
+}
+/* The summary & files are one column, which is scrolled as a whole (with the tabs of the files sticky) */
+#cdv.docked.right #cdvSummary, #cdv.docked.right #cdvFiles{
+	position:static;
+	width:auto !important;
+	height:auto !important;
+	border-right:none;
+	overflow:visible;
 }
 #cdv.docked.right #cdvSummary{
-	left:0;
-	right:0;
-	width:auto !important;
-	bottom:auto;
-	padding:14px 12px 12px 10px;
-	border-right:none;
-	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	padding:14px 16px 14px 10px;
 }
 #cdv.docked.right #cdvFiles{
-	left:0 !important;
+	padding:0;
+}
+#cdv.docked.right #cdvDivider{
+	display:none;
+}
+#cdv.docked.right #cdvLoading{
+	padding-top:16px;
+}
+
+/* Commit Details View (docked to the right): Header */
+#cdvHeader{
+	position:absolute;
+	top:0;
+	left:6px;
 	right:0;
-	bottom:0;
-	padding:6px 8px 8px 0;
-	border-right:none;
+	height:36px;
+	box-sizing:border-box;
+	display:flex;
+	align-items:center;
+	gap:2px;
+	padding:0 8px 0 10px;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+	-webkit-user-select:none;
+	user-select:none;
+}
+.cdvHeaderTitle{
+	flex:1 1 auto;
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+#cdvHeader .cdvControlBtn, #cdvTabs .cdvControlBtn{
+	flex:0 0 auto;
+	margin:0;
+	width:26px;
+	height:26px;
+	border-radius:6px;
+	background-color:transparent;
+}
+#cdvHeader .cdvControlBtn:hover, #cdvTabs .cdvControlBtn:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+#cdvHeader .cdvControlBtn.active, #cdvTabs .cdvControlBtn.active{
+	background-color:rgba(128,128,128,0.25);
+}
+#cdvHeader .cdvControlBtn svg, #cdvTabs .cdvControlBtn svg{
+	width:14px;
+	height:14px;
+	left:6px;
+	top:6px;
+}
+#cdvHeader #cdvExternalDiff{
+	display:none;
+}
+#cdvHeader #cdvExternalDiff.enabled{
+	display:block;
+}
+
+/* Commit Details View (docked to the right): Summary */
+.cdvAuthor{
+	display:flex;
+	align-items:center;
+	gap:12px;
+	margin-bottom:12px;
+}
+.cdvAuthor .authorInitial{
+	flex:0 0 auto;
+	width:36px;
+	height:36px;
+	margin:0;
+	font-size:15px;
+	line-height:36px;
+}
+.cdvAuthor .cdvSummaryAvatar, .cdvAuthor .cdvSummaryAvatar > img{
+	width:36px;
+	height:36px;
+}
+.cdvAuthorText{
+	flex:1 1 auto;
+	min-width:0;
+	display:flex;
+	flex-direction:column;
+	gap:2px;
+}
+.cdvAuthorText > span{
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.cdvAuthorText > span + span{
+	font-size:12px;
+}
+.cdvMuted{
+	color:var(--vscode-descriptionForeground);
+}
+.cdvChips{
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:6px;
+	margin-bottom:12px;
+}
+.cdvChip{
+	display:inline-flex;
+	align-items:center;
+	gap:5px;
+	height:24px;
+	padding:0 9px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.35));
+	border-radius:12px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.15));
+	color:var(--vscode-foreground);
+	font-family:inherit;
+	font-size:12px;
+	cursor:pointer;
+}
+.cdvChip:hover{
+	background-color:var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,0.25));
+}
+.cdvChip.active{
+	border-color:var(--vscode-focusBorder);
+	color:var(--vscode-textLink-foreground, var(--vscode-foreground));
+}
+.cdvChip:focus-visible{
+	outline:1px solid var(--vscode-focusBorder);
+	outline-offset:1px;
+}
+.cdvChip.mono{
+	font-family:var(--vscode-editor-font-family);
+}
+.cdvChip svg{
+	flex:0 0 auto;
+	width:12px;
+	height:12px;
+	fill:currentColor;
+}
+.cdvSubject{
+	margin:0 0 6px;
+	font-size:15px;
+	font-weight:600;
+	line-height:1.4;
+	word-wrap:break-word;
+}
+.cdvBody{
+	color:var(--vscode-descriptionForeground);
+	font-size:12.5px;
+	word-wrap:break-word;
+}
+.cdvLine{
+	display:flex;
+	flex-wrap:wrap;
+	align-items:center;
+	gap:6px;
+	margin-top:10px;
+	font-size:12px;
+}
+.cdvBranch{
+	display:inline-flex;
+	align-items:center;
+	height:20px;
+	padding:0 7px;
+	box-sizing:border-box;
+	border:1px solid var(--git-graph-color);
+	border-radius:10px;
+	background-color:color-mix(in srgb, var(--git-graph-color) 20%, transparent);
+	font-size:11.5px;
+	white-space:nowrap;
+}
+.cdvBranch.remote{
+	border-style:dashed;
+	background-color:transparent;
+}
+.cdvSummaryText{
+	margin:0;
+	word-wrap:break-word;
+}
+.cdvStats{
+	display:flex;
+	align-items:center;
+	gap:10px;
+	margin-top:12px;
+	font-size:12.5px;
+	white-space:nowrap;
+}
+.cdvStats .fileTreeFileAdd, .cdvStats .fileTreeFileDel{
+	padding:0;
+	font-family:var(--vscode-editor-font-family);
+	cursor:default;
+}
+.cdvStats .changeBar{
+	flex:1 1 auto;
+	min-width:24px;
+}
+.changeBar{
+	display:inline-flex;
+	flex:0 0 auto;
+	height:6px;
+	border-radius:3px;
+	overflow:hidden;
+	background-color:rgba(128,128,128,0.18);
+}
+.changeBar > span{
+	flex-shrink:1;
+	flex-basis:0;
+}
+.changeBarAdd{
+	background-color:var(--vscode-gitDecoration-addedResourceForeground);
+}
+.changeBarDel{
+	background-color:var(--vscode-gitDecoration-deletedResourceForeground);
+}
+
+/* Commit Details View (docked to the right): Changed Files & Commit Message tabs */
+#cdvTabs{
+	position:sticky;
+	top:0;
+	z-index:1;
+	display:flex;
+	align-items:center;
+	gap:18px;
+	padding:0 8px 0 10px;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	background-color:var(--vscode-sideBar-background, var(--vscode-editor-background));
+	font-size:12.5px;
+}
+#cdvTabs .cdvControlBtn{
+	width:24px;
+	height:24px;
+	border-radius:4px;
+}
+#cdvTabs .cdvControlBtn + .cdvControlBtn{
+	margin-left:-16px;
+}
+#cdvTabs .cdvControlBtn svg{
+	left:5px;
+	top:5px;
+}
+.cdvTab{
+	padding:8px 0 6px;
+	border-bottom:2px solid transparent;
+	color:var(--vscode-descriptionForeground);
+	cursor:pointer;
+	white-space:nowrap;
+}
+.cdvTab:hover{
+	color:var(--vscode-foreground);
+}
+.cdvTab.active{
+	border-bottom-color:var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder));
+	color:var(--vscode-foreground);
+	font-weight:600;
+}
+.cdvTabsSpacer{
+	flex:1 1 auto;
+}
+#cdvFileView{
+	padding:6px 8px 16px 0;
+}
+#cdvFileView.hidden, #cdvMessageView.hidden{
+	display:none;
+}
+#cdvMessageView{
+	padding:12px 16px 16px 10px;
+	-webkit-user-select:text;
+	user-select:text;
+}
+.cdvMessageText{
+	word-wrap:break-word;
 }
 #cdv.docked.right #cdvDivider{
 	left:0 !important;
@@ -715,6 +985,59 @@ code{
 
 /* File Tree */
 
+.fileTreeFileRecord, .fileTreeFolder, .fileTreeRepo{
+	display:flex;
+	align-items:center;
+	min-height:22px;
+	padding:3px 6px;
+	border-radius:6px;
+}
+.fileTreeFileRecord:hover, .fileTreeFileRecord.contextMenuActive, .fileTreeFileRecord.dialogActive, .fileTreeFolder:hover, .fileTreeRepo:hover{
+	background-color:var(--vscode-list-hoverBackground);
+}
+.fileTreeFile{
+	flex:1 1 auto;
+	min-width:0;
+	display:flex;
+	align-items:center;
+}
+.fileTreeFileBadge{
+	flex:0 0 auto;
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	width:18px;
+	height:18px;
+	margin-right:8px;
+	border-radius:4px;
+	font-size:10.5px;
+	font-weight:700;
+	color:var(--vscode-gitDecoration-modifiedResourceForeground);
+	background-color:color-mix(in srgb, currentColor 15%, transparent);
+}
+.fileTreeFileBadge.A, .fileTreeFileBadge.U{
+	color:var(--vscode-gitDecoration-addedResourceForeground);
+}
+.fileTreeFileBadge.D{
+	color:var(--vscode-gitDecoration-deletedResourceForeground);
+}
+.fileTreeFileBadge.R{
+	color:var(--vscode-charts-blue, #6cb6ff);
+}
+.fileTreeFileText{
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.gitFileDir{
+	display:block;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	color:var(--vscode-descriptionForeground);
+	font-size:11.5px;
+	line-height:15px;
+}
 .fileTreeFileIcon, .fileTreeFolderIcon, .fileTreeRepoIcon, .fileTreeFileAction, #cdvLastFileViewed{
 	position:relative;
 	display:inline-block;
@@ -726,19 +1049,21 @@ code{
 	margin-right:8px;
 }
 #cdvLastFileViewed{
+	flex:0 0 auto;
 	margin-left:8px;
 	cursor:help;
 }
 .fileTreeFileAction{
+	display:none;
+	flex:0 0 auto;
 	margin-left:8px;
-	opacity:0;
 }
 .fileTreeFileAction.viewGitFileAtRevision, .fileTreeFileAction.openGitFile{
 	margin-left:6px;
 }
 .fileTreeFileRecord:hover .fileTreeFileAction, .fileTreeFileRecord.contextMenuActive .fileTreeFileAction, .fileTreeFileRecord.dialogActive .fileTreeFileAction{
+	display:inline-block;
 	cursor:pointer;
-	opacity:1;
 }
 svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon, .fileTreeFileAction svg, #cdvLastFileViewed svg{
 	position:absolute;
@@ -765,31 +1090,33 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 .fileTreeFolder, .fileTreeRepo{
 	cursor:pointer;
 }
-.fileTreeFile .gitFileName{
-	color:var(--vscode-gitDecoration-modifiedResourceForeground);
-}
-.fileTreeFile .gitFileName.A, .fileTreeFile .gitFileName.U{
-	color:var(--vscode-gitDecoration-addedResourceForeground);
-}
 .fileTreeFile .gitFileRenamedFrom{
 	margin-left:6px;
 	opacity:0.7;
 	font-style:italic;
 }
 .fileTreeFile .gitFileName.D{
-	color:var(--vscode-gitDecoration-deletedResourceForeground);
+	text-decoration:line-through;
+	opacity:0.8;
 }
 .fileTreeFile.gitDiffPossible{
 	cursor:pointer;
 }
 .fileTreeFileAddDel, .fileTreeFileType{
+	flex:0 0 auto;
 	margin-left:8px;
+}
+.fileTreeFileAddDel{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+	font-family:var(--vscode-editor-font-family);
+	font-size:11.5px;
 }
 .fileTreeFileType{
 	cursor:help;
 }
 .fileTreeFileAdd, .fileTreeFileDel{
-	padding:0 3px;
 	cursor:help;
 }
 .fileTreeFileAdd{

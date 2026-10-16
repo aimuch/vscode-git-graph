@@ -20,6 +20,7 @@ const SVG_ICONS = {
 	stash: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16"><path fill-rule="evenodd" d="M14 9l-1.13-7.14c-.08-.48-.5-.86-1-.86H2.13c-.5 0-.92.38-1 .86L0 9v5c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V9zm-3.28.55l-.44.89c-.17.34-.52.56-.91.56H4.61c-.38 0-.72-.22-.89-.55l-.44-.91c-.17-.33-.52-.55-.89-.55H1l1-7h10l1 7h-1.38c-.39 0-.73.22-.91.55l.01.01z"/></svg>',
 	tag: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="16" viewBox="0 0 15 16"><path fill-rule="evenodd" d="M7.73 1.73C7.26 1.26 6.62 1 5.96 1H3.5C2.13 1 1 2.13 1 3.5v2.47c0 .66.27 1.3.73 1.77l6.06 6.06c.39.39 1.02.39 1.41 0l4.59-4.59a.996.996 0 0 0 0-1.41L7.73 1.73zM2.38 7.09c-.31-.3-.47-.7-.47-1.13V3.5c0-.88.72-1.59 1.59-1.59h2.47c.42 0 .83.16 1.13.47l6.14 6.13-4.73 4.73-6.13-6.15zM3.01 3h2v2H3V3h.01z"/></svg>',
 	logo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16"><path d="M2.6 1h1.46v4.8c-.3-.1-.6-.12-.74-.12-.42 0-.72.12-.72.12z"/><path d="M2.6 10.22c.44.12 1.02.12 1.46 0V15H2.6z"/><path d="M7.27 4.97c.44.12 1.02.12 1.46 0v4.47l-1.46-.27z"/><path d="M7.27 11.8l1.46.27V15H7.27z"/><path d="M4 10.24c1.4.7 3 .9 4.6 1.2 1.2.2 2.1.34 2.8.66.33-.49.74-.81 1.31-.98-1.6-.8-3.2-.95-4.6-1.2-1.1-.2-2.05-.36-2.8-.69C5.08 9.6 4.7 10.03 4 10.24z"/><circle cx="3.33" cy="8" r="1.75"/><circle cx="8" cy="2.75" r="1.75"/><circle cx="12.67" cy="13.25" r="1.75"/></svg>',
+	compare: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 1.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 1.3a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4zM12 10.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 1.3a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4zM3.35 6.5h1.3V10A1.35 1.35 0 0 0 6 11.35h3.4L8.2 10.15l.9-.9 2.6 2.6-2.6 2.6-.9-.9 1.2-1.2H6A2.65 2.65 0 0 1 3.35 10zm9.3 3h-1.3V6A1.35 1.35 0 0 0 10 4.65H6.6l1.2 1.2-.9.9-2.6-2.6 2.6-2.6.9.9-1.2 1.2H10A2.65 2.65 0 0 1 12.65 6z"/></svg>',
 	target: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 .75a.75.75 0 0 1 .75.75v1.04a5.5 5.5 0 0 1 4.71 4.71h1.04a.75.75 0 0 1 0 1.5h-1.04a5.5 5.5 0 0 1-4.71 4.71v1.04a.75.75 0 0 1-1.5 0v-1.04a5.5 5.5 0 0 1-4.71-4.71H1.5a.75.75 0 0 1 0-1.5h1.04a5.5 5.5 0 0 1 4.71-4.71V1.5A.75.75 0 0 1 8 .75zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.25a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5z"/></svg>',
 	terminal: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="16" viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 10h4v1H7v-1zm-3 1l3-3-3-3-.75.75L5.5 8l-2.25 2.25L4 11zm10-8v10c0 .55-.45 1-1 1H1c-.55 0-1-.45-1-1V3c0-.55.45-1 1-1h12c.55 0 1 .45 1 1zm-1 0H1v10h12V3z"/></svg>',
 	loading: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 12 16"><path fill-rule="evenodd" d="M10.24 7.4a4.15 4.15 0 0 1-1.2 3.6 4.346 4.346 0 0 1-5.41.54L4.8 10.4.5 9.8l.6 4.2 1.31-1.26c2.36 1.74 5.7 1.57 7.84-.54a5.876 5.876 0 0 0 1.74-4.46l-1.75-.34zM2.96 5a4.346 4.346 0 0 1 5.41-.54L7.2 5.6l4.3.6-.6-4.2-1.31 1.26c-2.36-1.74-5.7-1.57-7.85.54C.5 5.03-.06 6.65.01 8.26l1.75.35A4.17 4.17 0 0 1 2.96 5z"/></svg>',
@@ -294,35 +295,54 @@ function formatShortDate(unixTimestamp: number) {
 	} else if (format.type === GG.DateFormatType.DateOnly) {
 		formatted = dateStr;
 	} else {
-		let diff = Math.round((new Date()).getTime() / 1000) - unixTimestamp, unit;
-		if (diff < 60) {
-			unit = 'second';
-		} else if (diff < 3600) {
-			unit = 'minute';
-			diff /= 60;
-		} else if (diff < 86400) {
-			unit = 'hour';
-			diff /= 3600;
-		} else if (diff < 604800) {
-			unit = 'day';
-			diff /= 86400;
-		} else if (diff < 2629800) {
-			unit = 'week';
-			diff /= 604800;
-		} else if (diff < 31557600) {
-			unit = 'month';
-			diff /= 2629800;
-		} else {
-			unit = 'year';
-			diff /= 31557600;
-		}
-		diff = Math.round(diff);
-		formatted = t('{0} ' + unit + (diff !== 1 ? 's' : '') + ' ago', diff); // e.g. "{0} days ago"
+		formatted = formatRelativeDate(unixTimestamp);
 	}
 	return {
 		title: dateStr + ' ' + hourMinsStr + ':' + pad2(date.getSeconds()),
 		formatted: formatted
 	};
+}
+
+/**
+ * Format a date relative to now (e.g. "5 minutes ago").
+ * @param unixTimestamp The unix timestamp of the date to format.
+ * @returns The formatted date.
+ */
+function formatRelativeDate(unixTimestamp: number) {
+	let diff = Math.round((new Date()).getTime() / 1000) - unixTimestamp, unit;
+	if (diff < 60) {
+		unit = 'second';
+	} else if (diff < 3600) {
+		unit = 'minute';
+		diff /= 60;
+	} else if (diff < 86400) {
+		unit = 'hour';
+		diff /= 3600;
+	} else if (diff < 604800) {
+		unit = 'day';
+		diff /= 86400;
+	} else if (diff < 2629800) {
+		unit = 'week';
+		diff /= 604800;
+	} else if (diff < 31557600) {
+		unit = 'month';
+		diff /= 2629800;
+	} else {
+		unit = 'year';
+		diff /= 31557600;
+	}
+	diff = Math.round(diff);
+	return t('{0} ' + unit + (diff !== 1 ? 's' : '') + ' ago', diff); // e.g. "{0} days ago"
+}
+
+/**
+ * Format a date as "YYYY-MM-DD HH:MM" (in the local timezone).
+ * @param unixTimestamp The unix timestamp of the date to format.
+ * @returns The formatted date.
+ */
+function formatIsoDateTime(unixTimestamp: number) {
+	const date = new Date(unixTimestamp * 1000);
+	return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate()) + ' ' + pad2(date.getHours()) + ':' + pad2(date.getMinutes());
 }
 
 /**
