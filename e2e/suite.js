@@ -554,7 +554,7 @@ async function run() {
 		const html = await waitFor('the view to be re-rendered in English', () => record.html.slice(renders).find((html) => html.includes('<html lang="en">'))).catch((err) => {
 			throw new Error(err.message + '. Rendered: ' + record.html.slice(renders).map((html) => (html.match(/<html lang="([^"]+)">/) || [])[1]).join(', '));
 		});
-		assert(html.includes('Repo:') && html.includes('"l10n":null'), 'The view wasn\'t re-rendered in English');
+		assert(html.includes('data-label="Repo"') && html.includes('"l10n":null'), 'The view wasn\'t re-rendered in English');
 		return 'vscode.env.language: ' + vscode.env.language;
 	});
 

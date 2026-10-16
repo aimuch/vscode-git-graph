@@ -652,8 +652,13 @@
 			}
 			if (!document.getElementById('settingsWidget').classList.contains('active')) mouse(document.getElementById('settingsBtn'), 'click');
 			const widget = await waitFor('the Repository Settings panel to load', () => document.querySelector('#settingsWidget.active .settingsPreset') ? document.getElementById('settingsWidget') : null);
-			const bounds = widget.getBoundingClientRect();
-			assert(Math.round(bounds.right) === window.innerWidth && Math.round(bounds.top) === 0 && Math.round(bounds.bottom) === window.innerHeight, 'The panel isn\'t docked to the right: ' + JSON.stringify(bounds));
+			// The panel slides in from the right
+			await waitFor('the panel to be docked to the right', () => {
+				const bounds = widget.getBoundingClientRect();
+				return Math.round(bounds.right) === window.innerWidth && Math.round(bounds.top) === 0 && Math.round(bounds.bottom) === window.innerHeight;
+			}).catch((err) => {
+				throw new Error(err.message + ': ' + JSON.stringify(widget.getBoundingClientRect()) + ' in ' + window.innerWidth + 'x' + window.innerHeight);
+			});
 			const presets = Array.from(widget.querySelectorAll('.settingsPreset')), selected = presets.filter((elem) => elem.classList.contains('selected'));
 			assert(presets.length === 6 && selected.length === 1, 'Unexpected colour presets: ' + presets.length + ' (' + selected.length + ' selected)');
 			const updates = () => requestsOf('updateExtensionSetting').map((msg) => msg.key + '=' + msg.value);
