@@ -58,6 +58,7 @@ export class CommandManager extends Disposable {
 		this.registerCommand('git-graph.version', () => this.version());
 		this.registerCommand('git-graph.selectGraphColourPreset', () => this.selectGraphColourPreset());
 		this.registerCommand('git-graph.openFile', (arg) => this.openFile(arg));
+		this.registerCommand('git-graph.viewFileHistory', (arg) => this.viewFileHistory(arg));
 
 		this.registerDisposable(
 			onDidChangeGitExecutable((gitExecutable) => {
@@ -123,6 +124,32 @@ export class CommandManager extends Disposable {
 		}
 
 		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, loadRepo !== null ? { repo: loadRepo } : null);
+	}
+
+	/**
+	 * The method run when the `git-graph.viewFileHistory` command is invoked: open the Git Map View showing the history of a file.
+	 * @param arg The URI of the file (when invoked from the Explorer or an editor's title), otherwise the file in the active text editor is used.
+	 */
+	private async viewFileHistory(arg: any) {
+		const uri = arg instanceof vscode.Uri ? arg : vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.uri : null;
+		if (uri === null || uri.scheme !== 'file') {
+			showErrorMessage(t('Unable to View File History: {0}', t('Select a file in the Explorer, or open a file in an editor.')));
+			return;
+		}
+		const filePath = getPathFromUri(uri);
+		let repo = this.repoManager.getRepoContainingFile(filePath);
+		if (repo === null) {
+			// The file may be in a repository known by its symbolic path
+			const symbolicPath = await resolveToSymbolicPath(filePath);
+			repo = this.repoManager.getRepoContainingFile(symbolicPath);
+			if (repo === null) {
+				showErrorMessage(t('Unable to View File History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', filePath)));
+				return;
+			}
+			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: repo, fileHistory: symbolicPath.substring(repo.length + 1) });
+			return;
+		}
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: repo, fileHistory: filePath.substring(repo.length + 1) });
 	}
 
 	/**

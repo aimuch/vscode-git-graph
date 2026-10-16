@@ -900,6 +900,113 @@ code{
 	background-color:var(--vscode-gitDecoration-deletedResourceForeground);
 }
 
+/* Commit Details View (docked to the right): the changes to the file whose history is shown */
+#cdvFileFocus{
+	margin-top:12px;
+}
+.cdvFileFocusFile{
+	display:flex;
+	align-items:center;
+	gap:8px;
+	font-size:12.5px;
+}
+.cdvFileFocusFile .fileTreeFileBadge, .cdvFileFocusFile .fileTypeIcon{
+	margin-right:0;
+}
+.cdvFileFocusPath{
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	font-family:var(--vscode-editor-font-family);
+}
+.cdvFileFocusFile .fileTreeFileAdd, .cdvFileFocusFile .fileTreeFileDel{
+	flex:0 0 auto;
+	font-family:var(--vscode-editor-font-family);
+	cursor:default;
+}
+.cdvFileFocusFile .changeBar{
+	flex:1 1 auto;
+	min-width:24px;
+}
+.cdvFileFocusRenamed{
+	margin-top:6px;
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+}
+.cdvFileFocusActions{
+	display:flex;
+	flex-wrap:wrap;
+	gap:6px;
+	margin-top:12px;
+}
+#cdvFileDiff{
+	margin-top:12px;
+	border:1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+	border-radius:6px;
+	overflow:hidden;
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
+	line-height:19px;
+	-webkit-user-select:text;
+	user-select:text;
+}
+.cdvFileDiffLines{
+	overflow-x:auto;
+}
+.cdvFileDiffHunk{
+	padding:2px 10px;
+	background-color:color-mix(in srgb, var(--vscode-textLink-foreground, #3794ff) 10%, transparent);
+	color:var(--vscode-textLink-foreground, #3794ff);
+	white-space:pre;
+}
+.cdvFileDiffLine{
+	display:grid;
+	grid-template-columns:40px 40px 16px max-content;
+	white-space:pre;
+}
+.cdvFileDiffLine > span:nth-child(1), .cdvFileDiffLine > span:nth-child(2){
+	padding-right:8px;
+	text-align:right;
+	color:var(--vscode-editorLineNumber-foreground, rgba(128,128,128,0.8));
+	-webkit-user-select:none;
+	user-select:none;
+}
+.cdvFileDiffLine > span:nth-child(3){
+	-webkit-user-select:none;
+	user-select:none;
+}
+.cdvFileDiffLine > span:nth-child(4){
+	padding-right:10px;
+}
+.cdvFileDiffLine.add{
+	background-color:var(--vscode-diffEditor-insertedLineBackground, rgba(115,201,145,0.12));
+}
+.cdvFileDiffLine.add > span:nth-child(3){
+	color:var(--vscode-gitDecoration-addedResourceForeground);
+}
+.cdvFileDiffLine.del{
+	background-color:var(--vscode-diffEditor-removedLineBackground, rgba(244,135,113,0.12));
+}
+.cdvFileDiffLine.del > span:nth-child(3){
+	color:var(--vscode-gitDecoration-deletedResourceForeground);
+}
+.cdvFileDiffMore, .cdvFileDiffMessage{
+	padding:6px 10px;
+	color:var(--vscode-descriptionForeground);
+	font-family:var(--vscode-font-family);
+}
+.cdvFileDiffMore{
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+}
+.cdvFileDiffOpen{
+	color:var(--vscode-textLink-foreground);
+	cursor:pointer;
+}
+.cdvFileDiffOpen:hover{
+	text-decoration:underline;
+}
+
 /* Commit Details View (docked to the right): Changed Files & Commit Message tabs */
 #cdvTabs{
 	position:sticky;
@@ -1638,6 +1745,169 @@ body.tagLabelsRightAligned .gitRef.tag{
 	outline:none;
 }
 
+
+/* The bar shown below the control bar when the history of a file is shown */
+#fileHistoryBar{
+	display:none;
+	flex:1 0 100%;
+	align-items:center;
+	gap:10px;
+	box-sizing:border-box;
+	min-height:40px;
+	margin:0 -12px;
+	padding:6px 12px;
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	background:linear-gradient(90deg, color-mix(in srgb, var(--vscode-focusBorder) 18%, transparent), transparent 60%);
+	box-shadow:inset 3px 0 0 var(--vscode-focusBorder);
+	font-size:12.5px;
+}
+#fileHistoryBar.active{
+	display:flex;
+}
+#fileHistoryBar .fileTypeIcon{
+	margin-right:-4px;
+}
+.fileHistoryPath{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+	min-width:0;
+	height:24px;
+	padding:0 4px 0 8px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:4px;
+	background-color:var(--vscode-dropdown-background, rgba(128,128,128,0.1));
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
+}
+.fileHistoryPath > span:first-child{
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+#fileHistoryCopy{
+	position:relative;
+	flex:0 0 auto;
+	width:18px;
+	height:18px;
+	border-radius:3px;
+	cursor:pointer;
+}
+#fileHistoryCopy:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+#fileHistoryCopy svg{
+	position:absolute;
+	left:3px;
+	top:2px;
+	width:12px;
+	height:14px;
+	fill:var(--vscode-foreground);
+	fill-opacity:0.7;
+}
+.fileHistorySummary{
+	color:var(--vscode-descriptionForeground);
+	white-space:nowrap;
+	overflow:hidden;
+	text-overflow:ellipsis;
+}
+.fileHistorySpacer{
+	flex:1 1 auto;
+}
+#fileHistoryBranches{
+	display:inline-flex;
+	flex:0 0 auto;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:6px;
+	overflow:hidden;
+	font-size:12px;
+}
+.fileHistoryBranchesOption{
+	height:24px;
+	padding:0 10px;
+	line-height:24px;
+	white-space:nowrap;
+	cursor:pointer;
+}
+.fileHistoryBranchesOption + .fileHistoryBranchesOption{
+	border-left:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+}
+.fileHistoryBranchesOption.active{
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 25%, transparent);
+	cursor:default;
+}
+.fileHistoryBranchesOption.disabled{
+	opacity:0.5;
+	cursor:default;
+}
+.fileHistoryBtn{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+	flex:0 0 auto;
+	height:26px;
+	padding:0 10px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.45));
+	border-radius:6px;
+	background-color:var(--vscode-dropdown-background, rgba(128,128,128,0.1));
+	font-size:12px;
+	white-space:nowrap;
+	cursor:pointer;
+}
+.fileHistoryBtn:hover{
+	border-color:var(--vscode-focusBorder);
+}
+.fileHistoryBtn svg{
+	width:12px !important;
+	height:13px !important;
+	fill:currentColor;
+}
+.fileHistoryBtn.exit{
+	border-color:transparent;
+	background-color:transparent;
+	color:var(--vscode-descriptionForeground);
+}
+.fileHistoryBtn.exit:hover{
+	color:var(--vscode-foreground);
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+
+/* The changes to the file whose history is shown, in each commit */
+#commitTable th.fileChangesCol{
+	width:170px;
+}
+#commitTable td.fileChangesCol{
+	white-space:nowrap;
+	font-family:var(--vscode-editor-font-family);
+	font-size:11.5px;
+}
+#commitTable td.fileChangesCol .changeBar{
+	margin-right:6px;
+	vertical-align:middle;
+}
+#commitTable td.fileChangesCol .fileTreeFileAdd{
+	margin-right:6px;
+}
+#commitTable td.fileChangesCol .fileTreeFileAdd, #commitTable td.fileChangesCol .fileTreeFileDel{
+	cursor:inherit;
+}
+.fileChangesBinary{
+	color:var(--vscode-descriptionForeground);
+}
+.fileHistoryRenamed{
+	display:inline-flex;
+	align-items:center;
+	height:20px;
+	margin-right:6px;
+	padding:0 7px;
+	border-radius:4px;
+	background-color:color-mix(in srgb, var(--vscode-textLink-foreground, #6cb6ff) 14%, transparent);
+	color:var(--vscode-textLink-foreground, #6cb6ff);
+	font-size:11.5px;
+	vertical-align:middle;
+}
 
 /* Minimap */
 

@@ -115,6 +115,12 @@
 				"title": "%command.openFile.title%",
 				"icon": "$(go-to-file)",
 				"enablement": "isInDiffEditor && resourceScheme == git-graph && git-graph:codiconsSupported"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-graph.viewFileHistory",
+				"title": "%command.viewFileHistory.title%",
+				"icon": "$(history)"
 			}
 		],
 		"configuration": {
@@ -1565,6 +1571,24 @@
 				{
 					"command": "git-graph.openFile",
 					"when": "isInDiffEditor && resourceScheme == git-graph && git-graph:codiconsSupported"
+				},
+				{
+					"command": "git-graph.viewFileHistory",
+					"when": "resourceScheme == file"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "git-graph.viewFileHistory",
+					"group": "gitMap@1",
+					"when": "resourceScheme == file && !explorerResourceIsFolder"
+				}
+			],
+			"editor/title/context": [
+				{
+					"command": "git-graph.viewFileHistory",
+					"group": "gitMap@1",
+					"when": "resourceScheme == file"
 				}
 			],
 			"editor/title": [

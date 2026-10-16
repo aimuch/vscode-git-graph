@@ -10,6 +10,10 @@ class GitGraphView {
 	private commits: GG.GitCommit[] = [];
 	private loadedCommits: GG.GitCommit[] = []; // All of the loaded commits (when only the matches of the Find Widget are shown, this.commits only contains them)
 	private commitFilter: ReadonlySet<string> | null = null;
+	private fileHistory: string | null = null; // The path of the file whose history is shown (NULL => all commits are shown)
+	private fileHistoryData: GG.GitFileHistory | null = null;
+	private cdvShowWholeCommit: boolean = false;
+	private cdvFileDiff: { key: string, diff: string | null, error: GG.ErrorInfo } | null = null;
 	private commitHead: string | null = null;
 	private commitLookup: { [hash: string]: number } = {};
 	private onlyFollowFirstParent: boolean = false;
@@ -154,7 +158,10 @@ class GitGraphView {
 			this.avatars = prevState.avatars;
 			this.gitConfig = prevState.gitConfig;
 			this.loadRepoInfo(prevState.gitBranches, prevState.gitBranchHead, prevState.gitRemotes, prevState.gitStashes, prevState.gitUpstreams || {}, true);
-			this.loadCommits(prevState.commits, prevState.commitHead, prevState.gitTags, prevState.moreCommitsAvailable, prevState.onlyFollowFirstParent);
+			this.fileHistory = prevState.fileHistory || null;
+			this.fileHistoryData = prevState.fileHistoryData || null;
+			this.renderFileHistoryBar();
+			this.loadCommits(prevState.commits, prevState.commitHead, prevState.gitTags, prevState.moreCommitsAvailable, prevState.onlyFollowFirstParent, this.fileHistoryData);
 			this.findWidget.restoreState(prevState.findWidget);
 			this.settingsWidget.restoreState(prevState.settingsWidget);
 			this.showRemoteBranchesElem.checked = getShowRemoteBranches(this.gitRepos[prevState.currentRepo].showRemoteBranchesV2);
@@ -231,8 +238,12 @@ class GitGraphView {
 			this.loadViewTo = null;
 		}
 
+		const fileHistory = loadViewTo !== null && loadViewTo.repo === newRepo && typeof loadViewTo.fileHistory === 'string' ? loadViewTo.fileHistory : null;
 		if (this.currentRepo !== newRepo) {
-			this.loadRepo(newRepo);
+			this.loadRepo(newRepo, fileHistory);
+			return true;
+		} else if (fileHistory !== null) {
+			this.setFileHistory(fileHistory);
 			return true;
 		} else {
 			this.finaliseRepoLoad(false);
@@ -240,7 +251,10 @@ class GitGraphView {
 		}
 	}
 
-	private loadRepo(repo: string) {
+	private loadRepo(repo: string, fileHistory: string | null = null) {
+		this.fileHistory = fileHistory;
+		this.fileHistoryData = null;
+		this.renderFileHistoryBar();
 		this.currentRepo = repo;
 		this.currentRepoLoading = true;
 		this.scrollToHeadPending = false;
@@ -350,7 +364,8 @@ class GitGraphView {
 		}
 	}
 
-	private loadCommits(commits: GG.GitCommit[], commitHead: string | null, tags: ReadonlyArray<string>, moreAvailable: boolean, onlyFollowFirstParent: boolean) {
+	private loadCommits(commits: GG.GitCommit[], commitHead: string | null, tags: ReadonlyArray<string>, moreAvailable: boolean, onlyFollowFirstParent: boolean, fileHistory: GG.GitFileHistory | null = null) {
+		this.fileHistoryData = this.fileHistory !== null && fileHistory !== null && fileHistory.filePath === this.fileHistory ? fileHistory : null;
 		// This list of tags is just used to provide additional information in the dialogs. Tag information included in commits is used for all other purposes (e.g. rendering, context menus)
 		const tagsChanged = !arraysStrictlyEqual(this.gitTags, tags);
 		this.gitTags = tags;
@@ -396,6 +411,7 @@ class GitGraphView {
 		this.commitHead = commitHead;
 		if (this.findWidget.isFiltering()) this.commitFilter = this.findWidget.getMatchingHashes(commits);
 		const avatarsNeeded = this.showCommits();
+		this.renderFileHistoryBar();
 
 		if (currentRepoLoading && this.config.onRepoLoad.scrollToHead && this.commitHead !== null) {
 			this.scrollToCommit(this.commitHead, true);
@@ -589,7 +605,7 @@ class GitGraphView {
 		if (msg.error === null) {
 			const refreshState = this.currentRepoRefreshState;
 			if (refreshState.inProgress && refreshState.loadCommitsRefreshId === msg.refreshId) {
-				this.loadCommits(msg.commits, msg.head, msg.tags, msg.moreCommitsAvailable, msg.onlyFollowFirstParent);
+				this.loadCommits(msg.commits, msg.head, msg.tags, msg.moreCommitsAvailable, msg.onlyFollowFirstParent, msg.fileHistory);
 			}
 		} else {
 			const error = this.gitBranches.length === 0 && msg.error.indexOf('bad revision \'HEAD\'') > -1
@@ -759,7 +775,8 @@ class GitGraphView {
 			remotes: this.gitRemotes,
 			hideRemotes: repoState.hideRemotes,
 			stashes: this.gitStashes,
-			authors: this.currentAuthors === null || this.currentAuthors.includes(SHOW_ALL_BRANCHES) ? null : this.currentAuthors
+			authors: this.currentAuthors === null || this.currentAuthors.includes(SHOW_ALL_BRANCHES) ? null : this.currentAuthors,
+			filePath: this.fileHistory
 		});
 	}
 
@@ -862,6 +879,8 @@ class GitGraphView {
 			gitUpstreams: this.gitUpstreams,
 			gitTags: this.gitTags,
 			commits: this.loadedCommits,
+			fileHistory: this.fileHistory,
+			fileHistoryData: this.fileHistoryData,
 			commitHead: this.commitHead,
 			avatars: this.avatars,
 			currentBranches: this.currentBranches,
@@ -1046,7 +1065,14 @@ class GitGraphView {
 			markdown: this.config.markdown
 		});
 
+		const fileHistory = this.fileHistory !== null ? (this.fileHistoryData !== null ? this.fileHistoryData.commits : {}) : null;
+		let maxLinesChanged = 1;
+		if (fileHistory !== null) {
+			Object.keys(fileHistory).forEach((hash) => maxLinesChanged = Math.max(maxLinesChanged, (fileHistory[hash].additions || 0) + (fileHistory[hash].deletions || 0)));
+		}
+
 		let html = '<tr id="tableColHeaders"><th id="tableHeaderGraphCol" class="tableColHeader" data-col="0">' + t('Graph') + '</th><th class="tableColHeader" data-col="1">' + t('Description') + '</th>' +
+			(fileHistory !== null ? '<th class="fileChangesCol">' + t('Changes to this File') + '</th>' : '') +
 			(colVisibility.date ? '<th class="tableColHeader dateCol" data-col="2">' + t('Date') + '</th>' : '') +
 			(colVisibility.author ? '<th class="tableColHeader authorCol" data-col="3">' + t('Author') + '</th>' : '') +
 			(colVisibility.commit ? '<th class="tableColHeader" data-col="4">' + t('Commit') + '</th>' : '') +
@@ -1054,7 +1080,8 @@ class GitGraphView {
 
 		for (let i = 0; i < this.commits.length; i++) {
 			let commit = this.commits[i];
-			let message = '<span class="text">' + textFormatter.format(commit.message) + '</span>';
+			const fileChange = fileHistory !== null ? fileHistory[commit.hash] : undefined;
+			let message = (typeof fileChange !== 'undefined' && fileChange.oldFilePath !== null ? '<span class="fileHistoryRenamed" title="' + escapeHtml(fileChange.oldFilePath + ' \u2192 ' + fileChange.filePath) + '">\u21aa ' + t('Renamed from {0}', escapeHtml(fileChange.oldFilePath)) + '</span>' : '') + '<span class="text">' + textFormatter.format(commit.message) + '</span>';
 			let date = formatShortDate(commit.date);
 			let branchLabels = getBranchLabels(commit.heads, commit.remotes);
 			let refBranches = '', refTags = '', j, k, refName, remoteName, refActive, refHtml, branchCheckedOutAtCommit: string | null = null;
@@ -1095,6 +1122,11 @@ class GitGraphView {
 
 			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
 				(this.config.referenceLabels.branchLabelsAlignedToGraph ? '<td>' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td><span class="description">' + commitDot : '<td></td><td><span class="description">' + commitDot + refBranches) + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message) + '</span></td>' +
+				(fileHistory !== null ? '<td class="fileChangesCol">' + (typeof fileChange !== 'undefined'
+					? (fileChange.additions !== null && fileChange.deletions !== null
+						? generateChangeBarHtml(fileChange.additions, fileChange.deletions, Math.round(8 + 52 * (fileChange.additions + fileChange.deletions) / maxLinesChanged)) + '<span class="fileTreeFileAdd">+' + fileChange.additions + '</span><span class="fileTreeFileDel">\u2212' + fileChange.deletions + '</span>'
+						: '<span class="fileChangesBinary">' + t('Binary') + '</span>')
+					: '') + '</td>' : '') +
 				(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
 				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
 				(colVisibility.commit ? '<td class="hashCol text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
@@ -2321,7 +2353,7 @@ class GitGraphView {
 
 	private getNumColumns() {
 		let colVisibility = this.getColumnVisibility();
-		return 2 + (colVisibility.date ? 1 : 0) + (colVisibility.author ? 1 : 0) + (colVisibility.commit ? 1 : 0);
+		return 2 + (this.fileHistory !== null ? 1 : 0) + (colVisibility.date ? 1 : 0) + (colVisibility.author ? 1 : 0) + (colVisibility.commit ? 1 : 0);
 	}
 
 	/**
@@ -2903,6 +2935,7 @@ class GitGraphView {
 
 		const elem = document.getElementById('cdv'), isDocked = this.isCdvDocked();
 		this.cdvComparePending = false;
+		this.cdvShowWholeCommit = false;
 		if (elem !== null) {
 			elem.remove();
 		}
@@ -3134,7 +3167,8 @@ class GitGraphView {
 				: fileViewHtml) + '</div><div id="cdvDivider"></div>';
 		}
 		if (isRight) {
-			const title = expandedCommit.compareWithHash !== null ? t('Commit Comparison') : expandedCommit.commitHash === UNCOMMITTED ? t('Uncommitted Changes') : t('Commit Details');
+			const title = expandedCommit.compareWithHash !== null ? t('Commit Comparison') : expandedCommit.commitHash === UNCOMMITTED ? t('Uncommitted Changes')
+				: !expandedCommit.loading && expandedCommit.fileChanges !== null && this.getCdvFileFocus(expandedCommit.commitHash, expandedCommit.fileChanges) !== null ? t('Changes to this File in the Commit') : t('Commit Details');
 			html = '<div id="cdvHeader"><span class="cdvHeaderTitle">' + title + '</span>' +
 				(codeReviewPossible ? '<div id="cdvCodeReview" class="cdvControlBtn">' + SVG_ICONS.review + '</div>' : '') +
 				(externalDiffPossible ? '<div id="cdvExternalDiff" class="cdvControlBtn">' + SVG_ICONS.linkExternal + '</div>' : '') +
@@ -3187,6 +3221,7 @@ class GitGraphView {
 		});
 
 		if (isRight) this.makeCdvHeaderInteractive();
+		if (isRight && !expandedCommit.loading) this.makeCdvFileFocusInteractive();
 
 		if (!expandedCommit.loading) {
 			this.makeCdvFileViewInteractive();
@@ -3286,10 +3321,163 @@ class GitGraphView {
 			'<button type="button" id="cdvCompare" class="cdvChip' + (this.cdvComparePending ? ' active' : '') + '" title="' + t('Click on another commit to compare it with this commit') + '" tabindex="-1">' + SVG_ICONS.compare + (this.cdvComparePending ? t('Click on a commit to compare with') : t('Compare with…')) + '</button></div>' +
 			'<h2 class="cdvSubject">' + textFormatter.format(subject) + '</h2>' +
 			(body !== '' ? '<div class="cdvBody">' + textFormatter.format(body) + '</div>' : '') +
-			(issues.length > 0 ? '<div class="cdvLine"><span class="cdvMuted">' + t('Related Issues') + '</span>' + issues.map((issue) => '<a class="' + CLASS_EXTERNAL_URL + '" href="' + escapeHtml(issue.url) + '" tabindex="-1">' + escapeHtml(issue.label) + '</a>').join('') + '</div>' : '') +
+			(this.getCdvFileFocus(commitDetails.hash, fileChanges) !== null ? this.generateCdvFileFocusHtml(commitDetails.hash, fileChanges) : (issues.length > 0 ? '<div class="cdvLine"><span class="cdvMuted">' + t('Related Issues') + '</span>' + issues.map((issue) => '<a class="' + CLASS_EXTERNAL_URL + '" href="' + escapeHtml(issue.url) + '" tabindex="-1">' + escapeHtml(issue.label) + '</a>').join('') + '</div>' : '') +
 			(branches.length > 0 ? '<div class="cdvLine"><span class="cdvMuted">' + t('On Branches') + '</span>' + branches.map((branch) => '<span class="cdvBranch' + (branch.remote ? ' remote' : '') + '" style="--git-graph-color:' + escapeHtml(branch.colour) + '">' + escapeHtml(branch.name) + '</span>').join('') + '</div>' : '') +
 			generateCdvStatsHtml(fileChanges) +
-			'<div id="cdvActions"></div>';
+			'<div id="cdvActions"></div>');
+	}
+
+	/**
+	 * Get the file the Commit Details View docked to the right focuses on: the file whose history is shown (unless the whole commit is shown).
+	 * @param hash The hash of the commit.
+	 * @param fileChanges The files changed by the commit.
+	 * @returns The index of the file in the files changed by the commit, or NULL if the Commit Details View doesn't focus on a file.
+	 */
+	private getCdvFileFocus(hash: string, fileChanges: ReadonlyArray<GG.GitFileChange>) {
+		if (this.fileHistory === null || this.cdvShowWholeCommit || !this.isCdvDocked() || !this.isCdvDockedRight()) return null;
+		const historyCommit = this.fileHistoryData !== null ? this.fileHistoryData.commits[hash] : undefined;
+		const filePath = typeof historyCommit !== 'undefined' ? historyCommit.filePath : this.fileHistory;
+		const index = fileChanges.findIndex((file) => file.newFilePath === filePath || file.oldFilePath === filePath);
+		return index > -1 ? index : null;
+	}
+
+	/**
+	 * Generate the HTML of the changes made by a commit to the file whose history is shown, in the Commit Details View docked to the right.
+	 * @param hash The hash of the commit.
+	 * @param fileChanges The files changed by the commit.
+	 * @returns The HTML.
+	 */
+	private generateCdvFileFocusHtml(hash: string, fileChanges: ReadonlyArray<GG.GitFileChange>) {
+		const file = fileChanges[this.getCdvFileFocus(hash, fileChanges)!], textFile = file.additions !== null && file.deletions !== null;
+		return '<div id="cdvFileFocus"><div class="cdvFileFocusFile"><span class="fileTreeFileBadge ' + file.type + '">' + file.type + '</span>' + fileIcons.getFileIcon(file.newFilePath) +
+			'<span class="cdvFileFocusPath" title="' + escapeHtml(file.newFilePath) + '">' + escapeHtml(file.newFilePath) + '</span>' +
+			(textFile ? '<span class="fileTreeFileAdd">+' + file.additions + '</span><span class="fileTreeFileDel">\u2212' + file.deletions + '</span>' + generateChangeBarHtml(file.additions!, file.deletions!, null) : '') + '</div>' +
+			(file.type === GG.GitFileStatus.Renamed ? '<div class="cdvFileFocusRenamed">\u21aa ' + t('Renamed from {0}', escapeHtml(file.oldFilePath)) + '</div>' : '') +
+			'<div class="cdvFileFocusActions"><button type="button" id="cdvFileFocusDiff" class="cdvActionBtn primary" tabindex="-1">' + t('Open in Diff Editor') + '</button>' +
+			(file.type !== GG.GitFileStatus.Deleted ? '<button type="button" id="cdvFileFocusOpen" class="cdvActionBtn" tabindex="-1">' + t('Open This Version') + '</button>' : '') +
+			'<button type="button" id="cdvFileFocusAll" class="cdvActionBtn" tabindex="-1">' + t('View the Whole Commit ({0} files)', fileChanges.length) + '</button></div>' +
+			'<div id="cdvFileDiff">' + this.generateCdvFileDiffHtml(hash, file) + '</div></div>';
+	}
+
+	/**
+	 * Generate the HTML of the diff of the file the Commit Details View focuses on (requesting it from the extension if it hasn't been loaded).
+	 * @param hash The hash of the commit.
+	 * @param file The file.
+	 * @returns The HTML.
+	 */
+	private generateCdvFileDiffHtml(hash: string, file: GG.GitFileChange) {
+		const key = hash + ':' + file.newFilePath;
+		if (this.cdvFileDiff === null || this.cdvFileDiff.key !== key) {
+			this.cdvFileDiff = { key: key, diff: null, error: null };
+			const commit = this.commits[this.commitLookup[hash]];
+			const parentHash = this.expandedCommit !== null && this.expandedCommit.commitDetails !== null && this.expandedCommit.commitDetails.hash === hash
+				? (this.expandedCommit.commitDetails.parents.length > 0 ? this.expandedCommit.commitDetails.parents[0] : null)
+				: (typeof commit !== 'undefined' && commit.parents.length > 0 ? commit.parents[0] : null);
+			sendMessage({ command: 'loadFileDiff', repo: this.currentRepo, commitHash: hash, parentHash: parentHash, oldFilePath: file.oldFilePath, newFilePath: file.newFilePath });
+		}
+		return this.cdvFileDiff.diff !== null
+			? generateFileDiffHtml(this.cdvFileDiff.diff, 40)
+			: '<div class="cdvFileDiffMessage">' + (this.cdvFileDiff.error !== null ? escapeHtml(this.cdvFileDiff.error) : t('Loading the changes') + ELLIPSIS) + '</div>';
+	}
+
+	/**
+	 * Process the diff of a file loaded by the extension, for the Commit Details View.
+	 * @param msg The message containing the diff.
+	 */
+	public processLoadFileDiffResponse(msg: GG.ResponseLoadFileDiff) {
+		const key = msg.commitHash + ':' + msg.filePath;
+		if (this.cdvFileDiff === null || this.cdvFileDiff.key !== key) return;
+		this.cdvFileDiff = { key: key, diff: msg.error === null ? msg.diff : null, error: msg.error };
+		const diffElem = document.getElementById('cdvFileDiff');
+		if (diffElem === null || this.expandedCommit === null || this.expandedCommit.fileChanges === null) return;
+		const index = this.getCdvFileFocus(msg.commitHash, this.expandedCommit.fileChanges);
+		if (index !== null) diffElem.innerHTML = this.generateCdvFileDiffHtml(msg.commitHash, this.expandedCommit.fileChanges[index]);
+	}
+
+	/**
+	 * Add the event listeners to the changes to the file the Commit Details View focuses on.
+	 */
+	private makeCdvFileFocusInteractive() {
+		const expandedCommit = this.expandedCommit;
+		if (expandedCommit === null || expandedCommit.fileChanges === null || document.getElementById('cdvFileFocus') === null) return;
+		const index = this.getCdvFileFocus(expandedCommit.commitHash, expandedCommit.fileChanges);
+		if (index === null) return;
+		// The actions are performed on the file in the file view, so that its state (e.g. the last file viewed, and the files reviewed) is updated
+		const clickFileView = (selector: string) => {
+			const elem = document.querySelector('#cdvFileView .fileTreeFileRecord[data-index="' + index + '"] ' + selector);
+			if (elem !== null) elem.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		};
+		const diffElem = document.getElementById('cdvFileFocusDiff'), openElem = document.getElementById('cdvFileFocusOpen'), allElem = document.getElementById('cdvFileFocusAll');
+		if (diffElem !== null) diffElem.addEventListener('click', () => clickFileView('.fileTreeFile'));
+		if (openElem !== null) openElem.addEventListener('click', () => clickFileView('.viewGitFileAtRevision'));
+		if (allElem !== null) allElem.addEventListener('click', () => {
+			this.cdvShowWholeCommit = true;
+			this.renderCommitDetailsView(true);
+		});
+		document.getElementById('cdvFileDiff')!.addEventListener('click', (e) => {
+			if ((<Element>e.target).closest('.cdvFileDiffOpen') !== null) clickFileView('.fileTreeFile');
+		});
+	}
+
+	/**
+	 * Show the history of a file (only the commits that change it), or all commits.
+	 * @param filePath The path of the file, or NULL to show all commits.
+	 */
+	public setFileHistory(filePath: string | null) {
+		if (filePath === this.fileHistory) return;
+		this.fileHistory = filePath;
+		this.fileHistoryData = null;
+		this.cdvShowWholeCommit = false;
+		this.maxCommits = this.config.initialLoadCommits;
+		this.renderFileHistoryBar();
+		this.saveState();
+		this.clearCommits();
+		this.requestLoadRepoInfoAndCommits(true, true);
+	}
+
+	/**
+	 * Render the bar shown below the control bar when the history of a file is shown.
+	 */
+	private renderFileHistoryBar() {
+		const elem = document.getElementById('fileHistoryBar');
+		if (elem === null) return;
+		alterClass(elem, CLASS_ACTIVE, this.fileHistory !== null);
+		alterClass(document.body, 'fileHistory', this.fileHistory !== null);
+		if (this.fileHistory === null) {
+			elem.innerHTML = '';
+			return;
+		}
+		const commits = this.loadedCommits.filter((commit) => commit.hash !== UNCOMMITTED && commit.stash === null), count = commits.length;
+		const authors = new Set(commits.map((commit) => commit.author)).size, renames = this.fileHistoryData !== null ? this.fileHistoryData.paths.length - 1 : 0;
+		const allBranches = this.currentBranches === null || this.currentBranches.includes(SHOW_ALL_BRANCHES);
+		const currentBranch = this.gitBranchHead !== null && this.currentBranches !== null && this.currentBranches.length === 1 && this.currentBranches[0] === this.gitBranchHead;
+		const summary = [
+			this.moreCommitsAvailable ? t('{0}+ commits', count) : count !== 1 ? t('{0} commits', count) : t('{0} commit', count),
+			authors !== 1 ? t('{0} authors', authors) : t('{0} author', authors)
+		].concat(renames > 0 ? [renames !== 1 ? t('followed {0} renames', renames) : t('followed 1 rename')] : []);
+		elem.innerHTML = fileIcons.getFileIcon(this.fileHistory) + '<b>' + t('File History') + '</b>' +
+			'<span class="fileHistoryPath" title="' + escapeHtml(this.fileHistory) + '"><span>' + escapeHtml(this.fileHistory) + '</span><span id="fileHistoryCopy" title="' + t('Copy Relative File Path to Clipboard') + '">' + SVG_ICONS.copy + '</span></span>' +
+			'<span class="fileHistorySummary">' + summary.join(' · ') + '</span><span class="fileHistorySpacer"></span>' +
+			'<span id="fileHistoryBranches" role="group"><span class="fileHistoryBranchesOption' + (allBranches ? ' active' : '') + '" data-value="all">' + t('All Branches') + '</span><span class="fileHistoryBranchesOption' + (currentBranch ? ' active' : '') + (this.gitBranchHead === null ? ' disabled' : '') + '" data-value="current">' + t('Current Branch') + '</span></span>' +
+			'<span id="fileHistoryOpen" class="fileHistoryBtn">' + SVG_ICONS.openFile + t('Open in Editor') + '</span>' +
+			'<span id="fileHistoryExit" class="fileHistoryBtn exit" title="' + t('Show all of the commits') + '">' + t('Exit File History') + SVG_ICONS.close + '</span>';
+
+		const filePath = this.fileHistory;
+		document.getElementById('fileHistoryCopy')!.addEventListener('click', () => sendMessage({ command: 'copyFilePath', repo: this.currentRepo, filePath: filePath, absolute: false }));
+		document.getElementById('fileHistoryOpen')!.addEventListener('click', () => {
+			const latest = this.loadedCommits.find((commit) => commit.hash !== UNCOMMITTED);
+			runAction({ command: 'openFile', repo: this.currentRepo, hash: typeof latest !== 'undefined' ? latest.hash : (this.commitHead || ''), filePath: filePath }, t('Opening File'));
+		});
+		document.getElementById('fileHistoryExit')!.addEventListener('click', () => this.setFileHistory(null));
+		document.querySelectorAll<HTMLElement>('.fileHistoryBranchesOption').forEach((optionElem) => optionElem.addEventListener('click', () => {
+			if (optionElem.classList.contains(CLASS_ACTIVE) || optionElem.classList.contains(CLASS_DISABLED)) return;
+			this.currentBranches = optionElem.dataset.value === 'current' && this.gitBranchHead !== null ? [this.gitBranchHead] : [SHOW_ALL_BRANCHES];
+			this.branchDropdown.setOptions(this.getBranchOptions(true), this.currentBranches);
+			this.maxCommits = this.config.initialLoadCommits;
+			this.saveState();
+			this.clearCommits();
+			this.requestLoadRepoInfoAndCommits(true, true);
+		}));
 	}
 
 	/**
@@ -3877,6 +4065,11 @@ class GitGraphView {
 						title: t('Open File'),
 						visible: visibility.openFile && file.type !== GG.GitFileStatus.Deleted,
 						onClick: () => triggerOpenFile(file, fileElem)
+					},
+					{
+						title: t('View File History'),
+						visible: file.type !== GG.GitFileStatus.Untracked && this.fileHistory !== file.newFilePath,
+						onClick: () => this.setFileHistory(file.newFilePath)
 					}
 				],
 				[
@@ -4121,6 +4314,9 @@ window.addEventListener('load', () => {
 				break;
 			case 'loadStashStats':
 				gitGraph.processLoadStashStatsResponse(msg);
+				break;
+			case 'loadFileDiff':
+				gitGraph.processLoadFileDiffResponse(msg);
 				break;
 			case 'loadFileIconTheme':
 				fileIcons.setTheme(msg.theme);
@@ -4380,6 +4576,54 @@ function filterCommits(commits: ReadonlyArray<GG.GitCommit>, filter: ReadonlySet
 		}
 	}
 	return filtered.reverse();
+}
+
+/**
+ * Generate the HTML of a unified diff (as output by git diff), limited to a number of lines.
+ * @param diff The diff.
+ * @param maxLines The maximum number of lines of the diff to show.
+ * @returns The HTML.
+ */
+function generateFileDiffHtml(diff: string, maxLines: number) {
+	let html = '', shown = 0, hunks = 0, hiddenHunks = 0, oldLine = 0, newLine = 0, inHunk = false, truncatedHunk = false;
+	const row = (oldNumber: number | null, newNumber: number | null, type: string, text: string) => {
+		html += '<div class="cdvFileDiffLine ' + type + '"><span>' + (oldNumber !== null ? oldNumber : '') + '</span><span>' + (newNumber !== null ? newNumber : '') + '</span><span>' + (type === 'add' ? '+' : type === 'del' ? '\u2212' : ' ') + '</span><span>' + escapeHtml(text) + '</span></div>';
+		shown++;
+	};
+	diff.split('\n').forEach((line) => {
+		const hunk = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+		if (hunk !== null) {
+			hunks++;
+			if (shown >= maxLines) {
+				hiddenHunks++;
+				inHunk = false;
+				return;
+			}
+			oldLine = parseInt(hunk[1]);
+			newLine = parseInt(hunk[2]);
+			inHunk = true;
+			html += '<div class="cdvFileDiffHunk">' + escapeHtml(line) + '</div>';
+			return;
+		}
+		if (!inHunk) return;
+		if (shown >= maxLines) {
+			truncatedHunk = true;
+			return;
+		}
+		const type = line.charAt(0), text = line.substring(1);
+		if (type === '+') {
+			row(null, newLine++, 'add', text);
+		} else if (type === '-') {
+			row(oldLine++, null, 'del', text);
+		} else if (type === ' ') {
+			row(oldLine++, newLine++, 'context', text);
+		}
+	});
+	if (hunks === 0) {
+		return '<div class="cdvFileDiffMessage">' + (/^Binary files /m.test(diff) ? t('This is a binary file') : t('There are no changes to display')) + '</div>';
+	}
+	return '<div class="cdvFileDiffLines">' + html + (truncatedHunk ? '<div class="cdvFileDiffLine context"><span></span><span></span><span></span><span>' + ELLIPSIS + '</span></div>' : '') + '</div>' +
+		(truncatedHunk || hiddenHunks > 0 ? '<div class="cdvFileDiffMore">' + (hiddenHunks > 0 ? (hiddenHunks !== 1 ? t('{0} more changes', hiddenHunks) : t('1 more change')) + ' · ' : '') + '<span class="cdvFileDiffOpen">' + t('Open in Diff Editor to view all of the changes') + '</span></div>' : '');
 }
 
 function generateFileViewHtml(folder: FileTreeFolder, gitFiles: ReadonlyArray<GG.GitFileChange>, lastViewedFile: string | null, fileContextMenuOpen: number, type: GG.FileViewType, isUncommitted: boolean) {

@@ -2143,6 +2143,7 @@ describe('GitGraphView', () => {
 				head: '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b',
 				tags: ['tag1', 'tag2'],
 				moreCommitsAvailable: false,
+				fileHistory: null,
 				error: null
 			};
 
@@ -2166,12 +2167,13 @@ describe('GitGraphView', () => {
 					remotes: ['origin', 'upstream'],
 					hideRemotes: ['upstream'],
 					stashes: [],
-					authors: null
+					authors: null,
+					filePath: null
 				});
 
 				// Assert
 				await waitForExpect(() => {
-					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, true, false, false, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null);
+					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, true, false, false, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null, null);
 					expect(messages).toStrictEqual([
 						{
 							command: 'loadCommits',
@@ -2180,6 +2182,7 @@ describe('GitGraphView', () => {
 							head: getCommitsResolvedValue.head,
 							tags: getCommitsResolvedValue.tags,
 							moreCommitsAvailable: getCommitsResolvedValue.moreCommitsAvailable,
+							fileHistory: getCommitsResolvedValue.fileHistory,
 							onlyFollowFirstParent: false,
 							error: getCommitsResolvedValue.error
 						}
@@ -2208,12 +2211,13 @@ describe('GitGraphView', () => {
 					remotes: ['origin', 'upstream'],
 					hideRemotes: ['upstream'],
 					stashes: [],
-					authors: null
+					authors: null,
+					filePath: null
 				});
 
 				// Assert
 				await waitForExpect(() => {
-					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, true, false, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null);
+					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, true, false, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null, null);
 					expect(messages).toStrictEqual([
 						{
 							command: 'loadCommits',
@@ -2222,6 +2226,7 @@ describe('GitGraphView', () => {
 							head: getCommitsResolvedValue.head,
 							tags: getCommitsResolvedValue.tags,
 							moreCommitsAvailable: getCommitsResolvedValue.moreCommitsAvailable,
+							fileHistory: getCommitsResolvedValue.fileHistory,
 							onlyFollowFirstParent: false,
 							error: getCommitsResolvedValue.error
 						}
@@ -2250,12 +2255,13 @@ describe('GitGraphView', () => {
 					remotes: ['origin', 'upstream'],
 					hideRemotes: ['upstream'],
 					stashes: [],
-					authors: null
+					authors: null,
+					filePath: null
 				});
 
 				// Assert
 				await waitForExpect(() => {
-					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, false, true, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null);
+					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, false, true, false, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null, null);
 					expect(messages).toStrictEqual([
 						{
 							command: 'loadCommits',
@@ -2264,6 +2270,7 @@ describe('GitGraphView', () => {
 							head: getCommitsResolvedValue.head,
 							tags: getCommitsResolvedValue.tags,
 							moreCommitsAvailable: getCommitsResolvedValue.moreCommitsAvailable,
+							fileHistory: getCommitsResolvedValue.fileHistory,
 							onlyFollowFirstParent: false,
 							error: getCommitsResolvedValue.error
 						}
@@ -2292,12 +2299,13 @@ describe('GitGraphView', () => {
 					remotes: ['origin', 'upstream'],
 					hideRemotes: ['upstream'],
 					stashes: [],
-					authors: null
+					authors: null,
+					filePath: null
 				});
 
 				// Assert
 				await waitForExpect(() => {
-					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, false, false, true, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null);
+					expect(spyOnGetCommits).toHaveBeenCalledWith('/path/to/repo', null, 300, false, false, false, true, CommitOrdering.Date, ['origin', 'upstream'], ['upstream'], [], null, null);
 					expect(messages).toStrictEqual([
 						{
 							command: 'loadCommits',
@@ -2306,6 +2314,7 @@ describe('GitGraphView', () => {
 							head: getCommitsResolvedValue.head,
 							tags: getCommitsResolvedValue.tags,
 							moreCommitsAvailable: getCommitsResolvedValue.moreCommitsAvailable,
+							fileHistory: getCommitsResolvedValue.fileHistory,
 							onlyFollowFirstParent: true,
 							error: getCommitsResolvedValue.error
 						}

@@ -10,6 +10,7 @@
 	"command.version.title": "获取版本信息",
 	"command.selectGraphColourPreset.title": "选择图形配色预设...",
 	"command.openFile.title": "打开文件",
+	"command.viewFileHistory.title": "在 Git Map 中查看文件历史",
 	"config.commitDetailsView.autoCenter.description": "打开提交详情视图时自动将其居中。",
 	"config.commitDetailsView.fileView.fileTree.compactFolders.description": "以紧凑形式渲染提交详情视图中的文件树：只有一个子文件夹的文件夹会合并为一个文件夹元素。",
 	"config.commitDetailsView.fileView.type.description": "设置提交详情视图中默认使用的文件视图类型。可通过提交详情视图右侧的控件按仓库覆盖。",

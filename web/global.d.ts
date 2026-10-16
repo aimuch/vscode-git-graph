@@ -56,6 +56,8 @@ declare global {
 		readonly gitUpstreams?: GG.GitBranchUpstreams;
 		readonly gitTags: ReadonlyArray<string>;
 		readonly commits: GG.GitCommit[];
+		readonly fileHistory?: string | null;
+		readonly fileHistoryData?: GG.GitFileHistory | null;
 		readonly commitHead: string | null;
 		readonly avatars: AvatarImageCollection;
 		readonly currentBranches: string[] | null;

@@ -420,7 +420,7 @@ export class GitGraphView extends Disposable {
 					command: 'loadCommits',
 					refreshId: msg.refreshId,
 					onlyFollowFirstParent: msg.onlyFollowFirstParent,
-					...await this.dataSource.getCommits(msg.repo, msg.branches, msg.maxCommits, msg.showTags, msg.showRemoteBranches, msg.includeCommitsMentionedByReflogs, msg.onlyFollowFirstParent, msg.commitOrdering, msg.remotes, msg.hideRemotes, msg.stashes, msg.authors)
+					...await this.dataSource.getCommits(msg.repo, msg.branches, msg.maxCommits, msg.showTags, msg.showRemoteBranches, msg.includeCommitsMentionedByReflogs, msg.onlyFollowFirstParent, msg.commitOrdering, msg.remotes, msg.hideRemotes, msg.stashes, msg.authors, typeof msg.filePath === 'string' ? msg.filePath : null)
 				});
 				break;
 			case 'loadConfig':
@@ -455,6 +455,14 @@ export class GitGraphView extends Disposable {
 					command: 'searchCommits',
 					id: msg.id,
 					...await this.dataSource.searchCommits(msg.repo, msg.files, msg.changes, msg.isRegex, msg.isCaseSensitive, msg.since)
+				});
+				break;
+			case 'loadFileDiff':
+				this.sendMessage({
+					command: 'loadFileDiff',
+					commitHash: msg.commitHash,
+					filePath: msg.newFilePath,
+					...await this.dataSource.getFileDiff(msg.repo, msg.commitHash, msg.parentHash, msg.oldFilePath, msg.newFilePath)
 				});
 				break;
 			case 'loadStashStats':
@@ -769,6 +777,7 @@ export class GitGraphView extends Disposable {
 					<div id="refreshBtn" class="controlBtn"></div>
 					<div id="terminalBtn" class="controlBtn" title="${t('Open a Terminal for this Repository')}"></div>
 					<div id="settingsBtn" class="controlBtn" title="${t('Repository Settings')}"></div>
+					<div id="fileHistoryBar"></div>
 					<div id="minimap"></div>
 				</div>
 				<div id="content">

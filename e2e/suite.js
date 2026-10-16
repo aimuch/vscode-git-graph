@@ -7,6 +7,7 @@
  */
 const cp = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const vscode = require('vscode');
 
@@ -283,6 +284,49 @@ async function run() {
 			return stash.selector + ': ' + JSON.stringify(stats);
 		} finally {
 			git(main, 'stash', 'drop');
+		}
+	});
+
+	await check('ui-file-history', '[Redesign] The history of a file follows it through renames, with the parents of its commits rewritten (so the graph is connected), the changes to the file in each commit, and its diff', async () => {
+		const dataSource = (await getView()).dataSource;
+		const commands = await vscode.commands.getCommands(true);
+		assert(commands.includes('git-graph.viewFileHistory'), 'The View File History command isn\'t registered');
+		const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'git-map-e2e-history-')); // Outside of the workspace, so it isn't discovered
+		try {
+			git(repo, 'init', '-q', '-b', 'main');
+			fs.mkdirSync(path.join(repo, 'dir'));
+			const commit = (message) => {
+				git(repo, 'add', '-A');
+				git(repo, 'commit', '-q', '-m', message);
+				return git(repo, 'rev-parse', 'HEAD');
+			};
+			fs.writeFileSync(path.join(repo, 'dir', 'old.txt'), '1\n2\n3\n');
+			const a = commit('a');
+			fs.writeFileSync(path.join(repo, 'dir', 'old.txt'), '1\n2\n3\n4\n');
+			const b = commit('b');
+			fs.renameSync(path.join(repo, 'dir', 'old.txt'), path.join(repo, 'dir', '新.txt'));
+			fs.writeFileSync(path.join(repo, 'dir', '新.txt'), '1\n2\n3\n4\n5\n');
+			const c = commit('c (rename)');
+			fs.writeFileSync(path.join(repo, 'other.txt'), 'x\n');
+			commit('d (another file)');
+			fs.writeFileSync(path.join(repo, 'dir', '新.txt'), '0\n1\n2\n3\n4\n5\n');
+			const e = commit('e');
+
+			const result = await dataSource.getCommits(repo, null, 100, true, true, false, false, 'date', [], [], [], null, 'dir/新.txt');
+			assert(result.error === null, 'Loading the history failed: ' + result.error);
+			const graph = result.commits.map((commit) => commit.hash + '>' + commit.parents.join(','));
+			assert(JSON.stringify(graph) === JSON.stringify([e + '>' + c, c + '>' + b, b + '>' + a, a + '>']), 'Unexpected history: ' + JSON.stringify(result.commits.map((commit) => commit.message)));
+			const history = result.fileHistory;
+			assert(history !== null && JSON.stringify(history.paths) === JSON.stringify(['dir/新.txt', 'dir/old.txt']), 'Unexpected paths: ' + JSON.stringify(history && history.paths));
+			assert(history.commits[c].oldFilePath === 'dir/old.txt' && history.commits[c].filePath === 'dir/新.txt' && history.commits[c].additions === 1 && history.commits[e].additions === 1 && history.commits[a].additions === 3 && history.commits[a].filePath === 'dir/old.txt', 'Unexpected changes: ' + JSON.stringify(history.commits));
+
+			const diff = await dataSource.getFileDiff(repo, c, b, 'dir/old.txt', 'dir/新.txt');
+			assert(diff.error === null && diff.diff.includes('rename from dir/old.txt') && /^\+5$/m.test(diff.diff), 'Unexpected diff: ' + diff.diff);
+			const rootDiff = await dataSource.getFileDiff(repo, a, null, 'dir/old.txt', 'dir/old.txt');
+			assert(rootDiff.error === null && /^\+1$/m.test(rootDiff.diff), 'Unexpected diff of the root commit: ' + rootDiff.diff);
+			return result.commits.length + ' commits, renamed from dir/old.txt, diff of the rename: ' + diff.diff.split('\n').length + ' lines';
+		} finally {
+			fs.rmSync(repo, { recursive: true, force: true });
 		}
 	});
 

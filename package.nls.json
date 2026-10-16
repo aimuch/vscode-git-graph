@@ -10,6 +10,7 @@
 	"command.version.title": "Get Version Information",
 	"command.selectGraphColourPreset.title": "Select Graph Colour Preset...",
 	"command.openFile.title": "Open File",
+	"command.viewFileHistory.title": "View File History in Git Map",
 	"config.commitDetailsView.autoCenter.description": "Automatically center the Commit Details View when it is opened.",
 	"config.commitDetailsView.fileView.fileTree.compactFolders.description": "Render the File Tree in the Commit Details View in a compacted form, such that folders with a single child folder are compressed into a single combined folder element.",
 	"config.commitDetailsView.fileView.type.description": "Sets the default type of File View used in the Commit Details View. This can be overridden per repository using the controls on the right side of the Commit Details View.",

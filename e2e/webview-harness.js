@@ -44,6 +44,14 @@
 			case 'loadRepoInfo':
 				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: STASHES, upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
 			case 'loadCommits':
+				if (msg.filePath === 'src/new-name.ts') {
+					// The history of src/new-name.ts: every 5th commit (with the parents rewritten by Git), renamed from src/old-name.ts in the oldest commit
+					const history = makeCommits(25).filter((_, i) => i % 5 === 0);
+					history.forEach((commit, i) => commit.parents = i < history.length - 1 ? [history[i + 1].hash] : []);
+					const commits = {};
+					history.forEach((commit, i) => commits[commit.hash] = { filePath: 'src/new-name.ts', oldFilePath: i === history.length - 1 ? 'src/old-name.ts' : null, additions: i + 1, deletions: i });
+					return { command: 'loadCommits', refreshId: msg.refreshId, commits: history, head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: ['src/new-name.ts', 'src/old-name.ts'], commits: commits }, error: null };
+				}
 				// HEAD is the 20th commit, which isn't included in the first load of 10 commits
 				return msg.maxCommits <= 10
 					? { command: 'loadCommits', refreshId: msg.refreshId, commits: makeCommits(10), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: true, onlyFollowFirstParent: msg.onlyFollowFirstParent, error: null }
@@ -72,6 +80,8 @@
 						]
 					}
 				};
+			case 'loadFileDiff':
+				return { command: 'loadFileDiff', commitHash: msg.commitHash, filePath: msg.newFilePath, error: null, diff: 'diff --git a/' + msg.oldFilePath + ' b/' + msg.newFilePath + '\n--- a/' + msg.oldFilePath + '\n+++ b/' + msg.newFilePath + '\n@@ -1,3 +1,3 @@\n line 1\n-line <2>\n+line <two>\n line 3\n' };
 			case 'loadStashStats':
 				return { command: 'loadStashStats', error: null, stats: Object.fromEntries(msg.stashes.map((stash) => [stash.hash, stash.hash === STASHES[0].hash ? { files: 3, additions: 46, deletions: 8, untrackedFiles: 0 } : { files: 2, additions: 5, deletions: 0, untrackedFiles: 1 }])) };
 			case 'loadFileIconTheme':
@@ -554,6 +564,39 @@
 			await waitFor('the commits of all authors to be requested', () => requestsOf('loadCommits').slice(-1)[0].authors === null);
 			key(document.body, 'Escape');
 			return 'Options: ' + options.join(', ') + ' → requested authors ' + JSON.stringify(filtered.authors);
+		});
+
+		await check('ui-file-history', '[Redesign] The history of a file (opened by the extension) shows the commits that change it, how they change it, its renames, and its changes in a commit (with a diff)', async () => {
+			const rows = () => document.querySelectorAll('#commitTable tr.commit');
+			window.dispatchEvent(new MessageEvent('message', { data: { command: 'loadRepos', repos: initialState.repos, lastActiveRepo: REPO, loadViewTo: { repo: REPO, fileHistory: 'src/new-name.ts' } } }));
+			await waitFor('the history of the file to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === 'src/new-name.ts' && rows().length === 5);
+			const bar = document.getElementById('fileHistoryBar');
+			assert(bar.classList.contains('active') && bar.textContent.includes('File History') && bar.textContent.includes('src/new-name.ts') && bar.textContent.includes('5 commits') && bar.textContent.includes('followed 1 rename'), 'Unexpected File History bar: ' + bar.textContent);
+			assert(document.querySelector('#tableColHeaders .fileChangesCol').textContent === 'Changes to this File', 'The Changes to this File column is missing');
+			const changes = Array.from(rows()).map((row) => row.querySelector('td.fileChangesCol').textContent);
+			assert(JSON.stringify(changes) === JSON.stringify(['+1\u22120', '+2\u22121', '+3\u22122', '+4\u22123', '+5\u22124']), 'Unexpected changes: ' + JSON.stringify(changes));
+			assert(rows()[4].querySelector('.fileHistoryRenamed').textContent.includes('Renamed from src/old-name.ts'), 'The rename isn\'t shown');
+			const columns = new Set(Array.from(document.querySelectorAll('#commitGraph svg circle')).map((circle) => circle.getAttribute('cx')));
+			assert(columns.size === 1, 'The graph of the history isn\'t connected');
+
+			mouse(rows()[1], 'click');
+			await waitFor('the changes to the file in the commit', () => document.getElementById('cdvFileFocus') && document.querySelector('#cdvFileDiff .cdvFileDiffLine'));
+			assert(document.querySelector('#cdvHeader .cdvHeaderTitle').textContent === 'Changes to this File in the Commit', 'Unexpected title: ' + document.querySelector('#cdvHeader .cdvHeaderTitle').textContent);
+			const diffRequest = requestsOf('loadFileDiff').pop();
+			assert(diffRequest.commitHash === hash(6) && diffRequest.oldFilePath === 'src/old-name.ts' && diffRequest.newFilePath === 'src/new-name.ts' && diffRequest.parentHash === hash(2), 'Unexpected diff request: ' + JSON.stringify(diffRequest));
+			const lines = Array.from(document.querySelectorAll('#cdvFileDiff .cdvFileDiffLine')).map((line) => line.className.split(' ')[1] + ':' + line.lastElementChild.textContent);
+			assert(JSON.stringify(lines) === JSON.stringify(['context:line 1', 'del:line <2>', 'add:line <two>', 'context:line 3']), 'Unexpected diff: ' + JSON.stringify(lines));
+			mouse(document.getElementById('cdvFileFocusDiff'), 'click');
+			const viewDiff = await waitFor('the diff to be opened', () => requestsOf('viewDiff').pop());
+			assert(viewDiff.newFilePath === 'src/new-name.ts' && viewDiff.oldFilePath === 'src/old-name.ts', 'Unexpected diff opened: ' + JSON.stringify(viewDiff));
+			mouse(document.getElementById('cdvFileFocusAll'), 'click');
+			await waitFor('the whole commit to be shown', () => document.getElementById('cdvFileFocus') === null && document.querySelector('#cdvHeader .cdvHeaderTitle').textContent === 'Commit Details');
+			mouse(document.getElementById('cdvClose'), 'click');
+			await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null);
+
+			mouse(document.getElementById('fileHistoryExit'), 'click');
+			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && rows().length === 10 && !bar.classList.contains('active') && document.querySelector('#tableColHeaders .fileChangesCol') === null);
+			return changes.length + ' commits: ' + changes.join(', ') + '; diff: ' + lines.length + ' lines';
 		});
 
 		await check('ui-settings-panel', '[Redesign] The Repository Settings panel changes the colour preset, line style, language & Status Bar Item for all repositories', async () => {

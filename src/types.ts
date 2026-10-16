@@ -179,6 +179,22 @@ export interface GitBranchUpstreams {
 }
 
 /**
+ * The history of a file: the paths it has had (it's followed through renames), and how it's changed by each commit.
+ */
+export interface GitFileHistory {
+	readonly filePath: string;
+	readonly paths: ReadonlyArray<string>;
+	readonly commits: { readonly [hash: string]: GitFileHistoryCommit };
+}
+
+export interface GitFileHistoryCommit {
+	readonly filePath: string; // The path of the file in the commit
+	readonly oldFilePath: string | null; // The path of the file before the commit, if the commit renamed it
+	readonly additions: number | null;
+	readonly deletions: number | null;
+}
+
+/**
  * The number of files changed by a stash, and the lines they add & delete.
  */
 export interface GitStashStats {
@@ -379,7 +395,8 @@ export type LoadGitGraphViewTo = {
 		readonly commitHash: string,
 		readonly compareWithHash: string | null
 	},
-	readonly runCommandOnLoad?: 'fetch'
+	readonly runCommandOnLoad?: 'fetch',
+	readonly fileHistory?: string
 } | null;
 
 export interface MuteCommitsConfig {
@@ -997,6 +1014,7 @@ export interface RequestLoadCommits extends RepoRequest {
 	readonly hideRemotes: ReadonlyArray<string>;
 	readonly stashes: ReadonlyArray<GitStash>;
 	readonly authors: ReadonlyArray<string> | null; // null => Show All
+	readonly filePath: string | null; // null => All commits (not the history of a file)
 }
 export interface ResponseLoadCommits extends ResponseWithErrorInfo {
 	readonly command: 'loadCommits';
@@ -1006,6 +1024,7 @@ export interface ResponseLoadCommits extends ResponseWithErrorInfo {
 	readonly tags: string[];
 	readonly moreCommitsAvailable: boolean;
 	readonly onlyFollowFirstParent: boolean;
+	readonly fileHistory: GitFileHistory | null;
 }
 
 export interface RequestLoadConfig extends RepoRequest {
@@ -1057,6 +1076,20 @@ export interface RequestLoadFileIconTheme extends BaseMessage {
 export interface ResponseLoadFileIconTheme extends BaseMessage {
 	readonly command: 'loadFileIconTheme';
 	readonly theme: FileIconTheme | null;
+}
+
+export interface RequestLoadFileDiff extends RepoRequest {
+	readonly command: 'loadFileDiff';
+	readonly commitHash: string;
+	readonly parentHash: string | null;
+	readonly oldFilePath: string;
+	readonly newFilePath: string;
+}
+export interface ResponseLoadFileDiff extends ResponseWithErrorInfo {
+	readonly command: 'loadFileDiff';
+	readonly commitHash: string;
+	readonly filePath: string;
+	readonly diff: string;
 }
 
 export interface RequestLoadStashStats extends RepoRequest {
@@ -1414,6 +1447,7 @@ export type RequestMessage =
 	| RequestLoadConfig
 	| RequestLoadRepoInfo
 	| RequestLoadFileIconTheme
+	| RequestLoadFileDiff
 	| RequestLoadRepos
 	| RequestLoadStashStats
 	| RequestMerge
@@ -1482,6 +1516,7 @@ export type ResponseMessage =
 	| ResponseLoadConfig
 	| ResponseLoadRepoInfo
 	| ResponseLoadFileIconTheme
+	| ResponseLoadFileDiff
 	| ResponseLoadRepos
 	| ResponseLoadStashStats
 	| ResponseMerge
