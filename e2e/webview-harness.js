@@ -225,7 +225,7 @@
 			['提交：', '父提交：', '作者：', '提交者：', '日期：'].forEach((text) => assert(cdv.textContent.includes(text), 'The Commit Details View doesn\'t include "' + text + '"'));
 			const actions = Array.from(cdv.querySelectorAll('#cdvActions .cdvActionBtn')).map((elem) => elem.textContent);
 			assert(actions[0] === '签出…' && actions[1] === '创建分支…' && actions[2] === '拣选…', 'Unexpected action buttons: ' + JSON.stringify(actions));
-			assert(document.querySelector('#minimap .minimapTitle').textContent === '活动', 'Unexpected minimap title: ' + document.querySelector('#minimap .minimapTitle').textContent);
+			assert(document.querySelector('#minimap .minimapTitle').textContent === '活动每日提交数', 'Unexpected minimap title: ' + document.querySelector('#minimap .minimapTitle').textContent);
 			const dropdown = document.getElementById('authorDropdown');
 			mouse(dropdown.querySelector('.dropdownCurrentValue'), 'click');
 			const options = await waitFor('the author options', () => {
@@ -521,14 +521,20 @@
 			assert(minimap.classList.contains('active'), 'The minimap isn\'t shown');
 			const bars = Array.from(minimap.querySelectorAll('.minimapBar')), activeBars = bars.filter((bar) => !bar.classList.contains('empty'));
 			const loaded = document.querySelectorAll('#commitTable tr.commit').length;
-			const counted = activeBars.reduce((sum, bar) => sum + parseInt(bar.getAttribute('title').match(/: (\d+) commits$/)[1]), 0);
+			const counted = activeBars.reduce((sum, bar) => sum + parseInt(bar.getAttribute('title').match(/: (\d+) commits?$/)[1]), 0);
 			assert(bars.length >= 30 && counted === loaded, 'Unexpected bars: ' + bars.length + ' days, ' + counted + ' of ' + loaded + ' commits');
 			assert(minimap.querySelector('.minimapMarker.head') !== null && minimap.querySelector('.minimapMarker.branch') !== null, 'The HEAD & branch markers are missing');
 			const viewport = document.getElementById('minimapViewport');
 			assert(viewport !== null && viewport.style.width !== '', 'The visible commits aren\'t shown');
+			// The bars of the visible commits are highlighted, the box describes them, and a legend explains the minimap
+			assert(minimap.querySelectorAll('.minimapBar.visible:not(.empty)').length > 0 && viewport.title.startsWith('The commits shown on the screen: ') && /\(\d+ commits?\)$/.test(viewport.title), 'Unexpected box of the visible commits: ' + viewport.title);
+			const legend = Array.from(minimap.querySelectorAll('.minimapLegend > span')).map((elem) => elem.textContent);
+			assert(JSON.stringify(legend) === JSON.stringify(['On screen', 'HEAD', 'Branches', 'Tags']), 'Unexpected legend: ' + JSON.stringify(legend));
+			const axis = Array.from(minimap.querySelectorAll('.minimapAxis > span')).map((elem) => elem.textContent);
+			assert(axis.length === 3 && axis[2] === 'Today' && minimap.querySelector('.minimapUnit').textContent === 'Commits per day', 'Unexpected axis: ' + JSON.stringify(axis));
 			mouse(activeBars[0], 'click');
 			await waitFor('the oldest day\'s newest commit to be scrolled to', () => document.querySelector('#commitTable tr.commit.flash') !== null);
-			return bars.length + ' days, ' + activeBars.length + ' with commits (' + counted + ' commits)';
+			return bars.length + ' days, ' + activeBars.length + ' with commits (' + counted + ' commits); axis: ' + axis.join(' | ') + '; ' + viewport.title;
 		});
 
 		// Open the "Create Branch" dialog from the context menu of a commit

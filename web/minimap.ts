@@ -1,6 +1,13 @@
 const MINIMAP_MAX_BARS = 120;
-const MINIMAP_BAR_MAX_HEIGHT = 22;
+const MINIMAP_BAR_MAX_HEIGHT = 30;
 const SECONDS_PER_DAY = 86400;
+
+const enum MinimapPeriod {
+	Day,
+	Week,
+	Month,
+	Year
+}
 
 interface MinimapBucket {
 	readonly start: number; // The local day number of the start of the bucket
@@ -16,29 +23,31 @@ interface MinimapMarker {
 }
 
 /**
- * Implements the Minimap of the Git Map View: the number of loaded commits each day (or week / month when the commits span a long time),
- * where HEAD, branches & tags are, and the commits that are currently visible. Clicking on a day scrolls to its commits.
+ * Implements the Minimap of the Git Map View: the number of loaded commits each day (or week / month / year when the commits span a long
+ * time), where HEAD, branches & tags are, and the commits that are currently visible in the view. Clicking on a bar scrolls to its commits.
  */
 class Minimap {
 	private readonly elem: HTMLElement;
 	private readonly onClick: (commitIndex: number) => void;
 	private buckets: MinimapBucket[] = [];
-	private bucketDays: number = 1;
-	private firstDay: number = 0;
+	private period: MinimapPeriod = MinimapPeriod.Day;
+	private firstBucketKey: number = 0;
 	private commitDays: number[] = [];
 	private viewportElem: HTMLElement | null = null;
 
 	/**
 	 * Construct a new Minimap instance.
 	 * @param elem The HTML Element that the minimap is rendered in.
-	 * @param onClick A callback invoked with the index of the newest commit of the day that was clicked.
+	 * @param onClick A callback invoked with the index of the newest commit of the bar that was clicked.
 	 */
 	constructor(elem: HTMLElement, onClick: (commitIndex: number) => void) {
 		this.elem = elem;
 		this.onClick = onClick;
 		this.elem.addEventListener('click', (e) => {
-			const barElem = e.target instanceof Element ? <HTMLElement | null>e.target.closest('.minimapBar') : null;
-			if (barElem === null || typeof barElem.dataset.index !== 'string') return;
+			// The box of the visible commits is above the bars, so the bar below a click on it is found
+			const target = e.target instanceof Element ? <HTMLElement | null>e.target.closest('.minimapBar') : null;
+			const barElem = target !== null ? target : <HTMLElement | undefined>document.elementsFromPoint(e.clientX, e.clientY).find((elem) => elem.classList.contains('minimapBar'));
+			if (typeof barElem === 'undefined' || typeof barElem.dataset.index !== 'string') return;
 			const bucket = this.buckets[parseInt(barElem.dataset.index)];
 			if (typeof bucket !== 'undefined' && bucket.count > 0) this.onClick(bucket.firstIndex);
 		});
@@ -63,13 +72,16 @@ class Minimap {
 			return;
 		}
 
-		const newestDay = Math.max.apply(null, days), oldestDay = Math.min.apply(null, days);
-		const numDays = newestDay - oldestDay + 1;
-		this.bucketDays = numDays <= MINIMAP_MAX_BARS ? 1 : numDays <= MINIMAP_MAX_BARS * 7 ? 7 : Math.ceil(numDays / MINIMAP_MAX_BARS / 30) * 30;
-		const numBuckets = Math.max(Math.ceil(numDays / this.bucketDays), this.bucketDays === 1 ? 30 : 1); // Show at least 30 days
-		this.firstDay = newestDay - numBuckets * this.bucketDays + 1;
+		// Each bar is a day, week, month or year, so that there are at most MINIMAP_MAX_BARS bars
+		const newestDay = Math.max.apply(null, days), oldestDay = Math.min.apply(null, days), numDays = newestDay - oldestDay + 1;
+		this.period = numDays <= MINIMAP_MAX_BARS ? MinimapPeriod.Day
+			: numDays <= MINIMAP_MAX_BARS * 7 ? MinimapPeriod.Week
+				: Minimap.getMonthKey(newestDay) - Minimap.getMonthKey(oldestDay) < MINIMAP_MAX_BARS ? MinimapPeriod.Month : MinimapPeriod.Year;
+		const newestKey = this.getBucketKey(newestDay), oldestKey = this.getBucketKey(oldestDay);
+		const numBuckets = Math.max(newestKey - oldestKey + 1, this.period === MinimapPeriod.Day ? 30 : 1); // Show at least 30 days
+		this.firstBucketKey = newestKey - numBuckets + 1;
 		for (let i = 0; i < numBuckets; i++) {
-			this.buckets.push({ start: this.firstDay + i * this.bucketDays, count: 0, firstIndex: -1 });
+			this.buckets.push({ start: this.getBucketStart(this.firstBucketKey + i), count: 0, firstIndex: -1 });
 		}
 
 		const markers: MinimapMarker[] = [], markedBuckets: { [key: string]: boolean } = {};
@@ -98,20 +110,22 @@ class Minimap {
 			}
 		}
 
-		const maxCount = Math.max.apply(null, this.buckets.map((bucket) => bucket.count));
+		const maxCount = Math.max.apply(null, this.buckets.map((bucket) => bucket.count)), lastIndex = this.buckets.length - 1;
 		const left = (bucketIndex: number) => ((bucketIndex + 0.5) / this.buckets.length * 100).toFixed(3) + '%';
-		this.elem.innerHTML = '<span class="minimapTitle" title="' + escapeHtml(t('The number of commits each day (or week / month). The markers above show where HEAD (circle), branches (squares in the colour of their branch) & tags (diamonds) are. The box shows when the commits that are visible in the view were made. Click on a bar to scroll to its commits.')) + '">' + t('Activity') + '</span>'
+		const unit = this.period === MinimapPeriod.Day ? t('Commits per day') : this.period === MinimapPeriod.Week ? t('Commits per week') : this.period === MinimapPeriod.Month ? t('Commits per month') : t('Commits per year');
+		this.elem.innerHTML = '<div class="minimapTitle"><span>' + t('Activity') + '</span><span class="minimapUnit">' + unit + '</span></div>'
 			+ '<div class="minimapChart">'
 			+ '<div class="minimapMarkers">' + markers.map((marker) => '<span class="minimapMarker ' + marker.kind + '" style="left:' + left(marker.bucket) + ';background-color:' + escapeHtml(marker.colour) + '" title="' + escapeHtml(marker.title) + '"></span>').join('') + '</div>'
-			+ '<div class="minimapBars">' + this.buckets.map((bucket, i) => '<span class="minimapBar' + (bucket.count > 0 ? '' : ' empty') + '" data-index="' + i + '" title="' + escapeHtml(this.getBucketLabel(bucket) + ': ' + t('{0} commits', bucket.count)) + '" style="height:' + (bucket.count > 0 ? 3 + Math.round((MINIMAP_BAR_MAX_HEIGHT - 3) * Math.sqrt(bucket.count / maxCount)) : 1) + 'px"></span>').join('') + '</div>'
+			+ '<div class="minimapBars' + (this.buckets.length > 60 ? ' thin' : '') + '">' + this.buckets.map((bucket, i) => '<span class="minimapBar' + (bucket.count > 0 ? '' : ' empty') + '" data-index="' + i + '" title="' + escapeHtml(this.getBucketLabel(bucket, false) + ': ' + (bucket.count !== 1 ? t('{0} commits', bucket.count) : t('{0} commit', bucket.count))) + '" style="height:' + (bucket.count > 0 ? 3 + Math.round((MINIMAP_BAR_MAX_HEIGHT - 3) * Math.sqrt(bucket.count / maxCount)) : 1) + 'px"></span>').join('') + '</div>'
 			+ '<div id="minimapViewport"></div>'
-			+ '<div class="minimapAxis"><span>' + escapeHtml(this.getBucketLabel(this.buckets[0])) + '</span><span>' + escapeHtml(this.getBucketLabel(this.buckets[this.buckets.length - 1])) + '</span></div>'
-			+ '</div>';
+			+ '<div class="minimapAxis"><span>' + escapeHtml(this.getBucketLabel(this.buckets[0], true)) + '</span>' + (lastIndex >= 4 ? '<span>' + escapeHtml(this.getBucketLabel(this.buckets[Math.round(lastIndex / 2)], true)) + '</span>' : '') + '<span>' + escapeHtml(this.getBucketLabel(this.buckets[lastIndex], true)) + '</span></div>'
+			+ '</div>'
+			+ '<div class="minimapLegend"><span><i class="viewport"></i>' + t('On screen') + '</span><span><i class="minimapMarker head"></i>HEAD</span><span><i class="minimapMarker branch" style="background-color:' + escapeHtml(colours[1 % colours.length]) + '"></i>' + t('Branches') + '</span><span><i class="minimapMarker tag"></i>' + t('Tags') + '</span></div>';
 		this.viewportElem = document.getElementById('minimapViewport');
 	}
 
 	/**
-	 * Show which commits are currently visible on the minimap.
+	 * Show which commits are currently visible in the view on the minimap.
 	 * @param firstIndex The index of the first visible commit.
 	 * @param lastIndex The index of the last visible commit.
 	 */
@@ -121,16 +135,75 @@ class Minimap {
 		const oldestBucket = Math.max(this.getBucketIndex(this.commitDays[lastIndex]), 0);
 		this.viewportElem.style.left = (oldestBucket / this.buckets.length * 100).toFixed(3) + '%';
 		this.viewportElem.style.width = ((newestBucket - oldestBucket + 1) / this.buckets.length * 100).toFixed(3) + '%';
+		const count = lastIndex - firstIndex + 1, oldest = this.getBucketLabel(this.buckets[oldestBucket], false), newest = this.getBucketLabel(this.buckets[newestBucket], false);
+		this.viewportElem.title = t('The commits shown on the screen: {0}', (oldest === newest ? oldest : oldest + ' – ' + newest) + ' (' + (count !== 1 ? t('{0} commits', count) : t('{0} commit', count)) + ')');
+		this.elem.querySelectorAll<HTMLElement>('.minimapBar').forEach((barElem, i) => alterClass(barElem, 'visible', i >= oldestBucket && i <= newestBucket));
 	}
 
+	/**
+	 * Get the index of the bar (bucket) containing a day.
+	 * @param day The local day number.
+	 * @returns The index.
+	 */
 	private getBucketIndex(day: number) {
-		return Math.floor((day - this.firstDay) / this.bucketDays);
+		return this.getBucketKey(day) - this.firstBucketKey;
 	}
 
-	private getBucketLabel(bucket: MinimapBucket) {
-		const date = new Date(bucket.start * SECONDS_PER_DAY * 1000);
-		const label = t('{0} {1} {2}', date.getUTCDate(), t(MONTHS[date.getUTCMonth()]), date.getUTCFullYear());
-		return this.bucketDays === 1 ? label : this.bucketDays === 7 ? t('Week of {0}', label) : t('{0} days from {1}', this.bucketDays, label);
+	/**
+	 * Get the key of the period containing a day: the day, week (starting on a Monday), month or year number.
+	 * @param day The local day number.
+	 * @returns The key.
+	 */
+	private getBucketKey(day: number) {
+		switch (this.period) {
+			case MinimapPeriod.Day:
+				return day;
+			case MinimapPeriod.Week:
+				return Math.floor((day + 3) / 7); // Day 0 (1 Jan 1970) was a Thursday
+			case MinimapPeriod.Month:
+				return Minimap.getMonthKey(day);
+			default:
+				return new Date(day * SECONDS_PER_DAY * 1000).getUTCFullYear();
+		}
+	}
+
+	/**
+	 * Get the first day of a period.
+	 * @param key The key of the period.
+	 * @returns The local day number.
+	 */
+	private getBucketStart(key: number) {
+		switch (this.period) {
+			case MinimapPeriod.Day:
+				return key;
+			case MinimapPeriod.Week:
+				return key * 7 - 3;
+			case MinimapPeriod.Month:
+				return Math.round(Date.UTC(Math.floor(key / 12), key % 12, 1) / 1000 / SECONDS_PER_DAY);
+			default:
+				return Math.round(Date.UTC(key, 0, 1) / 1000 / SECONDS_PER_DAY);
+		}
+	}
+
+	/**
+	 * Get the label of a bar.
+	 * @param bucket The bucket of the bar.
+	 * @param short Is the label for the axis (short), or a tooltip.
+	 * @returns The label.
+	 */
+	private getBucketLabel(bucket: MinimapBucket, short: boolean) {
+		const date = new Date(bucket.start * SECONDS_PER_DAY * 1000), year = date.getUTCFullYear(), month = t(MONTHS[date.getUTCMonth()]);
+		const today = Minimap.getLocalDay(Math.round(Date.now() / 1000));
+		switch (this.period) {
+			case MinimapPeriod.Day:
+				return short && bucket.start === today ? t('Today') : short && year === new Date().getFullYear() ? t('{0} {1}', date.getUTCDate(), month) : t('{0} {1} {2}', date.getUTCDate(), month, year);
+			case MinimapPeriod.Week:
+				return short ? t('{0} {1}', date.getUTCDate(), month) + (year !== new Date().getFullYear() ? ' ' + year : '') : t('Week of {0}', t('{0} {1} {2}', date.getUTCDate(), month, year));
+			case MinimapPeriod.Month:
+				return t('{1} {0}', year, month);
+			default:
+				return year.toString();
+		}
 	}
 
 	/**
@@ -141,6 +214,16 @@ class Minimap {
 	private static getLocalDay(unixTimestamp: number) {
 		const offset = -new Date(unixTimestamp * 1000).getTimezoneOffset() * 60;
 		return Math.floor((unixTimestamp + offset) / SECONDS_PER_DAY);
+	}
+
+	/**
+	 * Get the month number (since January of year 0) of a local day.
+	 * @param day The local day number.
+	 * @returns The month number.
+	 */
+	private static getMonthKey(day: number) {
+		const date = new Date(day * SECONDS_PER_DAY * 1000);
+		return date.getUTCFullYear() * 12 + date.getUTCMonth();
 	}
 }
 

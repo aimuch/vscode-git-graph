@@ -635,8 +635,6 @@
 	"Activity": "活动",
 	"{0} commits": "{0} 个提交",
 	"Week of {0}": "{0} 起的一周",
-	"{0} days from {1}": "{1} 起的 {0} 天",
-	"The number of commits each day (or week / month). The markers above show where HEAD (circle), branches (squares in the colour of their branch) & tags (diamonds) are. The box shows when the commits that are visible in the view were made. Click on a bar to scroll to its commits.": "每天（或每周 / 每月）的提交数。上方的标记表示 HEAD（圆点）、分支（与分支线同色的方块）和标签（菱形）的位置。蓝框表示视图中当前可见的提交所在的时间段。点击柱子可滚动到对应的提交。",
 	"The Extension Setting \"{0}\" can't be set to \"{1}\".": "扩展设置 \"{0}\" 不能设为 \"{1}\"。",
 	"Visual Studio Code was unable to update the Extension Setting \"{0}\".": "Visual Studio Code 无法更新扩展设置 \"{0}\"。",
 	"Unable to Update Extension Setting": "无法更新扩展设置",
@@ -748,5 +746,14 @@
 	"Tags": "标签",
 	"Find Matches": "搜索匹配",
 	"{0} commit(s) ahead of {1}": "领先 {1} {0} 个提交",
-	"{0} commit(s) behind {1}": "落后 {1} {0} 个提交"
+	"{0} commit(s) behind {1}": "落后 {1} {0} 个提交",
+	"Commits per day": "每日提交数",
+	"Commits per week": "每周提交数",
+	"Commits per month": "每月提交数",
+	"Commits per year": "每年提交数",
+	"On screen": "屏幕上的提交",
+	"The commits shown on the screen: {0}": "屏幕上显示的提交：{0}",
+	"Today": "今天",
+	"{0} {1}": "{1}{0}日",
+	"{1} {0}": "{0}年{1}"
 }

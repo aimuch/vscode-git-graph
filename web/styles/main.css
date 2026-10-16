@@ -1983,21 +1983,26 @@ body.tagLabelsRightAligned .gitRef.tag{
 	display:none;
 	flex:1 0 100%;
 	align-items:stretch;
-	gap:10px;
-	height:46px;
+	gap:12px;
+	height:58px;
 	margin-top:2px;
 }
 #minimap.active{
 	display:flex;
 }
 .minimapTitle{
+	display:flex;
+	flex-direction:column;
+	justify-content:space-between;
 	flex:0 0 auto;
-	align-self:flex-start;
-	padding-top:10px;
+	min-width:56px;
+	padding:6px 0 0;
 	color:var(--vscode-descriptionForeground);
 	font-size:11px;
+}
+.minimapTitle > span:first-child{
+	color:var(--vscode-foreground);
 	font-weight:600;
-	letter-spacing:0.04em;
 }
 .minimapChart{
 	position:relative;
@@ -2009,14 +2014,14 @@ body.tagLabelsRightAligned .gitRef.tag{
 	left:0;
 	right:0;
 	top:0;
-	height:8px;
+	height:9px;
 }
 .minimapMarker{
 	position:absolute;
 	top:1px;
-	width:6px;
-	height:6px;
-	margin-left:-3px;
+	width:7px;
+	height:7px;
+	margin-left:-3.5px;
 	border-radius:1px;
 }
 .minimapMarker.head{
@@ -2030,35 +2035,43 @@ body.tagLabelsRightAligned .gitRef.tag{
 	position:absolute;
 	left:0;
 	right:0;
-	top:10px;
-	bottom:14px;
+	top:12px;
+	bottom:16px;
 	display:flex;
 	align-items:flex-end;
+	gap:2px;
+}
+.minimapBars.thin{
 	gap:1px;
 }
 .minimapBar{
 	flex:1 1 0;
 	min-width:1px;
 	border-radius:2px 2px 0 0;
-	background-color:color-mix(in srgb, var(--vscode-foreground) 35%, transparent);
+	background-color:color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
 	cursor:pointer;
 }
 .minimapBar.empty{
-	background-color:color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+	background-color:color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
 	cursor:default;
 }
-.minimapBar:not(.empty):hover{
+.minimapBar.visible:not(.empty){
 	background-color:var(--vscode-focusBorder);
 }
+.minimapBar:not(.empty):hover{
+	background-color:color-mix(in srgb, var(--vscode-focusBorder) 70%, var(--vscode-foreground));
+}
+/* The box around the bars of the commits that are visible in the view (outlined, so it doesn't look like a selection) */
 #minimapViewport{
 	position:absolute;
-	top:8px;
-	bottom:12px;
+	top:10px;
+	bottom:14px;
 	box-sizing:border-box;
+	min-width:4px;
 	border:1px solid var(--vscode-focusBorder);
 	border-radius:3px;
-	background-color:color-mix(in srgb, var(--vscode-focusBorder) 18%, transparent);
-	pointer-events:none;
+	background-color:transparent;
+	cursor:pointer;
 }
 .minimapAxis{
 	position:absolute;
@@ -2070,6 +2083,46 @@ body.tagLabelsRightAligned .gitRef.tag{
 	color:var(--vscode-descriptionForeground);
 	font-size:10.5px;
 	line-height:12px;
+	white-space:nowrap;
+	overflow:hidden;
+}
+/* The legend of the minimap */
+.minimapLegend{
+	display:flex;
+	flex-direction:column;
+	justify-content:center;
+	flex:0 0 auto;
+	gap:1px;
+	color:var(--vscode-descriptionForeground);
+	font-size:10.5px;
+	line-height:13px;
+	white-space:nowrap;
+}
+.minimapLegend > span{
+	display:inline-flex;
+	align-items:center;
+	gap:6px;
+}
+.minimapLegend i{
+	position:relative;
+	display:inline-block;
+	flex:0 0 auto;
+	top:auto;
+	margin:0 1px;
+}
+.minimapLegend i.viewport{
+	width:10px;
+	height:7px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-focusBorder);
+	border-radius:2px;
+	margin:0;
+}
+.minimapLegend .minimapMarker.head{
+	background-color:var(--vscode-focusBorder);
+}
+.minimapLegend .minimapMarker.tag{
+	background-color:var(--vscode-descriptionForeground);
 }
 
 
