@@ -50,6 +50,7 @@ export class DataSource extends Disposable {
 	private gitFormatCommitDetails!: string;
 	private gitFormatLog!: string;
 	private gitFormatStash!: string;
+	private fileHistoryPathsCache: { key: string, paths: string[] } | null = null;
 
 	/**
 	 * Creates the Git Map Data Source.
@@ -237,7 +238,7 @@ export class DataSource extends Disposable {
 		if (filePath !== null) stashes = []; // Stashes aren't part of the history of a file
 		const revisionArgs = this.getRevisionArgs(branches, includeTags, showRemoteBranches, includeCommitsMentionedByReflogs, remotes, hideRemotes, stashes);
 		let fileHistory: GitFileHistory | null = null;
-		return (filePath !== null ? this.getFileHistoryPaths(repo, filePath, revisionArgs) : Promise.resolve(null)).then((paths) => Promise.all([
+		return (filePath !== null ? this.getFileHistoryPaths(repo, filePath, revisionArgs, onlyFollowFirstParent) : Promise.resolve(null)).then((paths) => Promise.all([
 			this.getLog(repo, branches, maxCommits + 1, includeTags, showRemoteBranches, includeCommitsMentionedByReflogs, onlyFollowFirstParent, commitOrdering, remotes, hideRemotes, stashes, authors, paths),
 			this.getRefs(repo, showRemoteBranches, config.showRemoteHeads, hideRemotes).then((refData: GitRefData) => refData, (errorMessage: string) => errorMessage),
 			filePath !== null && paths !== null ? this.getFileHistoryCommits(repo, revisionArgs, paths, maxCommits + 1, onlyFollowFirstParent, commitOrdering).then((commits) => {
@@ -1670,21 +1671,31 @@ export class DataSource extends Disposable {
 	 * @param repo The path of the repository.
 	 * @param filePath The current path of the file.
 	 * @param revisionArgs The revisions whose history is searched.
+	 * @param onlyFollowFirstParent Only follow the first parent of commits.
 	 * @returns The paths (the current path first).
 	 */
-	private getFileHistoryPaths(repo: string, filePath: string, revisionArgs: ReadonlyArray<string>) {
-		return this.spawnGit(['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--follow', '-M', '--diff-filter=R', '--name-status', '--format=', ...revisionArgs, '--', filePath], repo, (stdout) => {
-			const paths = [filePath];
-			stdout.split(LF_REGEX).forEach((line) => {
-				const fields = line.split('\t');
-				if (fields.length === 3 && fields[0].startsWith('R')) {
-					fields.slice(1).forEach((path) => {
-						if (!paths.includes(path)) paths.push(path);
-					});
-				}
-			});
-			return paths;
-		}).catch(() => [filePath]);
+	private getFileHistoryPaths(repo: string, filePath: string, revisionArgs: ReadonlyArray<string>, onlyFollowFirstParent: boolean) {
+		// Following a file walks all of its history, so the paths are cached while the revisions (and HEAD) are unchanged, as the view is refreshed often
+		return this.spawnGit(['rev-parse', 'HEAD'], repo, (stdout) => stdout.trim()).catch(() => '').then((head) => {
+			const key = JSON.stringify([repo, filePath, revisionArgs, onlyFollowFirstParent, head]);
+			if (this.fileHistoryPathsCache !== null && this.fileHistoryPathsCache.key === key) return this.fileHistoryPathsCache.paths;
+			const args = ['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--follow', '-M', '--diff-filter=R', '--name-status', '--format='];
+			if (onlyFollowFirstParent) args.push('--first-parent');
+			args.push(...revisionArgs, '--', filePath);
+			return this.spawnGit(args, repo, (stdout) => {
+				const paths = [filePath];
+				stdout.split(LF_REGEX).forEach((line) => {
+					const fields = line.split('\t');
+					if (fields.length === 3 && fields[0].startsWith('R')) {
+						fields.slice(1).forEach((path) => {
+							if (!paths.includes(path)) paths.push(path);
+						});
+					}
+				});
+				this.fileHistoryPathsCache = { key: key, paths: paths };
+				return paths;
+			}).catch(() => [filePath]);
+		});
 	}
 
 	/**

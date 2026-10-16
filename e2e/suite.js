@@ -330,6 +330,21 @@ async function run() {
 		}
 	});
 
+	await check('ui-file-history-command', '[Redesign] The "View File History in Git Map" command opens the view showing the history of the file (relative to its repository)', async () => {
+		const view = await getView();
+		const since = { requests: record.requests.length, responses: record.responses.length };
+		await vscode.commands.executeCommand('git-graph.viewFileHistory', vscode.Uri.file(path.join(main, 'file.txt')));
+		const request = await waitFor('the history of file.txt to be requested', () => record.requests.slice(since.requests).find((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === 'file.txt'));
+		const response = await waitFor('the history to be loaded', () => record.responses.slice(since.responses).find((msg) => msg.command === 'loadCommits' && msg.refreshId === request.refreshId));
+		const hashes = response.commits.map((commit) => commit.hash);
+		assert(response.error === null && response.fileHistory !== null && hashes.length === 4 && hashes.includes(fixtures.firstCommit) && hashes.includes(fixtures.secondAuthorCommit) && !hashes.includes(fixtures.headCommit), 'Unexpected history of file.txt: ' + hashes.length + ' commits');
+		// Exit the history of the file (so all commits are shown for the following checks)
+		const exitSince = record.requests.length;
+		view.respondLoadRepos(view.repoManager.getRepos(), { repo: main, fileHistory: null });
+		await waitFor('all of the commits to be requested', () => record.requests.slice(exitSince).some((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === null));
+		return 'file.txt: ' + hashes.length + ' commits';
+	});
+
 	await check('#940', 'Interactive rebase on a branch whose name contains shell syntax does not execute it', async () => {
 		const dataSource = (await getView()).dataSource;
 		assert(!fs.existsSync(fixtures.injectionMarker), 'The marker exists before the rebase');

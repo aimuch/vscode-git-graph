@@ -579,6 +579,14 @@
 			const columns = new Set(Array.from(document.querySelectorAll('#commitGraph svg circle')).map((circle) => circle.getAttribute('cx')));
 			assert(columns.size === 1, 'The graph of the history isn\'t connected');
 
+			// Only the history on the current branch can be shown (which is also selected in the Branches dropdown)
+			mouse(document.querySelector('.fileHistoryBranchesOption[data-value="current"]'), 'click');
+			await waitFor('the history on the current branch to be loaded', () => JSON.stringify(requestsOf('loadCommits').slice(-1)[0].branches) === JSON.stringify(['main']) && requestsOf('loadCommits').slice(-1)[0].filePath === 'src/new-name.ts' && rows().length === 5);
+			const branchValue = document.querySelector('#branchDropdown .dropdownValue').textContent;
+			assert(branchValue === 'main' && document.querySelector('.fileHistoryBranchesOption[data-value="current"]').classList.contains('active'), 'The current branch isn\'t selected: ' + branchValue);
+			mouse(document.querySelector('.fileHistoryBranchesOption[data-value="all"]'), 'click');
+			await waitFor('the history on all branches to be loaded', () => requestsOf('loadCommits').slice(-1)[0].branches === null && rows().length === 5);
+
 			mouse(rows()[1], 'click');
 			await waitFor('the changes to the file in the commit', () => document.getElementById('cdvFileFocus') && document.querySelector('#cdvFileDiff .cdvFileDiffLine'));
 			assert(document.querySelector('#cdvHeader .cdvHeaderTitle').textContent === 'Changes to this File in the Commit', 'Unexpected title: ' + document.querySelector('#cdvHeader .cdvHeaderTitle').textContent);

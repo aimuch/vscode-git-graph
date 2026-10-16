@@ -396,7 +396,7 @@ export type LoadGitGraphViewTo = {
 		readonly compareWithHash: string | null
 	},
 	readonly runCommandOnLoad?: 'fetch',
-	readonly fileHistory?: string
+	readonly fileHistory?: string | null // The path of a file whose history is shown (NULL => all commits are shown)
 } | null;
 
 export interface MuteCommitsConfig {

@@ -245,6 +245,9 @@ class GitGraphView {
 		} else if (fileHistory !== null) {
 			this.setFileHistory(fileHistory);
 			return true;
+		} else if (loadViewTo !== null && loadViewTo.repo === newRepo && loadViewTo.fileHistory === null && this.fileHistory !== null) {
+			this.setFileHistory(null);
+			return true;
 		} else {
 			this.finaliseRepoLoad(false);
 			return false;
