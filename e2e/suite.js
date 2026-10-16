@@ -45,7 +45,11 @@ function assert(condition, message) {
 	if (!condition) throw new Error(message);
 }
 
+// E2E_ONLY (a comma separated list of check ids, and / or "harness") only runs those checks, while developing them
+const ONLY = process.env.E2E_ONLY ? process.env.E2E_ONLY.split(',') : null;
+
 async function check(id, title, fn) {
+	if (ONLY !== null && !ONLY.includes(id)) return;
 	const start = Date.now();
 	try {
 		const details = await fn();
@@ -57,6 +61,38 @@ async function check(id, title, fn) {
 
 function realpath(p) {
 	return fs.realpathSync(p).replace(/\\/g, '/');
+}
+
+/**
+ * Create a new repository for a check that changes it (outside of the workspace, so that it isn't discovered by Git Map).
+ * @param name The name of the repository.
+ * @param files The files committed in the first commit of the repository.
+ * @returns The path of the repository.
+ */
+function createScratchRepo(name, files) {
+	const repo = path.join(path.dirname(fixtures.workspace), 'scratch', name);
+	fs.rmSync(repo, { recursive: true, force: true });
+	fs.mkdirSync(repo, { recursive: true });
+	git(repo, 'init', '-q', '-b', 'main');
+	git(repo, 'config', 'commit.gpgsign', 'false');
+	// The identity used by the Git commands that Git Map runs (the global Git config isn't used by the checks)
+	git(repo, 'config', 'user.name', 'E2E Committer');
+	git(repo, 'config', 'user.email', 'committer@example.com');
+	Object.keys(files).forEach((file) => fs.writeFileSync(path.join(repo, file), files[file]));
+	git(repo, 'add', '-A');
+	git(repo, 'commit', '-q', '-m', 'Initial commit');
+	return realpath(repo);
+}
+
+/**
+ * Make a commit in a repository, changing a file.
+ * @returns The hash of the commit.
+ */
+function commitFile(repo, file, contents, message) {
+	fs.writeFileSync(path.join(repo, file), contents);
+	git(repo, 'add', file);
+	git(repo, 'commit', '-q', '-m', message);
+	return git(repo, 'rev-parse', 'HEAD');
 }
 
 /**
@@ -418,6 +454,27 @@ async function run() {
 		assert(!remoteRefs().includes('refs/heads/asd') && remoteRefs().includes('refs/tags/asd'), 'Unexpected remote refs after deleting the branch: ' + remoteRefs().join(', '));
 	});
 
+	await check('cherry-pick-commits', '[GitLens] Several selected commits are cherry picked together, oldest first (recording their origin if chosen)', async () => {
+		const view = await getView(), dataSource = view.dataSource;
+		const repo = createScratchRepo('cherry-pick', { 'base.txt': 'base\n' });
+		git(repo, 'checkout', '-q', '-b', 'feature');
+		const a = commitFile(repo, 'a.txt', 'a\n', 'Add a'), b = commitFile(repo, 'b.txt', 'b\n', 'Add b'), c = commitFile(repo, 'c.txt', 'c\n', 'Add c');
+		git(repo, 'checkout', '-q', 'main');
+
+		const error = await dataSource.cherrypickCommits(repo, [a, c], false, false);
+		assert(error === null, 'Cherry picking failed: ' + error);
+		const subjects = git(repo, 'log', '--format=%s', '-3').split('\n');
+		assert(JSON.stringify(subjects) === JSON.stringify(['Add c', 'Add a', 'Initial commit']), 'Unexpected commits: ' + JSON.stringify(subjects));
+
+		// The request from the Webview, recording the origin of each commit
+		const count = record.responses.filter((msg) => msg.command === 'cherrypickCommits').length;
+		await view.respondToMessage({ command: 'cherrypickCommits', repo: repo, commitHashes: [b], recordOrigin: true, noCommit: false });
+		const response = await waitFor('the response', () => record.responses.filter((msg) => msg.command === 'cherrypickCommits')[count]);
+		const body = git(repo, 'log', '-1', '--format=%B');
+		assert(response.errors.every((error) => error === null) && body.includes('(cherry picked from commit ' + b + ')'), 'Unexpected result: ' + JSON.stringify(response) + ', ' + body);
+		return 'main: ' + git(repo, 'log', '--format=%s', '-4').split('\n').join(' ← ');
+	});
+
 	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
 		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');
@@ -468,6 +525,7 @@ async function run() {
 
 	// Webview UI checks: run ./webview-harness.js inside a copy of the Git Map View's HTML, in a real Webview of this version of Visual Studio Code
 	const runWebviewHarness = async (html, titlePrefix) => {
+		if (ONLY !== null && !ONLY.includes('harness')) return;
 		const start = Date.now();
 		try {
 			const nonce = html.match(/<script nonce="([^"]+)"/)[1];

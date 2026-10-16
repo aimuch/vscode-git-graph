@@ -52,6 +52,8 @@ class GitGraphView {
 	private scrollToStashPending: { stash: GG.GitStash, attempts: number } | null = null;
 	public stashStats: { [hash: string]: GG.GitStashStats } = {};
 	public expandedCommit: ExpandedCommit | null = null;
+	private selectedCommits: Set<string> = new Set(); // The commits selected with Shift (+ Ctrl / Cmd) + click
+	private selectionAnchor: string | null = null; // The commit that a range of commits is selected from
 	private maxCommits: number;
 	private scrollTop = 0;
 	private renderedGitBranchHead: string | null = null;
@@ -170,6 +172,18 @@ class GitGraphView {
 		this.observeMouseNavigationButtons();
 		this.observeUrls();
 		this.observeTableEvents();
+		this.footerElem.addEventListener('click', (e) => {
+			const actionElem = e.target instanceof Element ? <HTMLElement | null>e.target.closest('.listFooterAction') : null;
+			if (actionElem === null) return;
+			const commits = this.getSelectedCommits();
+			if (actionElem.dataset.action === 'cherrypick') {
+				this.actions.cherrypickCommitsAction(commits, null);
+			} else if (actionElem.dataset.action === 'copyHashes') {
+				this.actions.copyCommitsToClipboard(commits, false);
+			} else {
+				this.clearCommitSelection();
+			}
+		});
 
 		if (prevState && !prevState.currentRepoLoading && typeof this.gitRepos[prevState.currentRepo] !== 'undefined') {
 			this.currentRepo = prevState.currentRepo;
@@ -282,6 +296,8 @@ class GitGraphView {
 		this.fileHistoryData = null;
 		this.renderFileHistoryBar();
 		if (repo !== this.currentRepo) this.minimap.resetZoom();
+		this.selectedCommits = new Set();
+		this.selectionAnchor = null;
 		this.currentRepo = repo;
 		this.currentRepoLoading = true;
 		this.scrollToHeadPending = false;
@@ -1185,7 +1201,7 @@ class GitGraphView {
 				) + '."></span>'
 				: '';
 
-			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
+			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + (this.selectedCommits.has(commit.hash) ? ' multiSelected' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
 				(refsInColumn
 					? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels" style="--git-graph-refs:' + (branchLabels.heads.length + branchLabels.remotes.length + commit.tags.length + (commit.stash !== null ? 1 : 0)) + '">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
 					: this.config.referenceLabels.branchLabelsAlignedToGraph
@@ -1207,9 +1223,10 @@ class GitGraphView {
 		this.footerElem.innerHTML = this.commits.length > 0
 			? '<div id="listFooter"><span class="listFooterCount">' + (loaded !== 1 ? t('{0} commits loaded', loaded) : t('1 commit loaded')) + (shown !== loaded ? ' · ' + t('{0} shown', shown) : '') + '</span>' +
 				'<span class="listFooterLegend">' + t('Scrollbar markers:') + '<span><i style="background-color:var(--vscode-focusBorder)"></i>HEAD</span><span><i style="background-color:' + escapeHtml(this.config.graph.colours[1 % this.config.graph.colours.length]) + '"></i>' + t('Branches') + '</span><span><i style="background-color:var(--vscode-descriptionForeground)"></i>' + t('Tags') + '</span><span><i style="background-color:var(--vscode-editorOverviewRuler-findMatchForeground, #d18616)"></i>' + t('Find Matches') + '</span></span>' +
-				'<span class="listFooterSpacer"></span>' + (this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '') + '</div>'
+				'<span id="listFooterSelection"></span><span class="listFooterSpacer"></span>' + (this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '') + '</div>'
 			: '';
 		document.body.style.setProperty('--git-graph-colHeadersHeight', document.getElementById('tableColHeaders')!.offsetHeight + 'px');
+		this.renderCommitSelection();
 		this.tableColumns.makeTableResizable();
 		this.tableColumns.makeRefsColumnResizable();
 		this.tableColumns.updateTruncatedRefLabels();
@@ -1278,6 +1295,77 @@ class GitGraphView {
 			dateElem.textContent = date.formatted;
 		}
 		this.requestCommitStats(true);
+	}
+
+	/* Selected Commits */
+
+	/**
+	 * Select commits (with Shift + click): the commits from the commit the selection started at (or the commit whose details are open) to
+	 * a commit, or add / remove a commit (with Ctrl / Cmd + Shift + click). The uncommitted changes & stashes can't be selected.
+	 * @param hash The hash of the commit that was clicked.
+	 * @param toggle Add or remove the commit, instead of selecting a range of commits.
+	 */
+	private selectCommits(hash: string, toggle: boolean) {
+		const isSelectable = (commit: GG.GitCommit) => commit.hash !== UNCOMMITTED && commit.stash === null;
+		const index = this.commitLookup[hash];
+		if (typeof index !== 'number' || !isSelectable(this.commits[index])) return;
+		if (toggle) {
+			if (this.selectedCommits.has(hash)) {
+				this.selectedCommits.delete(hash);
+			} else {
+				this.selectedCommits.add(hash);
+			}
+			this.selectionAnchor = hash;
+		} else {
+			let anchor = this.selectionAnchor !== null ? this.selectionAnchor : this.expandedCommit !== null && this.expandedCommit.compareWithHash === null ? this.expandedCommit.commitHash : hash;
+			if (typeof this.commitLookup[anchor] !== 'number') anchor = hash;
+			const from = Math.min(index, this.commitLookup[anchor]), to = Math.max(index, this.commitLookup[anchor]);
+			this.selectedCommits = new Set(this.commits.slice(from, to + 1).filter(isSelectable).map((commit) => commit.hash));
+			this.selectionAnchor = anchor;
+		}
+		this.renderCommitSelection();
+	}
+
+	/**
+	 * Clear the selected commits.
+	 */
+	public clearCommitSelection() {
+		if (this.selectedCommits.size === 0 && this.selectionAnchor === null) return;
+		this.selectedCommits = new Set();
+		this.selectionAnchor = null;
+		this.renderCommitSelection();
+	}
+
+	/**
+	 * Get the selected commits.
+	 * @returns The commits, oldest first (the order they're cherry picked in).
+	 */
+	public getSelectedCommits() {
+		return this.commits.filter((commit) => this.selectedCommits.has(commit.hash)).reverse();
+	}
+
+	/**
+	 * Render the selected commits (and the actions on them in the footer). Commits that are no longer loaded are unselected.
+	 */
+	private renderCommitSelection() {
+		this.selectedCommits.forEach((hash) => {
+			if (typeof this.commitLookup[hash] !== 'number') this.selectedCommits.delete(hash);
+		});
+		const commitElems = getCommitElems();
+		for (let i = 0; i < commitElems.length; i++) {
+			const commit = this.getCommitOfElem(commitElems[i]);
+			alterClass(commitElems[i], 'multiSelected', commit !== null && this.selectedCommits.has(commit.hash));
+		}
+		const selectionElem = document.getElementById('listFooterSelection');
+		if (selectionElem === null) return;
+		const count = this.selectedCommits.size;
+		selectionElem.innerHTML = count > 0
+			? '<span class="listFooterSelectionCount">' + (count !== 1 ? t('{0} commits selected', count) : t('1 commit selected')) + '</span>' +
+				'<span class="listFooterAction" data-action="cherrypick">' + t('Cherry Pick') + ELLIPSIS + '</span>' +
+				'<span class="listFooterAction" data-action="copyHashes">' + t('Copy Hashes') + '</span>' +
+				'<span class="listFooterAction" data-action="clear" title="' + t('Escape') + '">' + t('Clear Selection') + '</span>'
+			: '';
+		alterClass(selectionElem, CLASS_ACTIVE, count > 0);
 	}
 
 	/**
@@ -1707,7 +1795,10 @@ class GitGraphView {
 					possibleChordStart = Date.now();
 				}
 			} else if (e.key === 'Escape') {
-				if (this.stashList.isStashListOpen()) {
+				if (this.selectedCommits.size > 0) {
+					this.clearCommitSelection();
+					handledEvent(e);
+				} else if (this.stashList.isStashListOpen()) {
 					this.stashList.closeStashList();
 					handledEvent(e);
 				} else if (this.repoDropdown.isOpen()) {
@@ -1867,6 +1958,13 @@ class GitGraphView {
 
 			} else if ((eventElem = eventTarget.closest('.commit')) !== null) {
 				// .commit was clicked
+				const clickedCommit = this.getCommitOfElem(eventElem);
+				if (e.shiftKey) {
+					// Shift + click selects the commits from the selected commit (or the commit whose details are open), and Ctrl / Cmd + Shift + click adds or removes a commit
+					if (clickedCommit !== null) this.selectCommits(clickedCommit.hash, e.ctrlKey || e.metaKey);
+					return;
+				}
+				this.clearCommitSelection();
 				if (this.expandedCommit !== null) {
 					const commit = this.getCommitOfElem(eventElem);
 					if (commit === null) return;
@@ -1997,7 +2095,9 @@ class GitGraphView {
 				};
 
 				let actions: ContextMenuActions;
-				if (commit.hash === UNCOMMITTED) {
+				if (this.selectedCommits.size > 1 && this.selectedCommits.has(commit.hash)) {
+					actions = this.actions.getSelectedCommitsContextMenuActions(this.getSelectedCommits(), target);
+				} else if (commit.hash === UNCOMMITTED) {
 					actions = this.actions.getUncommittedChangesContextMenuActions(target);
 				} else if (commit.stash !== null) {
 					target.ref = commit.stash.selector;

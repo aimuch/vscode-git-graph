@@ -50,8 +50,9 @@
 					return { command: 'loadCommits', refreshId: msg.refreshId, commits: tips.concat([base]), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
 				}
 				if (msg.filePath === 'e2e-dates.txt') {
-					// A commit each day, for the after: & before: search operators
+					// A commit each day, for the after: & before: search operators (commit 8 is a merge commit, for selecting commits)
 					const daily = makeCommits(20).map((commit, i) => Object.assign(commit, { date: NOW - i * 86400, heads: [] }));
+					daily[8].parents = [hash(10), hash(11)];
 					return { command: 'loadCommits', refreshId: msg.refreshId, commits: daily, head: daily[0].hash, tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
 				}
 				if (msg.filePath === 'src/new-name.ts') {
@@ -113,6 +114,8 @@
 			case 'searchCommits':
 				// The commits that change a file whose path contains "README" are the even commits
 				return { command: 'searchCommits', id: msg.id, error: null, hashes: msg.files.some((file) => 'readme.md'.includes(file.toLowerCase())) ? makeCommits(25).filter((_, i) => i % 2 === 0).map((commit) => commit.hash) : [] };
+			case 'cherrypickCommits':
+				return { command: 'cherrypickCommits', errors: [null] };
 			case 'openExternalUrl':
 			case 'setGlobalViewState':
 			case 'setWorkspaceViewState':
@@ -1011,6 +1014,67 @@
 			mouse(document.getElementById('fileHistoryExit'), 'click');
 			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && document.querySelectorAll('#commitTable tr.commit').length === 10);
 			return JSON.stringify(results) + '; invalid: ' + invalid + '; minimap range: ' + chips.join(' ') + ' → ' + rangeResult;
+		});
+
+		await check('ui-multi-select', '[GitLens] Commits can be selected with Shift (+ Ctrl / Cmd) + click, and cherry picked together (oldest first, merge commits refused), or their hashes copied', async () => {
+			window.dispatchEvent(new MessageEvent('message', { data: { command: 'loadRepos', repos: initialState.repos, lastActiveRepo: REPO, loadViewTo: { repo: REPO, fileHistory: 'e2e-dates.txt' } } }));
+			await waitFor('the daily commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === 'e2e-dates.txt' && document.querySelectorAll('#commitTable tr.commit').length === 20);
+			const selected = () => Array.from(document.querySelectorAll('#commitTable tr.commit.multiSelected')).map((row) => parseInt(row.dataset.id));
+			const footer = () => document.getElementById('listFooterSelection').textContent;
+			const shiftClick = (index, toggle) => mouse(commitRow(index).querySelector('td.descriptionCol'), 'click', Object.assign({ shiftKey: true }, toggle ? ctrl : {}));
+
+			// Shift + click selects the commits from the commit whose details are open
+			mouse(commitRow(2).querySelector('td.descriptionCol'), 'click');
+			await waitFor('the Commit Details View to open', () => document.getElementById('cdv') !== null);
+			shiftClick(5, false);
+			assert(JSON.stringify(selected()) === '[2,3,4,5]' && footer().startsWith('4 commits selected'), 'Unexpected selection: ' + JSON.stringify(selected()) + ', "' + footer() + '"');
+			// Ctrl / Cmd + Shift + click removes (or adds) a commit
+			shiftClick(4, true);
+			assert(JSON.stringify(selected()) === '[2,3,5]' && footer().startsWith('3 commits selected'), 'Unexpected selection after removing a commit: ' + JSON.stringify(selected()));
+
+			// The context menu of a selected commit acts on all of the selected commits
+			mouse(commitRow(3), 'contextmenu', { button: 2 });
+			const menu = await waitFor('the context menu', () => document.querySelector('.contextMenu'));
+			const items = Array.from(menu.querySelectorAll('.contextMenuItem')).map((item) => item.textContent);
+			assert(JSON.stringify(items) === JSON.stringify(['Cherry Pick 3 Commits…', 'Copy 3 Commit Hashes to Clipboard', 'Copy 3 Commit Subjects to Clipboard', 'Clear Selection']), 'Unexpected context menu: ' + JSON.stringify(items));
+			mouse(Array.from(menu.querySelectorAll('.contextMenuItem')).find((item) => item.textContent.startsWith('Copy 3 Commit Hashes')), 'click');
+			const copied = await waitFor('the hashes to be copied', () => requestsOf('copyToClipboard').slice(-1)[0]);
+			assert(copied.data === [hash(6), hash(4), hash(3)].join('\n'), 'The hashes weren\'t copied oldest first: ' + JSON.stringify(copied.data));
+
+			// Cherry picking them (from the footer) confirms the commits, which are cherry picked oldest first
+			mouse(Array.from(document.querySelectorAll('#listFooterSelection .listFooterAction')).find((elem) => elem.dataset.action === 'cherrypick'), 'click');
+			const dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+			const dialogText = dialogElem.textContent;
+			assert(dialogText.includes('cherry pick these 3 commits') && dialogText.indexOf('Commit 5') < dialogText.indexOf('Commit 3') && dialogText.indexOf('Commit 3') < dialogText.indexOf('Resolve #102'), 'Unexpected dialog: ' + dialogText);
+			const before = requestsOf('cherrypickCommits').length;
+			mouse(document.getElementById('dialogAction'), 'click');
+			const request = await waitFor('the commits to be cherry picked', () => requestsOf('cherrypickCommits').length > before ? requestsOf('cherrypickCommits').slice(-1)[0] : null);
+			assert(JSON.stringify(request.commitHashes) === JSON.stringify([hash(6), hash(4), hash(3)]) && request.recordOrigin === false && request.noCommit === false, 'Unexpected request: ' + JSON.stringify(request));
+			await waitFor('the selection to be cleared', () => selected().length === 0 && footer() === '');
+			if (document.querySelector('.dialog') !== null) key(document.body, 'Escape');
+
+			// A merge commit can't be cherry picked with other commits (the range is selected from the commit whose details are opened)
+			mouse(commitRow(7).querySelector('td.descriptionCol'), 'click');
+			await waitFor('the details of the commit to open', () => document.querySelector('#commitTable tr.commit.commitDetailsOpen') === commitRow(7));
+			shiftClick(9, false);
+			assert(JSON.stringify(selected()) === '[7,8,9]', 'Unexpected selection including the merge commit: ' + JSON.stringify(selected()));
+			mouse(Array.from(document.querySelectorAll('#listFooterSelection .listFooterAction')).find((elem) => elem.dataset.action === 'cherrypick'), 'click');
+			const errorDialog = await waitFor('the error dialog', () => document.querySelector('.dialog'));
+			assert(errorDialog.textContent.includes('Merge commits can\'t be cherry picked with other commits') && errorDialog.textContent.includes('(00000000)'), 'Unexpected dialog: ' + errorDialog.textContent);
+			key(document.body, 'Escape');
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null);
+
+			// Escape, or clicking a commit, clears the selection
+			key(document.body, 'Escape');
+			assert(selected().length === 0, 'Escape didn\'t clear the selection');
+			shiftClick(10, false);
+			shiftClick(11, false);
+			assert(selected().length > 0, 'The commits weren\'t selected');
+			mouse(commitRow(12).querySelector('td.descriptionCol'), 'click');
+			assert(selected().length === 0, 'Clicking a commit didn\'t clear the selection');
+			mouse(document.getElementById('fileHistoryExit'), 'click');
+			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && document.querySelectorAll('#commitTable tr.commit').length === 10);
+			return 'Copied: ' + copied.data.split('\n').map((h) => h.substring(32)).join(', ') + '; cherry picked: ' + request.commitHashes.map((h) => h.substring(32)).join(', ') + '; merge commit refused';
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {

@@ -1189,6 +1189,29 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Cherry pick several commits into the current branch of a repository (merge commits can't be cherry picked with other commits).
+	 * @param repo The path of the repository.
+	 * @param commitHashes The hashes of the commits, in the order they're cherry picked (oldest first).
+	 * @param recordOrigin Record that each commit was the origin of its cherry pick (`-x`).
+	 * @param noCommit Stage the changes of the commits without committing them.
+	 * @returns The ErrorInfo from the executed command.
+	 */
+	public cherrypickCommits(repo: string, commitHashes: ReadonlyArray<string>, recordOrigin: boolean, noCommit: boolean) {
+		const args = ['cherry-pick'];
+		if (noCommit) {
+			args.push('--no-commit');
+		}
+		if (recordOrigin) {
+			args.push('-x');
+		}
+		if (getConfig().signCommits) {
+			args.push('-S');
+		}
+		args.push(...commitHashes);
+		return this.runGitCommand(args, repo);
+	}
+
+	/**
 	 * Drop a commit in a repository.
 	 * @param repo The path of the repository.
 	 * @param commitHash The hash of the commit to drop.

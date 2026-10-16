@@ -245,6 +245,40 @@ class ViewActions {
 		]];
 	}
 
+	/**
+	 * Get the context menu of the selected commits (when a selected commit is right clicked).
+	 * @param commits The selected commits (oldest first).
+	 * @param target The target of the context menu.
+	 * @returns The context menu actions.
+	 */
+	public getSelectedCommitsContextMenuActions(commits: ReadonlyArray<GG.GitCommit>, target: DialogTarget & CommitTarget): ContextMenuActions {
+		const visibility = this.view.config.contextMenuActionsVisibility.commit;
+		return [[
+			{
+				title: t('Cherry Pick {0} Commits', commits.length) + ELLIPSIS,
+				visible: visibility.cherrypick,
+				onClick: () => this.cherrypickCommitsAction(commits, target)
+			}
+		], [
+			{
+				title: t('Copy {0} Commit Hashes to Clipboard', commits.length),
+				visible: visibility.copyHash,
+				onClick: () => this.copyCommitsToClipboard(commits, false)
+			},
+			{
+				title: t('Copy {0} Commit Subjects to Clipboard', commits.length),
+				visible: visibility.copySubject,
+				onClick: () => this.copyCommitsToClipboard(commits, true)
+			}
+		], [
+			{
+				title: t('Clear Selection'),
+				visible: true,
+				onClick: () => this.view.clearCommitSelection()
+			}
+		]];
+	}
+
 	public getRemoteBranchContextMenuActions(remote: string, target: DialogTarget & RefTarget): ContextMenuActions {
 		const refName = target.ref, visibility = this.view.config.contextMenuActionsVisibility.remoteBranch;
 		const branchName = remote !== '' ? refName.substring(remote.length + 1) : '';
@@ -620,6 +654,48 @@ class ViewActions {
 		} else {
 			runAction({ command: 'checkoutBranch', repo: this.view.currentRepo, branchName: refName, remoteBranch: null, pullAfterwards: null }, t('Checking out Branch'));
 		}
+	}
+
+	/**
+	 * Cherry pick the selected commits into the current branch (after confirming it). Merge commits can only be cherry picked one at a time.
+	 * @param commits The selected commits (oldest first).
+	 * @param target The target of the dialog, or NULL if the action wasn't started from a commit.
+	 */
+	public cherrypickCommitsAction(commits: ReadonlyArray<GG.GitCommit>, target: (DialogTarget & CommitTarget) | null) {
+		if (commits.length === 0) return;
+		const merges = commits.filter((commit) => commit.parents.length > 1);
+		if (merges.length > 0) {
+			dialog.showError(t('Merge commits can\'t be cherry picked with other commits.'), t('Unselect the merge commits ({0}), and cherry pick them one at a time.', merges.map((commit) => abbrevCommit(commit.hash)).join(', ')), null, null);
+			return;
+		}
+		const branch = this.view.gitBranchHead !== null ? t('<b><i>{0}</i></b> (the current branch)', escapeHtml(this.view.gitBranchHead)) : t('the current branch');
+		dialog.showForm(t('Are you sure you want to cherry pick these {0} commits into {1}? They are cherry picked from the oldest to the newest:', commits.length, branch) + '<br/>' + commits.map((commit) => '<b>' + abbrevCommit(commit.hash) + '</b> ' + escapeHtml(commit.message)).join('<br/>'), [
+			{
+				type: DialogInputType.Checkbox,
+				name: t('Record Origin'),
+				value: this.view.config.dialogDefaults.cherryPick.recordOrigin,
+				info: t('Record that this commit was the origin of the cherry pick by appending a line to the original commit message that states "(cherry picked from commit ...​)".')
+			},
+			{
+				type: DialogInputType.Checkbox,
+				name: t('No Commit'),
+				value: this.view.config.dialogDefaults.cherryPick.noCommit,
+				info: t('Cherry picked changes will be staged but not committed, so that you can select and commit specific parts of this commit.')
+			}
+		], t('Yes, cherry pick'), (values) => {
+			runAction({ command: 'cherrypickCommits', repo: this.view.currentRepo, commitHashes: commits.map((commit) => commit.hash), recordOrigin: <boolean>values[0], noCommit: <boolean>values[1] }, t('Cherry picking Commits'));
+			this.view.clearCommitSelection();
+		}, target);
+	}
+
+	/**
+	 * Copy the hashes or subjects of commits to the clipboard (one per line).
+	 * @param commits The commits (oldest first).
+	 * @param subjects Copy the subjects of the commits (instead of their hashes).
+	 */
+	public copyCommitsToClipboard(commits: ReadonlyArray<GG.GitCommit>, subjects: boolean) {
+		if (commits.length === 0) return;
+		sendMessage({ command: 'copyToClipboard', type: subjects ? t('Commit Subjects') : t('Commit Hashes'), data: commits.map((commit) => subjects ? commit.message : commit.hash).join('\n') });
 	}
 
 	private createBranchAction(hash: string, initialName: string, initialCheckOut: boolean, target: DialogTarget & CommitTarget) {

@@ -185,6 +185,7 @@ async function main() {
 			],
 			extensionTestsEnv: {
 				E2E_FIXTURES: JSON.stringify(fixtures),
+				E2E_ONLY: process.env.E2E_ONLY || '',
 				GIT_ASKPASS: fixtures.askpass,
 				GIT_CEILING_DIRECTORIES: ARTIFACTS, // The fixtures are within this repository, which Git must not discover as their parent
 				GIT_CONFIG_GLOBAL: '/dev/null',

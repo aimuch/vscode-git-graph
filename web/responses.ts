@@ -33,6 +33,9 @@ function observeResponseMessages(gitGraph: GitGraphView, imageResizer: ImageResi
 			case 'cherrypickCommit':
 				refreshAndDisplayErrors(msg.errors, t('Unable to Cherry Pick Commit'));
 				break;
+			case 'cherrypickCommits':
+				refreshAndDisplayErrors(msg.errors, t('Unable to Cherry Pick Commits'));
+				break;
 			case 'cleanUntrackedFiles':
 				refreshOrDisplayError(msg.error, t('Unable to Clean Untracked Files'));
 				break;

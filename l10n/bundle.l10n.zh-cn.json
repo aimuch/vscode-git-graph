@@ -781,5 +781,20 @@
 	"The commit is on or after this date (the date shown in the Date column): YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y)": "提交日期在此日期当天或之后（即「日期」列显示的日期）：YYYY-MM-DD、YYYY-MM、YYYY、today、yesterday，或几天、几周、几月、几年前（如 7d、2w、3m、1y）",
 	"The commit is before this date (the date shown in the Date column): YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y)": "提交日期在此日期之前（即「日期」列显示的日期）：YYYY-MM-DD、YYYY-MM、YYYY、today、yesterday，或几天、几周、几月、几年前（如 7d、2w、3m、1y）",
 	"\"{0}\" isn't a date. Use YYYY-MM-DD, YYYY-MM, YYYY, today, yesterday, or a number of days, weeks, months or years ago (e.g. 7d, 2w, 3m, 1y).": "「{0}」不是有效日期。请使用 YYYY-MM-DD、YYYY-MM、YYYY、today、yesterday，或几天、几周、几月、几年前（如 7d、2w、3m、1y）。",
-	"Search for the Commits in this Range of Dates": "搜索此日期范围内的提交"
+	"Search for the Commits in this Range of Dates": "搜索此日期范围内的提交",
+	"{0} commits selected": "已选择 {0} 个提交",
+	"1 commit selected": "已选择 1 个提交",
+	"Copy Hashes": "复制哈希",
+	"Escape": "Esc",
+	"Clear Selection": "取消选择",
+	"Unable to Cherry Pick Commits": "无法拣选提交",
+	"Cherry Pick {0} Commits": "拣选 {0} 个提交",
+	"Copy {0} Commit Hashes to Clipboard": "复制 {0} 个提交的哈希到剪贴板",
+	"Copy {0} Commit Subjects to Clipboard": "复制 {0} 个提交的标题到剪贴板",
+	"Merge commits can't be cherry picked with other commits.": "合并提交不能与其他提交一起拣选。",
+	"Unselect the merge commits ({0}), and cherry pick them one at a time.": "请取消选择合并提交（{0}），再逐个拣选它们。",
+	"Are you sure you want to cherry pick these {0} commits into {1}? They are cherry picked from the oldest to the newest:": "确定要将这 {0} 个提交拣选到{1}吗？将从最旧到最新依次拣选：",
+	"Cherry picking Commits": "正在拣选提交",
+	"Commit Subjects": "提交标题",
+	"Commit Hashes": "提交哈希"
 }

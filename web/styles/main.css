@@ -1388,6 +1388,14 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	color:var(--vscode-list-activeSelectionForeground, inherit);
 }
 
+/* The commits selected with Shift (+ Ctrl / Cmd) + click */
+#commitTable tr.commit.multiSelected, #commitTable tr.commit.multiSelected:hover{
+	background-color:var(--vscode-list-inactiveSelectionBackground, rgba(128,128,128,0.25));
+}
+#commitTable tr.commit.multiSelected td:first-child{
+	box-shadow:inset 3px 0 0 var(--vscode-list-highlightForeground, var(--vscode-focusBorder));
+}
+
 /* The uncommitted changes */
 #commitTable tr.commit#uncommittedChanges span.description .text{
 	color:var(--vscode-descriptionForeground);
@@ -2378,6 +2386,26 @@ body.tagLabelsRightAligned .gitRef.tag{
 }
 .listFooterSpacer{
 	flex:1 1 auto;
+}
+/* The number of selected commits, and the actions on them */
+#listFooterSelection{
+	display:none;
+	align-items:center;
+	gap:4px 12px;
+}
+#listFooterSelection.active{
+	display:inline-flex;
+}
+.listFooterSelectionCount{
+	color:var(--vscode-foreground);
+	font-weight:600;
+}
+.listFooterAction{
+	color:var(--vscode-textLink-foreground);
+	cursor:pointer;
+}
+.listFooterAction:hover{
+	text-decoration:underline;
 }
 #listFooter #loadMoreCommitsBtn{
 	width:auto;
