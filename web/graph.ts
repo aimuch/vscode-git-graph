@@ -296,7 +296,7 @@ class Vertex {
 
 	/* Rendering */
 
-	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, branchIndex: number, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void) {
+	public draw(svg: SVGElement, config: GG.GraphConfig, expandOffset: boolean, branchIndex: number, overListener: (event: MouseEvent) => void, outListener: (event: MouseEvent) => void, author: string | null) {
 		if (this.onBranch === null) return;
 
 		const colour = this.isCommitted ? config.colours[this.onBranch.getColour() % config.colours.length] : '#808080';
@@ -309,13 +309,27 @@ class Vertex {
 		circle.setAttribute('cx', cx);
 		circle.setAttribute('cy', cy);
 		circle.setAttribute('r', '4');
-		if (this.isCurrent) {
+		let initialElem: SVGTextElement | null = null;
+		if (author !== null && this.isCommitted && !this.isStash) {
+			// The author's initial, in a circle outlined in the colour of the branch
+			circle.setAttribute('r', '9');
+			circle.setAttribute('class', 'avatar' + (this.isCurrent ? ' current' : ''));
+			circle.style.fill = getAuthorColour(author);
+			circle.style.stroke = colour;
+			initialElem = document.createElementNS(SVG_NAMESPACE, 'text');
+			initialElem.dataset.branch = branchIndex.toString();
+			initialElem.setAttribute('x', cx);
+			initialElem.setAttribute('y', cy);
+			initialElem.setAttribute('class', 'avatarInitial');
+			initialElem.textContent = author.trim().length > 0 ? author.trim().charAt(0).toUpperCase() : '?';
+		} else if (this.isCurrent) {
 			circle.setAttribute('class', 'current');
 			circle.setAttribute('stroke', colour);
 		} else {
 			circle.setAttribute('fill', colour);
 		}
 		svg.appendChild(circle);
+		if (initialElem !== null) svg.appendChild(initialElem);
 
 		if (this.isStash && !this.isCurrent) {
 			circle.setAttribute('r', '4.5');
@@ -343,6 +357,9 @@ class Graph {
 	private branches: Branch[] = [];
 	private availableColours: number[] = [];
 	private maxWidth: number = -1;
+	private readonly naturalGridX: number; // The spacing of the lanes when they fit within the maximum width
+	private readonly minGridX: number; // The minimum spacing of the lanes when they're moved closer together to fit within the maximum width
+	private renderedExpandedCommit: ExpandedCommit | null = null;
 
 	private commits: ReadonlyArray<GG.GitCommit> = [];
 	private commitHead: string | null = null;
@@ -367,6 +384,8 @@ class Graph {
 		this.viewElem = viewElem;
 		this.config = config;
 		this.muteConfig = muteConfig;
+		this.naturalGridX = config.grid.x;
+		this.minGridX = Math.min(config.grid.x, config.nodeStyle === GG.GraphNodeStyle.Avatar ? 14 : 8); // Avatars overlap when they're closer together
 
 		const elem = document.getElementById(id)!;
 		this.contentElem = elem.parentElement!;
@@ -442,6 +461,7 @@ class Graph {
 	}
 
 	public render(expandedCommit: ExpandedCommit | null) {
+		this.renderedExpandedCommit = expandedCommit;
 		this.expandedCommitIndex = expandedCommit !== null ? expandedCommit.index : -1;
 		let group = document.createElementNS(SVG_NAMESPACE, 'g'), i, contentWidth = this.getContentWidth();
 		group.setAttribute('mask', 'url(#GraphMask)');
@@ -450,10 +470,10 @@ class Graph {
 			this.branches[i].draw(group, this.config, this.expandedCommitIndex, i);
 		}
 
-		const overListener = (e: MouseEvent) => this.vertexOver(e), outListener = (e: MouseEvent) => this.vertexOut(e);
+		const overListener = (e: MouseEvent) => this.vertexOver(e), outListener = (e: MouseEvent) => this.vertexOut(e), avatars = this.config.nodeStyle === GG.GraphNodeStyle.Avatar;
 		for (i = 0; i < this.vertices.length; i++) {
 			const branch = this.vertices[i].getBranch();
-			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener);
+			this.vertices[i].draw(group, this.config, expandedCommit !== null && i > expandedCommit.index, branch !== null ? this.branches.indexOf(branch) : -1, overListener, outListener, avatars && i < this.commits.length ? this.commits[i].author : null);
 		}
 
 		if (this.group !== null) this.svg.removeChild(this.group);
@@ -474,7 +494,7 @@ class Graph {
 		const branch = id !== null && id < this.vertices.length ? this.vertices[id].getBranch() : null;
 		const branchIndex = branch !== null ? this.branches.indexOf(branch).toString() : null;
 		this.svg.classList.toggle('branchHighlight', branchIndex !== null);
-		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch]').forEach((elem) => {
+		this.group.querySelectorAll<SVGElement>('path.line, circle[data-branch], text[data-branch]').forEach((elem) => {
 			elem.classList.toggle('highlight', branchIndex !== null && elem.dataset.branch === branchIndex);
 		});
 	}
@@ -483,12 +503,24 @@ class Graph {
 	/* Get */
 
 	public getContentWidth() {
+		return 2 * this.config.grid.offsetX + (this.getNumberOfLanes() - 1) * this.config.grid.x;
+	}
+
+	/**
+	 * Get the width of the graph when its lanes aren't moved closer together to fit within the maximum width.
+	 * @returns The width (in pixels).
+	 */
+	public getNaturalContentWidth() {
+		return 2 * this.config.grid.offsetX + (this.getNumberOfLanes() - 1) * this.naturalGridX;
+	}
+
+	private getNumberOfLanes() {
 		let x = 0, i, p;
 		for (i = 0; i < this.vertices.length; i++) {
 			p = this.vertices[i].getNextPoint();
 			if (p.x > x) x = p.x;
 		}
-		return 2 * this.config.grid.offsetX + (x - 1) * this.config.grid.x;
+		return x;
 	}
 
 	public getHeight(expandedCommit: ExpandedCommit | null) {
@@ -694,6 +726,19 @@ class Graph {
 
 	public limitMaxWidth(maxWidth: number) {
 		this.maxWidth = maxWidth;
+		// When the lanes don't fit within the maximum width, they're moved closer together (to a minimum spacing), so that all of the commits remain visible
+		const lanes = this.getNumberOfLanes();
+		let gridX = this.naturalGridX;
+		if (maxWidth > -1 && lanes > 1 && this.getNaturalContentWidth() > maxWidth) {
+			gridX = Math.min(Math.max(Math.floor((maxWidth - 2 * this.config.grid.offsetX) / (lanes - 1) * 10) / 10, this.minGridX), this.naturalGridX);
+		}
+		if (gridX !== this.config.grid.x) {
+			this.config.grid.x = gridX;
+			if (this.group !== null) {
+				this.render(this.renderedExpandedCommit);
+				return;
+			}
+		}
 		this.applyMaxWidth(this.getContentWidth());
 	}
 

@@ -16,6 +16,8 @@ import {
 	FileViewType,
 	GitResetMode,
 	GraphConfig,
+	GraphDensity,
+	GraphNodeStyle,
 	GraphStyle,
 	GraphUncommittedChangesStyle,
 	KeybindingConfig,
@@ -290,13 +292,16 @@ class Config {
 	 */
 	get graph(): GraphConfig {
 		const preset = GRAPH_COLOUR_PRESETS[this.graphColourPreset];
+		const nodeStyle = this.config.get<string>('graph.nodeStyle', 'Dot') === 'Avatar' ? GraphNodeStyle.Avatar : GraphNodeStyle.Dot;
 		return {
 			colours: typeof preset !== 'undefined' ? preset.slice() : this.defaultGraphColours,
+			density: this.config.get<string>('graph.density', 'Comfortable') === 'Compact' ? GraphDensity.Compact : GraphDensity.Comfortable,
 			minimap: !!this.config.get('graph.minimap', true),
+			nodeStyle: nodeStyle,
 			style: this.getRenamedExtensionSetting<string>('graph.style', 'graphStyle', 'rounded') === 'angular'
 				? GraphStyle.Angular
 				: GraphStyle.Rounded,
-			grid: { x: 16, y: 24, offsetX: 16, offsetY: 12, expandY: 250 },
+			grid: { x: nodeStyle === GraphNodeStyle.Avatar ? 22 : 16, y: 24, offsetX: nodeStyle === GraphNodeStyle.Avatar ? 18 : 16, offsetY: 12, expandY: 250 },
 			uncommittedChanges: this.config.get<string>('graph.uncommittedChanges', 'Open Circle at the Uncommitted Changes') === 'Open Circle at the Checked Out Commit'
 				? GraphUncommittedChangesStyle.OpenCircleAtTheCheckedOutCommit
 				: GraphUncommittedChangesStyle.OpenCircleAtTheUncommittedChanges

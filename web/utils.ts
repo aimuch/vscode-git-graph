@@ -190,6 +190,19 @@ function modifyColourOpacity(colour: string, opacity: number) {
 }
 
 /**
+ * Get the colour used to show an author's initial (derived from their name, so each author has the same colour everywhere).
+ * @param name The name of the author.
+ * @returns The colour.
+ */
+function getAuthorColour(name: string) {
+	let hash = 0;
+	for (let i = 0; i < name.length; i++) {
+		hash = (hash * 31 + name.charCodeAt(i)) % 360;
+	}
+	return 'hsl(' + hash + ',45%,40%)';
+}
+
+/**
  * Pad a number with a leading zero, so it contains at least two digits.
  * @param i The number to pad.
  * @returns The padded number.

@@ -168,6 +168,8 @@ class SettingsWidget {
 				'<div class="settingsLabel">' + t('Branch Line Colours') + '</div>' +
 				'<div class="settingsPresets">' + appearance.colourPresets.map((preset) => '<button type="button" class="settingsPreset' + (preset.name === appearance.colourPreset ? ' selected' : '') + '" data-preset="' + escapeHtml(preset.name) + '" aria-pressed="' + (preset.name === appearance.colourPreset) + '" tabindex="-1"><span class="settingsPresetColours">' + preset.colours.map((colour) => '<span style="background-color:' + escapeHtml(colour) + '"></span>').join('') + '</span><span class="settingsPresetName">' + escapeHtml(t(preset.name)) + '</span></button>').join('') + '</div>' +
 				'<div class="settingsRow"><span class="settingsLabel">' + t('Line Style') + '</span>' + segmented('graph.style', [['rounded', t('Rounded')], ['angular', t('Angular')]], initialState.config.graph.style === GG.GraphStyle.Angular ? 'angular' : 'rounded') + '</div>' +
+				'<div class="settingsRow"><span class="settingsLabel">' + t('Row Density') + '</span>' + segmented('graph.density', [['Comfortable', t('Comfortable')], ['Compact', t('Compact')]], initialState.config.graph.density === GG.GraphDensity.Compact ? 'Compact' : 'Comfortable') + '</div>' +
+				'<div class="settingsRow"><span class="settingsLabel">' + t('Commit Nodes') + '</span>' + segmented('graph.nodeStyle', [['Dot', t('Dot')], ['Avatar', t('Author Initial')]], initialState.config.graph.nodeStyle === GG.GraphNodeStyle.Avatar ? 'Avatar' : 'Dot') + '</div>' +
 				'</div>';
 
 			html += '<div class="settingsSection"><h3>' + t('Language · All Repositories') + '</h3><div class="settingsChoices" data-setting="language">' +
@@ -597,7 +599,7 @@ class SettingsWidget {
 						this.appearance = Object.assign({}, this.appearance, { statusBarItemDisplay: value === 'Icon' ? GG.StatusBarItemDisplay.Icon : value === 'Text' ? GG.StatusBarItemDisplay.Text : GG.StatusBarItemDisplay.IconAndText });
 						update('statusBarItemDisplay', value);
 					} else {
-						update('graph.style', value);
+						update(<GG.RequestUpdateExtensionSetting['key']>setting, value);
 					}
 					group.querySelectorAll<HTMLElement>('.settingsSegment').forEach((segment) => {
 						alterClass(segment, CLASS_SELECTED, segment === elem);

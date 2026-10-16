@@ -140,6 +140,7 @@ class GitGraphView {
 		this.observeOverviews();
 
 		alterClass(document.body, CLASS_BRANCH_LABELS_ALIGNED_TO_GRAPH, this.config.referenceLabels.branchLabelsAlignedToGraph);
+		alterClass(document.body, 'compactRows', this.config.graph.density === GG.GraphDensity.Compact);
 		alterClass(document.body, CLASS_TAG_LABELS_RIGHT_ALIGNED, this.config.referenceLabels.tagLabelsOnRight);
 
 		this.observeWindowSizeChanges();
@@ -1179,6 +1180,7 @@ class GitGraphView {
 				'<span class="listFooterSpacer"></span>' + (this.moreCommitsAvailable ? '<div id="loadMoreCommitsBtn" class="roundedBtn">' + t('Load More Commits') + '</div>' : '') + '</div>'
 			: '';
 		this.makeTableResizable();
+		this.fitRefLabels();
 		const columnSettingsBtn = document.getElementById('columnSettingsBtn');
 		if (columnSettingsBtn !== null) {
 			columnSettingsBtn.addEventListener('click', (e) => {
@@ -1244,6 +1246,27 @@ class GitGraphView {
 			dateElem.textContent = date.formatted;
 		}
 		this.requestCommitStats(true);
+	}
+
+	/**
+	 * Fit the labels in the Branches / Tags column of each commit: the first (most important) label is shown in full, and the labels that
+	 * don't fit are hidden, and counted on a "+N" label (whose tooltip lists them).
+	 */
+	private fitRefLabels() {
+		this.tableElem.querySelectorAll<HTMLElement>('.refsColLabels').forEach((container) => {
+			const labels = <HTMLElement[]>Array.from(container.children);
+			if (labels.length < 2 || container.scrollWidth <= container.clientWidth + 1) return;
+			const moreElem = document.createElement('span'), hidden: string[] = [];
+			moreElem.className = 'refsColMore';
+			container.appendChild(moreElem);
+			for (let i = labels.length - 1; i > 0 && (hidden.length === 0 || container.scrollWidth > container.clientWidth + 1); i--) {
+				labels[i].classList.add('hidden');
+				const nameElem = labels[i].querySelector('.gitRefName');
+				hidden.unshift(nameElem !== null ? nameElem.textContent! : '');
+				moreElem.textContent = '+' + hidden.length;
+			}
+			moreElem.title = hidden.join('\n');
+		});
 	}
 
 	/**
@@ -2306,11 +2329,11 @@ class GitGraphView {
 			// Table should have automatic layout
 			this.tableElem.className = 'autoLayout';
 
-			let colWidth = cols[0].offsetWidth, graphWidth = this.graph.getContentWidth();
+			let colWidth = cols[0].offsetWidth, graphWidth = this.graph.getNaturalContentWidth();
 			let maxWidth = Math.round(this.viewElem.clientWidth * 0.333);
 			if (Math.max(graphWidth, colWidth) > maxWidth) {
 				this.graph.limitMaxWidth(maxWidth);
-				graphWidth = maxWidth;
+				graphWidth = Math.min(this.graph.getContentWidth(), maxWidth);
 				this.tableElem.className += ' limitGraphWidth';
 				this.tableElem.style.setProperty(CSS_PROP_LIMIT_GRAPH_WIDTH, maxWidth + 'px');
 			} else {
@@ -5276,15 +5299,11 @@ function generateSignatureHtml(signature: GG.GitSignature) {
  * @returns The HTML.
  */
 function generateAuthorInitialHtml(name: string, asPseudoElement: boolean = false) {
-	let hash = 0;
-	for (let i = 0; i < name.length; i++) {
-		hash = (hash * 31 + name.charCodeAt(i)) % 360;
-	}
 	const initial = name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : '?';
 	// The initial can be shown by CSS, so that it isn't part of the text content of the element containing it (e.g. a dropdown option)
 	return asPseudoElement
-		? '<span class="authorInitial" data-initial="' + escapeHtml(initial) + '" style="background-color:hsl(' + hash + ',45%,40%)"></span>'
-		: '<span class="authorInitial" style="background-color:hsl(' + hash + ',45%,40%)">' + escapeHtml(initial) + '</span>';
+		? '<span class="authorInitial" data-initial="' + escapeHtml(initial) + '" style="background-color:' + getAuthorColour(name) + '"></span>'
+		: '<span class="authorInitial" style="background-color:' + getAuthorColour(name) + '">' + escapeHtml(initial) + '</span>';
 }
 
 function closeDialogAndContextMenu() {

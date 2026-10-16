@@ -31,7 +31,7 @@
 				date: NOW - i * 3600,
 				message: i === 0 ? 'Fix #12 and rename files' : (i % 2 === 0 ? 'Resolve #' + (100 + i) : 'Commit ' + i),
 				heads: i === 0 ? ['feature'] : i === HEAD_INDEX ? ['main'] : [],
-				tags: [],
+				tags: i === 5 ? [{ name: 'v1.0.0', annotated: true }, { name: 'v1.0.0-rc.2', annotated: false }, { name: 'v1.0.0-rc.1', annotated: false }] : [],
 				remotes: [],
 				stash: null
 			});
@@ -44,6 +44,11 @@
 			case 'loadRepoInfo':
 				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: STASHES, upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
 			case 'loadCommits':
+				if (msg.filePath === 'e2e-wide.txt') {
+					const base = makeCommits(1)[0], tips = [];
+					for (let i = 0; i < 40; i++) tips.push(Object.assign(makeCommits(1)[0], { hash: 'e'.repeat(38) + i.toString(16).padStart(2, '0'), parents: [base.hash], date: base.date + 40 - i, message: 'Branch ' + i, heads: ['branch-' + i] }));
+					return { command: 'loadCommits', refreshId: msg.refreshId, commits: tips.concat([base]), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
+				}
 				if (msg.filePath === 'src/new-name.ts') {
 					// The history of src/new-name.ts: every 5th commit (with the parents rewritten by Git), renamed from src/old-name.ts in the oldest commit
 					const history = makeCommits(25).filter((_, i) => i % 5 === 0);
@@ -434,6 +439,9 @@
 			assert(commitRow(0).querySelector('td.refsCol .gitRef.head').textContent === 'feature' && commitRow(0).querySelector('td.descriptionCol .gitRef') === null, 'The branch label isn\'t in the Branches / Tags column');
 			const main = commitRow(HEAD_INDEX).querySelector('td.refsCol .gitRef.head');
 			assert(main.textContent === 'main\u21912\u21931' && main.querySelector('.gitRefTrack').title === '2 commit(s) ahead of origin/main, 1 commit(s) behind origin/main', 'Unexpected label of main: ' + main.textContent);
+			// The labels that don't fit are counted on a "+N" label, and the first label isn't squeezed
+			const tagsCell = commitRow(5).querySelector('td.refsCol'), firstTag = tagsCell.querySelector('.gitRef'), more = tagsCell.querySelector('.refsColMore');
+			assert(more !== null && /^\+[12]$/.test(more.textContent) && more.title.split('\n').length === parseInt(more.textContent.substring(1)) && firstTag.querySelector('.gitRefName').scrollWidth <= firstTag.querySelector('.gitRefName').clientWidth, 'The labels don\'t fit: ' + tagsCell.textContent);
 			const graphLeft = document.querySelector('#commitGraph').getBoundingClientRect().left, graphColLeft = document.getElementById('tableHeaderGraphCol').getBoundingClientRect().left;
 			assert(Math.abs(graphLeft - graphColLeft) < 1, 'The graph isn\'t in the Graph column: ' + graphLeft + ' / ' + graphColLeft);
 
@@ -693,6 +701,18 @@
 			return changes.length + ' commits: ' + changes.join(', ') + '; diff: ' + lines.length + ' lines';
 		});
 
+		await check('ui-graph-fit', '[Redesign] When the lanes of the graph don\'t fit in the Graph column, they\'re moved closer together (so the commits aren\'t cut off)', async () => {
+			window.dispatchEvent(new MessageEvent('message', { data: { command: 'loadRepos', repos: initialState.repos, lastActiveRepo: REPO, loadViewTo: { repo: REPO, fileHistory: 'e2e-wide.txt' } } }));
+			await waitFor('the wide graph to be loaded', () => document.querySelectorAll('#commitTable tr.commit').length === 41 && document.querySelectorAll('#commitGraph svg circle').length === 41);
+			const svg = document.querySelector('#commitGraph svg'), circles = Array.from(svg.querySelectorAll('circle')).map((circle) => parseFloat(circle.getAttribute('cx')));
+			const lanes = Array.from(new Set(circles)).sort((a, b) => a - b), spacing = lanes[1] - lanes[0], width = parseFloat(svg.getAttribute('width'));
+			assert(lanes.length === 40 && spacing < 16, 'The lanes weren\'t moved closer together: ' + lanes.length + ' lanes, ' + spacing + 'px apart');
+			assert(spacing === 8 || Math.max.apply(null, circles) + 4 <= width, 'A commit is cut off: ' + Math.max.apply(null, circles) + ' of ' + width + 'px');
+			mouse(document.getElementById('fileHistoryExit'), 'click');
+			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && document.querySelectorAll('#commitTable tr.commit').length === 10);
+			return lanes.length + ' lanes, ' + spacing + 'px apart, in a ' + width + 'px wide graph (natural width ' + (32 + 39 * 16) + 'px)';
+		});
+
 		await check('ui-settings-panel', '[Redesign] The Repository Settings panel changes the colour preset, line style, language & Status Bar Item for all repositories', async () => {
 			if (document.querySelector('.dialog') !== null) {
 				key(document.body, 'Escape');
@@ -714,11 +734,13 @@
 			mouse(presets.find((elem) => elem.dataset.preset === 'Tokyo Subway'), 'click');
 			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.style"] .settingsSegment[data-value="angular"]'), 'click');
 			mouse(widget.querySelector('.settingsSegmented[data-setting="statusBarItemDisplay"] .settingsSegment[data-value="Icon"]'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.density"] .settingsSegment[data-value="Compact"]'), 'click');
+			mouse(widget.querySelector('.settingsSegmented[data-setting="graph.nodeStyle"] .settingsSegment[data-value="Avatar"]'), 'click');
 			const english = Array.from(widget.querySelectorAll('input[name="settingsLanguage"]')).find((elem) => elem.value === 'English');
 			english.checked = true;
 			english.dispatchEvent(new Event('change', { bubbles: true }));
-			const sent = await waitFor('the settings to be sent to the extension', () => updates().length >= before + 4 ? updates().slice(before) : null);
-			assert(JSON.stringify(sent) === JSON.stringify(['graph.colourPreset=Tokyo Subway', 'graph.style=angular', 'statusBarItemDisplay=Icon', 'language=English']), 'Unexpected updates: ' + JSON.stringify(sent));
+			const sent = await waitFor('the settings to be sent to the extension', () => updates().length >= before + 6 ? updates().slice(before) : null);
+			assert(JSON.stringify(sent) === JSON.stringify(['graph.colourPreset=Tokyo Subway', 'graph.style=angular', 'statusBarItemDisplay=Icon', 'graph.density=Compact', 'graph.nodeStyle=Avatar', 'language=English']), 'Unexpected updates: ' + JSON.stringify(sent));
 			assert(document.querySelector('.settingsStatusBarPreview svg') !== null && !document.querySelector('.settingsStatusBarPreview').textContent.includes('Git Map'), 'The Status Bar Item preview wasn\'t updated');
 			mouse(document.getElementById('settingsClose'), 'click');
 			await waitFor('the panel to close', () => !document.getElementById('settingsWidget').classList.contains('active'));

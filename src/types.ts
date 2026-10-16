@@ -386,7 +386,9 @@ export interface CommitDetailsViewConfig {
 
 export interface GraphConfig {
 	readonly colours: ReadonlyArray<string>;
+	readonly density: GraphDensity;
 	readonly minimap: boolean;
+	readonly nodeStyle: GraphNodeStyle;
 	readonly style: GraphStyle;
 	readonly grid: { x: number, y: number, offsetX: number, offsetY: number, expandY: number };
 	readonly uncommittedChanges: GraphUncommittedChangesStyle;
@@ -624,6 +626,16 @@ export const enum FileViewType {
 export const enum GraphStyle {
 	Rounded,
 	Angular
+}
+
+export const enum GraphDensity {
+	Comfortable,
+	Compact
+}
+
+export const enum GraphNodeStyle {
+	Dot,
+	Avatar
 }
 
 export const enum GraphUncommittedChangesStyle {
@@ -1153,7 +1165,7 @@ export interface ResponseMerge extends ResponseWithErrorInfo {
 
 export interface RequestUpdateExtensionSetting extends BaseMessage {
 	readonly command: 'updateExtensionSetting';
-	readonly key: 'graph.colourPreset' | 'graph.style' | 'language' | 'statusBarItemDisplay';
+	readonly key: 'graph.colourPreset' | 'graph.density' | 'graph.nodeStyle' | 'graph.style' | 'language' | 'statusBarItemDisplay';
 	readonly value: string;
 }
 export interface ResponseUpdateExtensionSetting extends ResponseWithErrorInfo {

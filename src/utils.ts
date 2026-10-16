@@ -352,6 +352,8 @@ export function openExtensionSettings(): Thenable<ErrorInfo> {
 
 const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<string> } = {
 	'graph.colourPreset': GRAPH_COLOUR_PRESET_NAMES,
+	'graph.density': ['Comfortable', 'Compact'],
+	'graph.nodeStyle': ['Dot', 'Avatar'],
 	'graph.style': ['rounded', 'angular'],
 	'language': ['Auto', 'English', 'Simplified Chinese'],
 	'statusBarItemDisplay': ['Icon & Text', 'Icon', 'Text']

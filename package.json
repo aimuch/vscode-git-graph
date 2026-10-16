@@ -797,6 +797,32 @@
 					"default": true,
 					"description": "%config.graph.minimap.description%"
 				},
+				"git-graph.graph.density": {
+					"type": "string",
+					"enum": [
+						"Comfortable",
+						"Compact"
+					],
+					"enumDescriptions": [
+						"%config.graph.density.enumDescriptions.0%",
+						"%config.graph.density.enumDescriptions.1%"
+					],
+					"default": "Comfortable",
+					"description": "%config.graph.density.description%"
+				},
+				"git-graph.graph.nodeStyle": {
+					"type": "string",
+					"enum": [
+						"Dot",
+						"Avatar"
+					],
+					"enumDescriptions": [
+						"%config.graph.nodeStyle.enumDescriptions.0%",
+						"%config.graph.nodeStyle.enumDescriptions.1%"
+					],
+					"default": "Dot",
+					"description": "%config.graph.nodeStyle.description%"
+				},
 				"git-graph.graph.style": {
 					"type": "string",
 					"enum": [

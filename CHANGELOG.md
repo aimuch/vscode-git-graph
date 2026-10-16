@@ -1,7 +1,7 @@
 # Change Log
 
 ## 2.1.0 - Unreleased
-This release completes the redesign of the Git Map View (its control bar, commits, Commit Details View, Repository Settings, dialogs, menus & minimap), and adds the history of a file, a list of the stashes, and the icons of files from the Visual Studio Code file icon theme. All changes are covered by the end-to-end test suite (`npm run test-e2e`, 50 checks, verified with Visual Studio Code 1.142.0).
+This release completes the redesign of the Git Map View (its control bar, commits, Commit Details View, Repository Settings, dialogs, menus & minimap), and adds the history of a file, a list of the stashes, and the icons of files from the Visual Studio Code file icon theme. All changes are covered by the end-to-end test suite (`npm run test-e2e`, 51 checks, verified with Visual Studio Code 1.142.0).
 * Control bar:
     * The Repo (also shown when there's only one repository), Branches & Authors dropdowns show icons. Dropdowns that allow multiple selections show a checkbox for each option, and the Authors dropdown shows each author's initial and the number of loaded commits by them.
     * The search box is part of the control bar. Conditions are added to it as chips (press Enter), and a bar below it shows the number of matching commits, the previous / next match, whether the matches are highlighted or only the matching commits are shown (keeping the graph connected), buttons that insert the search operators, and "Clear Search".
@@ -12,6 +12,11 @@ This release completes the redesign of the Git Map View (its control bar, commit
     * New default `git-graph.referenceLabels.alignment` option "Branches & Tags (in a separate column)": branch, tag & stash labels are shown in a "Branches / Tags" column on the left of the graph. The checked out branch has a check icon, remote branches have a cloud icon (also shown on a local branch whose remote branch is on the same commit), and local branches show how many commits they're ahead (↑) / behind (↓) their upstream branch. Set the option to "Normal" to show the labels in the Description column as before.
     * New "Changes" column, showing the lines added & deleted by each commit (merge commits are compared to their first parent), loaded on demand for the commits that are shown. Columns can be shown or hidden with the new button in the column headers (or their context menu).
     * The selected commit uses the list selection colour of the theme, the uncommitted changes are muted & italic, and a footer shows the number of commits loaded / shown, a legend of the markers alongside the scrollbar, and the "Load More Commits" button.
+    * Labels that don't fit in the Branches / Tags column are counted on a "+N" label (whose tooltip lists them), so the first label (e.g. the checked out branch) is always shown in full.
+    * When the lanes of the graph don't fit in the Graph column, they're moved closer together (down to a minimum spacing), so commits on the rightmost lanes are no longer cut off.
+    * New `git-graph.graph.density` setting: Comfortable (32 pixel rows, the default) or Compact (24 pixel rows).
+    * New `git-graph.graph.nodeStyle` setting: commits are drawn on the graph as dots (the default), or as the initial of their author in a circle outlined in the colour of their branch.
+    * Commits that match the search have a marker on their left edge.
 * Commit Details View (docked to the right):
     * A header with the previous / next commit & close buttons, the author with the relative & exact date of the commit, chips to copy the commit hash, open the commit on its remote (GitHub, GitLab, Bitbucket & similar hosts) and compare it with another commit, the related issues, the branches containing the commit, and the number of files & lines it changes.
     * The changed files & the full commit message (with its details) are shown in tabs, in one scrolling column. Files show a badge of their type of change, their directory (in the list view), and a bar of the lines added & deleted.
@@ -20,7 +25,7 @@ This release completes the redesign of the Git Map View (its control bar, commit
     * A bar shows the file, the number of commits, authors & renames, and whether the history of all branches or only the current branch is shown, with buttons to open the file and exit the history.
     * A "Changes to this File" column shows the lines each commit adds & deletes in the file, and the commit that renamed the file shows its previous path.
     * The Commit Details View focuses on the file: its changes in the commit with a preview of the diff, and buttons to open the diff, open the file at the commit, or view the whole commit.
-* Repository Settings is a panel on the right of the view: the appearance settings that apply to all repositories (graph colour presets, line style, language & Status Bar Item display), the repository's display options, and cards for Issue Linking, Remotes, General settings, User Details & Pull Request Creation.
+* Repository Settings is a panel on the right of the view: the appearance settings that apply to all repositories (graph colour presets, line style, row density, commit nodes, language & Status Bar Item display), the repository's display options, and cards for Issue Linking, Remotes, General settings, User Details & Pull Request Creation.
 * Dialogs show their message as a title, followed by the commit they're for, with the labels of inputs above them and the buttons on the right (Cancel, then the action). Context menus show keyboard shortcuts: Ctrl/Cmd+C copies the hash of the commit whose context menu is open, or whose details are shown.
 * Minimap: a legend explains the box of the commits shown on the screen and the HEAD, branch & tag markers. The box is only outlined (with a tooltip of the dates & number of commits on the screen), the bars in it are highlighted, and long histories use weeks, months or years, with short labels on the axis.
 

@@ -102,6 +102,25 @@ code{
 	stroke-width:1;
 	stroke-opacity:0.75;
 }
+#commitGraph circle.avatar{
+	stroke-width:2;
+	stroke-opacity:1;
+}
+#commitGraph circle.avatar.current{
+	stroke-width:3;
+}
+#commitGraph text.avatarInitial{
+	fill:#ffffff;
+	font-family:var(--vscode-font-family);
+	font-size:9.5px;
+	font-weight:700;
+	text-anchor:middle;
+	dominant-baseline:central;
+	pointer-events:none;
+}
+#commitGraph svg.branchHighlight text[data-branch]:not(.highlight){
+	opacity:0.25;
+}
 #commitGraph circle.stashInner{
 	stroke-opacity:1;
 	pointer-events:none;
@@ -231,8 +250,15 @@ code{
 	text-overflow:ellipsis;
 	overflow:hidden;
 }
+/* The height of the rows of commits (the git-graph.graph.density Extension Setting) */
+body{
+	--git-graph-rowHeight:32px;
+}
+body.compactRows{
+	--git-graph-rowHeight:24px;
+}
 #commitTable td{
-	line-height:28px;
+	line-height:var(--git-graph-rowHeight);
 	padding:0 6px;
 }
 #commitTable th{
@@ -1284,7 +1310,7 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	height:18px;
 	border-radius:50%;
 	vertical-align:top;
-	margin-top:5px;
+	margin-top:calc((var(--git-graph-rowHeight) - 18px) / 2);
 	margin-right:6px;
 }
 .authorInitial[data-initial]:after{
@@ -1316,8 +1342,11 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	border-radius:6px;
 	margin-right:6px;
 	vertical-align:top;
-	margin-top:9px;
+	margin-top:calc((var(--git-graph-rowHeight) - 10px) / 2);
 	cursor:help;
+}
+.commit .authorInitial{
+	margin-top:calc((var(--git-graph-rowHeight) - 18px) / 2);
 }
 #commitTable tr.commit:hover, #commitTable tr.commit.contextMenuActive, #commitTable tr.commit.findCurrentCommit:hover, #commitTable tr.commit.graphVertexActive, #commitTable tr.commit.dialogActive{
 	background-color:var(--vscode-list-hoverBackground, rgba(128,128,128,0.15));
@@ -1332,6 +1361,10 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	color:var(--vscode-descriptionForeground);
 	font-style:italic;
 	font-weight:normal;
+}
+/* The rows that match the Find Widget have a marker on their left edge */
+#commitTable tr.commit.findMatchRow td:first-child{
+	box-shadow:inset 3px 0 0 var(--vscode-editorOverviewRuler-findMatchForeground, #d18616);
 }
 #commitTable tr.commit.commitDetailsOpen td:first-child{
 	box-shadow:inset 3px 0 0 var(--vscode-focusBorder);
@@ -1374,7 +1407,7 @@ body.vscode-high-contrast #commitTable tr.commit.findCurrentCommit{
 	box-sizing:border-box;
 	height:20px;
 	line-height:18px;
-	margin-top:4px;
+	margin-top:calc((var(--git-graph-rowHeight) - 20px) / 2);
 	margin-right:5px;
 	background-color:color-mix(in srgb, var(--git-graph-color) 22%, transparent);
 	border-radius:10px;
@@ -1452,7 +1485,7 @@ body.refsColumn #commitGraph{
 	display:flex;
 	align-items:center;
 	gap:4px;
-	height:28px;
+	height:var(--git-graph-rowHeight);
 	overflow:hidden;
 }
 .refsColLabels .gitRef{
@@ -1460,12 +1493,24 @@ body.refsColumn #commitGraph{
 	max-width:100%;
 	margin:0;
 }
-.refsColLabels .gitRef:first-child{
-	flex-shrink:1;
-	min-width:0;
+.refsColLabels .gitRef.hidden{
+	display:none;
 }
 .refsColLabels .gitRefName{
 	min-width:0;
+}
+.refsColMore{
+	display:inline-flex;
+	align-items:center;
+	flex:0 0 auto;
+	box-sizing:border-box;
+	height:20px;
+	padding:0 7px;
+	border:1px solid color-mix(in srgb, var(--vscode-foreground) 35%, transparent);
+	border-radius:10px;
+	color:var(--vscode-descriptionForeground);
+	font-size:11.5px;
+	cursor:help;
 }
 
 .gitRefName, .gitRefHeadRemote{

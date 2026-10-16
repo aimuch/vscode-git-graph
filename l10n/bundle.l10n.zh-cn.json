@@ -755,5 +755,11 @@
 	"The commits shown on the screen: {0}": "屏幕上显示的提交：{0}",
 	"Today": "今天",
 	"{0} {1}": "{1}{0}日",
-	"{1} {0}": "{0}年{1}"
+	"{1} {0}": "{0}年{1}",
+	"Row Density": "行密度",
+	"Comfortable": "舒适",
+	"Compact": "紧凑",
+	"Commit Nodes": "提交节点",
+	"Dot": "圆点",
+	"Author Initial": "作者首字母"
 }

@@ -1,5 +1,6 @@
 const CLASS_FIND_CURRENT_COMMIT = 'findCurrentCommit';
 const CLASS_FIND_MATCH = 'findMatch';
+const CLASS_FIND_MATCH_ROW = 'findMatchRow';
 
 const enum FindMode {
 	Highlight = 'highlight',
@@ -495,6 +496,7 @@ class FindWidget {
 					if (j === commitElems.length) continue;
 
 					this.matches.push({ hash: commit.hash, elem: commitElems[j] });
+					commitElems[j].classList.add(CLASS_FIND_MATCH_ROW);
 
 					// Highlight matches
 					let textElems = getChildNodesWithTextContent(commitElems[j]), textElem;
@@ -580,6 +582,7 @@ class FindWidget {
 	private clearMatches() {
 		for (let i = 0; i < this.matches.length; i++) {
 			if (i === this.position) this.matches[i].elem.classList.remove(CLASS_FIND_CURRENT_COMMIT);
+			this.matches[i].elem.classList.remove(CLASS_FIND_MATCH_ROW);
 			let matchElems = getChildrenWithClassName(this.matches[i].elem, CLASS_FIND_MATCH), matchElem;
 			for (let j = 0; j < matchElems.length; j++) {
 				matchElem = matchElems[j];
