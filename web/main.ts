@@ -82,6 +82,11 @@ class GitGraphView {
 	private readonly footerElem: HTMLElement;
 	private readonly showRemoteBranchesElem: HTMLInputElement;
 	private readonly refreshBtnElem: HTMLElement;
+	private readonly undoBtnElem: HTMLElement;
+	private readonly undoToastElem: HTMLElement;
+	private undo: GG.UndoInfo | null = null; // The last action in the current repository that can be undone
+	private lastUndoId: number = -1; // The id of the last action that could be undone (-1 => the repository is being loaded)
+	private undoToastTimeout: number | null = null;
 	private readonly scrollShadowElem: HTMLElement;
 
 	constructor(viewElem: HTMLElement, prevState: WebViewState | null) {
@@ -119,7 +124,7 @@ class GitGraphView {
 		}, (index) => {
 			// The box of the commits in view is being dragged, so the commit is scrolled to the top of the view (below the sticky controls & frozen column headers)
 			const elem = findCommitElemWithId(getCommitElems(), index);
-			if (elem !== null) this.viewElem.scroll(0, this.controlsElem.clientHeight + elem.offsetTop - this.getCoveredTopHeight());
+			if (elem !== null) this.viewElem.scroll(0, this.viewElem.scrollTop + elem.getBoundingClientRect().top - this.getVisibleCommitsTop());
 		}, (after, before) => this.findWidget.searchDateRange(after, before));
 		this.scrollMarkers = new ScrollMarkers(viewElem);
 
@@ -147,6 +152,19 @@ class GitGraphView {
 		this.showRemoteBranchesElem.addEventListener('change', () => {
 			this.saveRepoStateValue(this.currentRepo, 'showRemoteBranchesV2', this.showRemoteBranchesElem.checked ? GG.BooleanOverride.Enabled : GG.BooleanOverride.Disabled);
 			this.refresh(true);
+		});
+
+		this.undoBtnElem = document.getElementById('undoBtn')!;
+		this.undoBtnElem.innerHTML = SVG_ICONS.undo;
+		this.undoBtnElem.addEventListener('click', () => this.undoAction());
+		this.undoToastElem = document.createElement('div');
+		this.undoToastElem.id = 'undoToast';
+		this.undoToastElem.setAttribute('role', 'status');
+		document.body.appendChild(this.undoToastElem);
+		this.undoToastElem.addEventListener('click', (e) => {
+			if (!(e.target instanceof Element)) return;
+			if (e.target.closest('.undoToastAction') !== null) this.undoAction();
+			if (e.target.closest('.undoToastAction, .undoToastClose') !== null) this.hideUndoToast();
 		});
 
 		this.refreshBtnElem = document.getElementById('refreshBtn')!;
@@ -298,6 +316,8 @@ class GitGraphView {
 		this.fileHistoryData = null;
 		this.renderFileHistoryBar();
 		if (repo !== this.currentRepo) this.minimap.resetZoom();
+		this.lastUndoId = -1;
+		this.hideUndoToast();
 		this.selectedCommits = new Set();
 		this.selectionAnchor = null;
 		this.currentRepo = repo;
@@ -639,6 +659,7 @@ class GitGraphView {
 			const refreshState = this.currentRepoRefreshState;
 			if (refreshState.inProgress && refreshState.loadRepoInfoRefreshId === msg.refreshId) {
 				this.loadRepoInfo(msg.branches, msg.head, msg.remotes, msg.stashes, msg.upstreams, msg.isRepo);
+				this.renderUndo(msg.undo);
 			}
 		} else {
 			this.displayLoadDataError(t('Unable to load Repository Info'), msg.error);
@@ -1042,9 +1063,7 @@ class GitGraphView {
 		const commitElems = getCommitElems();
 		if (commitElems.length === 0) return;
 		// The commits are only visible between the sticky controls (and the frozen column headers) and the footer (when it's frozen)
-		const colHeaderElem = this.config.graph.freezeColumnHeaders ? document.querySelector('#tableColHeaders th') : null;
-		const top = Math.max(this.controlsElem.getBoundingClientRect().bottom, colHeaderElem !== null ? colHeaderElem.getBoundingClientRect().bottom : 0);
-		const bottom = Math.min(this.viewElem.getBoundingClientRect().bottom, this.footerElem.getBoundingClientRect().top);
+		const top = this.getVisibleCommitsTop(), bottom = Math.min(this.viewElem.getBoundingClientRect().bottom, this.footerElem.getBoundingClientRect().top);
 		let low = 0, high = commitElems.length - 1, first = commitElems.length - 1, last: number;
 		while (low <= high) {
 			const mid = (low + high) >> 1;
@@ -1299,6 +1318,50 @@ class GitGraphView {
 		this.requestCommitStats(true);
 	}
 
+	/* Undo */
+
+	/**
+	 * Render the last action in the current repository that can be undone: the Undo button, and a notification after the action is run.
+	 * @param undo The action, or NULL if no action can be undone.
+	 */
+	private renderUndo(undo: GG.UndoInfo | null) {
+		this.undo = undo;
+		alterClass(this.undoBtnElem, 'hidden', undo === null);
+		this.undoBtnElem.title = undo !== null ? t('Undo: {0}', undo.description) : '';
+		if (undo !== null && this.lastUndoId > -1 && undo.id > this.lastUndoId) {
+			this.undoToastElem.innerHTML = '<span class="undoToastText">' + escapeHtml(undo.description) + '</span><span class="undoToastAction">' + t('Undo') + '</span><span class="undoToastClose" title="' + t('Close') + '">' + SVG_ICONS.close + '</span>';
+			this.undoToastElem.classList.add(CLASS_ACTIVE);
+			if (this.undoToastTimeout !== null) clearTimeout(this.undoToastTimeout);
+			this.undoToastTimeout = setTimeout(() => this.hideUndoToast(), 10000);
+		} else if (undo === null) {
+			this.hideUndoToast();
+		}
+		this.lastUndoId = Math.max(this.lastUndoId, undo !== null ? undo.id : 0);
+	}
+
+	/**
+	 * Hide the notification that an action can be undone.
+	 */
+	private hideUndoToast() {
+		if (this.undoToastTimeout !== null) {
+			clearTimeout(this.undoToastTimeout);
+			this.undoToastTimeout = null;
+		}
+		this.undoToastElem.classList.remove(CLASS_ACTIVE);
+	}
+
+	/**
+	 * Undo the last action in the current repository (after confirming it).
+	 */
+	private undoAction() {
+		const undo = this.undo;
+		if (undo === null) return;
+		dialog.showConfirmation(t('Are you sure you want to undo <b><i>{0}</i></b>?', escapeHtml(undo.description)) + '<br/><i>' + t('Uncommitted changes are kept, and only the local repository is changed (not its remotes).') + '</i>', t('Yes, undo'), () => {
+			runAction({ command: 'undo', repo: this.currentRepo }, t('Undoing'));
+		}, null);
+	}
+
+
 	/* Selected Commits */
 
 	/**
@@ -1377,6 +1440,15 @@ class GitGraphView {
 	private getCoveredTopHeight() {
 		const colHeadersElem = this.config.graph.freezeColumnHeaders ? document.getElementById('tableColHeaders') : null;
 		return this.controlsElem.offsetHeight + (colHeadersElem !== null ? colHeadersElem.offsetHeight : 0);
+	}
+
+	/**
+	 * Get the top of the area of the view in which commits are visible: below the sticky controls, and the column headers when they're frozen.
+	 * @returns The vertical position (relative to the viewport, as rendered).
+	 */
+	private getVisibleCommitsTop() {
+		const colHeaderElem = this.config.graph.freezeColumnHeaders ? document.querySelector('#tableColHeaders th') : null;
+		return Math.max(this.controlsElem.getBoundingClientRect().bottom, colHeaderElem !== null ? colHeaderElem.getBoundingClientRect().bottom : 0);
 	}
 
 	/**

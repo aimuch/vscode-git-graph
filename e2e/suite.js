@@ -475,6 +475,130 @@ async function run() {
 		return 'main: ' + git(repo, 'log', '--format=%s', '-4').split('\n').join(' ← ');
 	});
 
+	// Undoing Git Map's actions. The ways it could go wrong, which these checks assert don't happen: losing uncommitted changes or
+	// untracked files, undoing after the repository was changed by something else (or while a merge is in progress), restoring a
+	// different commit / tag object than was there, losing a branch's upstream, and offering to undo after it was undone.
+	const undoHelpers = (view, repo) => {
+		const respond = async (msg, command) => {
+			const count = record.responses.filter((response) => response.command === command).length;
+			await view.respondToMessage(msg);
+			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command)[count]);
+		};
+		let refreshId = 1000;
+		return {
+			respond: respond,
+			undoInfo: async () => (await respond({ command: 'loadRepoInfo', repo: repo, refreshId: ++refreshId, showRemoteBranches: true, showStashes: true, hideRemotes: [] }, 'loadRepoInfo')).undo,
+			undo: async () => (await respond({ command: 'undo', repo: repo }, 'undo')).error
+		};
+	};
+
+	await check('undo-merge', '[GitKraken] A merge can be undone (keeping uncommitted changes & untracked files), unless the repository has changed since', async () => {
+		const view = await getView();
+		const repo = createScratchRepo('undo-merge', { 'a.txt': 'a\n' });
+		const { respond, undoInfo, undo } = undoHelpers(view, repo);
+		git(repo, 'checkout', '-q', '-b', 'feature');
+		commitFile(repo, 'b.txt', 'b\n', 'Add b');
+		git(repo, 'checkout', '-q', 'main');
+		const beforeMerge = commitFile(repo, 'c.txt', 'c\n', 'Add c');
+		fs.writeFileSync(path.join(repo, 'a.txt'), 'a (changed locally)\n');
+		fs.writeFileSync(path.join(repo, 'untracked.txt'), 'untracked\n');
+
+		const merged = await respond({ command: 'merge', repo: repo, obj: 'feature', actionOn: 'Branch', createNewCommit: true, squash: false, noCommit: false }, 'merge');
+		assert(merged.error === null && git(repo, 'rev-parse', 'HEAD') !== beforeMerge, 'The merge failed: ' + merged.error);
+		const info = await undoInfo();
+		assert(info && info.description === 'Merge "feature"', 'The merge can\'t be undone: ' + JSON.stringify(info));
+		const error = await undo();
+		assert(error === null, 'Undo failed: ' + error);
+		assert(git(repo, 'rev-parse', 'HEAD') === beforeMerge && git(repo, 'symbolic-ref', '--short', 'HEAD') === 'main', 'HEAD wasn\'t restored: ' + git(repo, 'log', '--oneline', '-3'));
+		assert(fs.readFileSync(path.join(repo, 'a.txt'), 'utf8') === 'a (changed locally)\n' && fs.existsSync(path.join(repo, 'untracked.txt')), 'The uncommitted changes or untracked files were lost');
+		assert(await undoInfo() === null, 'Undo is still offered after it was undone');
+
+		// Undo is refused when the repository has been changed by something else since
+		await respond({ command: 'merge', repo: repo, obj: 'feature', actionOn: 'Branch', createNewCommit: true, squash: false, noCommit: false }, 'merge');
+		git(repo, 'commit', '-q', '--allow-empty', '-m', 'Committed outside of Git Map');
+		const afterExternal = git(repo, 'rev-parse', 'HEAD');
+		const refused = await undo();
+		assert(refused !== null && refused.includes('has changed') && git(repo, 'rev-parse', 'HEAD') === afterExternal, 'Undo wasn\'t refused after an external commit: ' + refused);
+
+		// Undo is refused while a merge is in progress (after an action that can be undone)
+		git(repo, 'checkout', '-q', '-b', 'side', beforeMerge);
+		const sideCommit = commitFile(repo, 'd.txt', 'd\n', 'Add d');
+		commitFile(repo, 'c.txt', 'c (side)\n', 'Change c on side');
+		git(repo, 'checkout', '-q', 'main');
+		commitFile(repo, 'c.txt', 'c (main)\n', 'Change c on main');
+		const picked = await respond({ command: 'cherrypickCommit', repo: repo, commitHash: sideCommit, parentIndex: 0, recordOrigin: false, noCommit: false }, 'cherrypickCommit');
+		assert(picked.errors[0] === null && (await undoInfo()) !== null, 'The cherry pick can\'t be undone: ' + JSON.stringify(picked));
+		try {
+			git(repo, 'merge', 'side');
+		} catch (_) { /* The merge conflicts */ }
+		const inProgress = await undo();
+		assert(inProgress !== null && inProgress.includes('in progress') && fs.existsSync(path.join(repo, '.git', 'MERGE_HEAD')), 'Undo wasn\'t refused while a merge is in progress: ' + inProgress);
+		git(repo, 'merge', '--abort');
+		return 'Undid the merge (local changes & untracked files kept); refused: "' + refused + '"; "' + inProgress + '"';
+	});
+
+	await check('undo-refs', '[GitKraken] Creating, deleting, checking out & renaming branches and tags can be undone (restoring the same commits, tag objects & upstreams)', async () => {
+		const view = await getView();
+		const repo = createScratchRepo('undo-refs', { 'a.txt': 'a\n' });
+		const { respond, undoInfo, undo } = undoHelpers(view, repo);
+		const first = git(repo, 'rev-parse', 'HEAD'), second = commitFile(repo, 'b.txt', 'b\n', 'Add b');
+		const results = [];
+
+		// Delete a branch (with an upstream)
+		git(repo, 'branch', 'topic', first);
+		git(repo, 'config', 'branch.topic.remote', 'origin');
+		git(repo, 'config', 'branch.topic.merge', 'refs/heads/topic');
+		await respond({ command: 'deleteBranch', repo: repo, branchName: 'topic', forceDelete: true, deleteOnRemotes: [] }, 'deleteBranch');
+		assert((await undoInfo()).description === 'Delete Branch "topic"' && await undo() === null, 'Deleting the branch couldn\'t be undone');
+		assert(git(repo, 'rev-parse', 'topic') === first && git(repo, 'config', 'branch.topic.merge') === 'refs/heads/topic', 'The branch or its upstream wasn\'t restored');
+		results.push('deleted branch restored with its upstream');
+
+		// Delete an annotated tag
+		git(repo, 'tag', '-a', 'v1.0', '-m', 'Version 1.0', first);
+		const tagObject = git(repo, 'rev-parse', 'refs/tags/v1.0');
+		await respond({ command: 'deleteTag', repo: repo, tagName: 'v1.0', deleteOnRemote: null }, 'deleteTag');
+		assert((await undoInfo()).description === 'Delete Tag "v1.0"' && await undo() === null, 'Deleting the tag couldn\'t be undone');
+		assert(git(repo, 'rev-parse', 'refs/tags/v1.0') === tagObject && git(repo, 'cat-file', '-t', 'v1.0') === 'tag', 'A different tag object was restored');
+		results.push('deleted annotated tag restored (same tag object)');
+
+		// Add a tag
+		await respond({ command: 'addTag', repo: repo, tagName: 'v2.0', commitHash: second, type: 'lightweight', message: '', pushToRemote: null, pushSkipRemoteCheck: false, force: false }, 'addTag');
+		assert((await undoInfo()).description === 'Add Tag "v2.0"' && await undo() === null && git(repo, 'tag', '-l', 'v2.0') === '', 'Adding the tag couldn\'t be undone');
+		results.push('added tag removed');
+
+		// Create a branch & check it out
+		await respond({ command: 'createBranch', repo: repo, branchName: 'new-branch', commitHash: first, checkout: true, force: false }, 'createBranch');
+		assert(git(repo, 'symbolic-ref', '--short', 'HEAD') === 'new-branch', 'The branch wasn\'t checked out');
+		assert((await undoInfo()).description === 'Create Branch "new-branch"' && await undo() === null, 'Creating the branch couldn\'t be undone');
+		assert(git(repo, 'symbolic-ref', '--short', 'HEAD') === 'main' && git(repo, 'branch', '--list', 'new-branch') === '', 'The previous branch wasn\'t checked out, or the branch wasn\'t deleted');
+		results.push('created & checked out branch removed');
+
+		// Check out a branch
+		await respond({ command: 'checkoutBranch', repo: repo, branchName: 'topic', remoteBranch: null, pullAfterwards: null }, 'checkoutBranch');
+		assert((await undoInfo()).description === 'Checkout "topic"' && await undo() === null && git(repo, 'symbolic-ref', '--short', 'HEAD') === 'main', 'Checking out the branch couldn\'t be undone');
+		results.push('checkout undone');
+
+		// Rename a branch
+		await respond({ command: 'renameBranch', repo: repo, oldName: 'topic', newName: 'renamed' }, 'renameBranch');
+		assert((await undoInfo()).description === 'Rename Branch "topic"' && await undo() === null && git(repo, 'rev-parse', 'topic') === first && git(repo, 'branch', '--list', 'renamed') === '', 'Renaming the branch couldn\'t be undone');
+		results.push('rename undone');
+		return results.join('; ');
+	});
+
+	await check('undo-stash', '[GitKraken] Dropping a stash can be undone (the same stash is restored)', async () => {
+		const view = await getView();
+		const repo = createScratchRepo('undo-stash', { 'a.txt': 'a\n' });
+		const { respond, undoInfo, undo } = undoHelpers(view, repo);
+		fs.writeFileSync(path.join(repo, 'a.txt'), 'a (stashed)\n');
+		git(repo, 'stash', 'push', '-q', '-m', 'Work in progress');
+		const stash = git(repo, 'rev-parse', 'stash@{0}');
+		await respond({ command: 'dropStash', repo: repo, selector: 'refs/stash@{0}' }, 'dropStash');
+		assert(git(repo, 'stash', 'list') === '', 'The stash wasn\'t dropped');
+		assert((await undoInfo()).description === 'Drop Stash "stash@{0}"' && await undo() === null, 'Dropping the stash couldn\'t be undone');
+		assert(git(repo, 'rev-parse', 'stash@{0}') === stash && git(repo, 'stash', 'list').includes('Work in progress'), 'The stash wasn\'t restored: ' + git(repo, 'stash', 'list'));
+		return 'Restored ' + git(repo, 'stash', 'list');
+	});
+
 	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
 		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');

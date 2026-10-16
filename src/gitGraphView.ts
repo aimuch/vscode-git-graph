@@ -8,8 +8,9 @@ import { buildFileIconTheme, findFileIconTheme, getFileIconThemeExtensionPaths, 
 import { Logger } from './logger';
 import { RepoFileWatcher } from './repoFileWatcher';
 import { RepoManager } from './repoManager';
-import { ErrorInfo, GitConfigLocation, GitGraphViewInitialState, GitPushBranchMode, GitRepoSet, LoadGitGraphViewTo, RequestMessage, ResponseMessage, TabIconColourTheme } from './types';
-import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, showErrorMessage, updateExtensionSetting, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
+import { UndoManager } from './undoManager';
+import { ErrorInfo, GitConfigLocation, GitGraphViewInitialState, GitPushBranchMode, GitRepoSet, LoadGitGraphViewTo, MergeActionOn, RebaseActionOn, RequestMessage, ResponseMessage, TabIconColourTheme } from './types';
+import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, showErrorMessage, updateExtensionSetting, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
 import { Disposable, toDisposable } from './utils/disposable';
 import { getL10nBundle, getLanguage, t } from './l10n';
 
@@ -27,6 +28,7 @@ export class GitGraphView extends Disposable {
 	private readonly repoFileWatcher: RepoFileWatcher;
 	private readonly repoManager: RepoManager;
 	private readonly logger: Logger;
+	private readonly undoManager: UndoManager;
 	private isGraphViewLoaded: boolean = false;
 	private isPanelVisible: boolean = true;
 	private currentRepo: string | null = null;
@@ -86,6 +88,7 @@ export class GitGraphView extends Disposable {
 		this.repoManager = repoManager;
 		this.logger = logger;
 		this.loadViewTo = loadViewTo;
+		this.undoManager = getUndoManager(dataSource);
 
 		const config = getConfig();
 		this.panel = vscode.window.createWebviewPanel('git-graph', 'Git Map', column || vscode.ViewColumn.One, {
@@ -190,7 +193,7 @@ export class GitGraphView extends Disposable {
 				});
 				break;
 			case 'addTag':
-				errorInfos = [await this.dataSource.addTag(msg.repo, msg.tagName, msg.commitHash, msg.type, msg.message, msg.force)];
+				errorInfos = [await this.undoManager.trackCreateRef(msg.repo, t('Add Tag "{0}"', msg.tagName), 'refs/tags/' + msg.tagName, () => this.dataSource.addTag(msg.repo, msg.tagName, msg.commitHash, msg.type, msg.message, msg.force), (error) => error === null)];
 				if (errorInfos[0] === null && msg.pushToRemote !== null) {
 					errorInfos.push(...await this.dataSource.pushTag(msg.repo, msg.tagName, [msg.pushToRemote], msg.commitHash, msg.pushSkipRemoteCheck));
 				}
@@ -216,10 +219,13 @@ export class GitGraphView extends Disposable {
 				});
 				break;
 			case 'checkoutBranch':
-				errorInfos = [await this.dataSource.checkoutBranch(msg.repo, msg.branchName, msg.remoteBranch)];
-				if (errorInfos[0] === null && msg.pullAfterwards !== null) {
-					errorInfos.push(await this.dataSource.pullBranch(msg.repo, msg.pullAfterwards.branchName, msg.pullAfterwards.remote, msg.pullAfterwards.createNewCommit, msg.pullAfterwards.squash));
-				}
+				errorInfos = await this.undoManager.trackHead(msg.repo, t('Checkout "{0}"', msg.branchName), async () => {
+					const errors = [await this.dataSource.checkoutBranch(msg.repo, msg.branchName, msg.remoteBranch)];
+					if (errors[0] === null && msg.pullAfterwards !== null) {
+						errors.push(await this.dataSource.pullBranch(msg.repo, msg.pullAfterwards.branchName, msg.pullAfterwards.remote, msg.pullAfterwards.createNewCommit, msg.pullAfterwards.squash));
+					}
+					return errors;
+				}, (errors) => errors[0] === null);
 				this.sendMessage({
 					command: 'checkoutBranch',
 					pullAfterwards: msg.pullAfterwards,
@@ -229,18 +235,18 @@ export class GitGraphView extends Disposable {
 			case 'checkoutCommit':
 				this.sendMessage({
 					command: 'checkoutCommit',
-					error: await this.dataSource.checkoutCommit(msg.repo, msg.commitHash)
+					error: await this.undoManager.trackHead(msg.repo, t('Checkout "{0}"', abbrevCommit(msg.commitHash)), () => this.dataSource.checkoutCommit(msg.repo, msg.commitHash), (error) => error === null)
 				});
 				break;
 			case 'cherrypickCommit':
-				errorInfos = [await this.dataSource.cherrypickCommit(msg.repo, msg.commitHash, msg.parentIndex, msg.recordOrigin, msg.noCommit)];
+				errorInfos = [await this.undoManager.trackHead(msg.repo, t('Cherry Pick "{0}"', abbrevCommit(msg.commitHash)), () => this.dataSource.cherrypickCommit(msg.repo, msg.commitHash, msg.parentIndex, msg.recordOrigin, msg.noCommit), (error) => error === null)];
 				if (errorInfos[0] === null && msg.noCommit) {
 					errorInfos.push(await viewScm());
 				}
 				this.sendMessage({ command: 'cherrypickCommit', errors: errorInfos });
 				break;
 			case 'cherrypickCommits':
-				errorInfos = [await this.dataSource.cherrypickCommits(msg.repo, msg.commitHashes, msg.recordOrigin, msg.noCommit)];
+				errorInfos = [await this.undoManager.trackHead(msg.repo, t('Cherry Pick {0} Commits', msg.commitHashes.length), () => this.dataSource.cherrypickCommits(msg.repo, msg.commitHashes, msg.recordOrigin, msg.noCommit), (error) => error === null)];
 				if (errorInfos[0] === null && msg.noCommit) {
 					errorInfos.push(await viewScm());
 				}
@@ -301,7 +307,7 @@ export class GitGraphView extends Disposable {
 			case 'createBranch':
 				this.sendMessage({
 					command: 'createBranch',
-					errors: await this.dataSource.createBranch(msg.repo, msg.branchName, msg.commitHash, msg.checkout, msg.force)
+					errors: await this.undoManager.trackCreateRef(msg.repo, t('Create Branch "{0}"', msg.branchName), 'refs/heads/' + msg.branchName, () => this.dataSource.createBranch(msg.repo, msg.branchName, msg.commitHash, msg.checkout, msg.force), (errors) => errors[0] === null)
 				});
 				break;
 			case 'createPullRequest':
@@ -316,7 +322,7 @@ export class GitGraphView extends Disposable {
 				});
 				break;
 			case 'deleteBranch':
-				errorInfos = [await this.dataSource.deleteBranch(msg.repo, msg.branchName, msg.forceDelete)];
+				errorInfos = [await this.undoManager.trackDeleteRef(msg.repo, t('Delete Branch "{0}"', msg.branchName), 'refs/heads/' + msg.branchName, () => this.dataSource.deleteBranch(msg.repo, msg.branchName, msg.forceDelete), (error) => error === null)];
 				if (errorInfos[0] === null) {
 					for (let i = 0; i < msg.deleteOnRemotes.length; i++) {
 						errorInfos.push(await this.dataSource.deleteRemoteBranch(msg.repo, msg.branchName, msg.deleteOnRemotes[i]));
@@ -345,7 +351,7 @@ export class GitGraphView extends Disposable {
 			case 'deleteTag':
 				this.sendMessage({
 					command: 'deleteTag',
-					error: await this.dataSource.deleteTag(msg.repo, msg.tagName, msg.deleteOnRemote)
+					error: await this.undoManager.trackDeleteRef(msg.repo, t('Delete Tag "{0}"', msg.tagName), 'refs/tags/' + msg.tagName, () => this.dataSource.deleteTag(msg.repo, msg.tagName, msg.deleteOnRemote), (error) => error === null)
 				});
 				break;
 			case 'deleteUserDetails':
@@ -364,13 +370,13 @@ export class GitGraphView extends Disposable {
 			case 'dropCommit':
 				this.sendMessage({
 					command: 'dropCommit',
-					error: await this.dataSource.dropCommit(msg.repo, msg.commitHash)
+					error: await this.undoManager.trackHead(msg.repo, t('Drop "{0}"', abbrevCommit(msg.commitHash)), () => this.dataSource.dropCommit(msg.repo, msg.commitHash), (error) => error === null)
 				});
 				break;
 			case 'dropStash':
 				this.sendMessage({
 					command: 'dropStash',
-					error: await this.dataSource.dropStash(msg.repo, msg.selector)
+					error: await this.undoManager.trackDropStash(msg.repo, t('Drop Stash "{0}"', msg.selector.replace(/^refs\//, '')), msg.selector, () => this.dataSource.dropStash(msg.repo, msg.selector))
 				});
 				break;
 			case 'editRemote':
@@ -449,7 +455,8 @@ export class GitGraphView extends Disposable {
 					command: 'loadRepoInfo',
 					refreshId: msg.refreshId,
 					...repoInfo,
-					isRepo: isRepo
+					isRepo: isRepo,
+					undo: this.undoManager.getUndo(msg.repo)
 				});
 				if (msg.repo !== this.currentRepo) {
 					this.currentRepo = msg.repo;
@@ -497,7 +504,7 @@ export class GitGraphView extends Disposable {
 				this.sendMessage({
 					command: 'merge',
 					actionOn: msg.actionOn,
-					error: await this.dataSource.merge(msg.repo, msg.obj, msg.actionOn, msg.createNewCommit, msg.squash, msg.noCommit)
+					error: await this.undoManager.trackHead(msg.repo, t('Merge "{0}"', msg.actionOn === MergeActionOn.Commit ? abbrevCommit(msg.obj) : msg.obj), () => this.dataSource.merge(msg.repo, msg.obj, msg.actionOn, msg.createNewCommit, msg.squash, msg.noCommit), (error) => error === null)
 				});
 				break;
 			case 'navigateEditorHistory':
@@ -556,7 +563,7 @@ export class GitGraphView extends Disposable {
 			case 'pullBranch':
 				this.sendMessage({
 					command: 'pullBranch',
-					error: await this.dataSource.pullBranch(msg.repo, msg.branchName, msg.remote, msg.createNewCommit, msg.squash)
+					error: await this.undoManager.trackHead(msg.repo, t('Pull "{0}"', msg.remote + '/' + msg.branchName), () => this.dataSource.pullBranch(msg.repo, msg.branchName, msg.remote, msg.createNewCommit, msg.squash), (error) => error === null)
 				});
 				break;
 			case 'pushBranch':
@@ -587,13 +594,15 @@ export class GitGraphView extends Disposable {
 					command: 'rebase',
 					actionOn: msg.actionOn,
 					interactive: msg.interactive,
-					error: await this.dataSource.rebase(msg.repo, msg.obj, msg.actionOn, msg.ignoreDate, msg.interactive)
+					error: msg.interactive
+						? await this.dataSource.rebase(msg.repo, msg.obj, msg.actionOn, msg.ignoreDate, msg.interactive)
+						: await this.undoManager.trackHead(msg.repo, t('Rebase on "{0}"', msg.actionOn === RebaseActionOn.Commit ? abbrevCommit(msg.obj) : msg.obj), () => this.dataSource.rebase(msg.repo, msg.obj, msg.actionOn, msg.ignoreDate, msg.interactive), (error) => error === null)
 				});
 				break;
 			case 'renameBranch':
 				this.sendMessage({
 					command: 'renameBranch',
-					error: await this.dataSource.renameBranch(msg.repo, msg.oldName, msg.newName)
+					error: await this.undoManager.trackRenameBranch(msg.repo, t('Rename Branch "{0}"', msg.oldName), msg.oldName, msg.newName, () => this.dataSource.renameBranch(msg.repo, msg.oldName, msg.newName))
 				});
 				break;
 			case 'rescanForRepos':
@@ -610,13 +619,13 @@ export class GitGraphView extends Disposable {
 			case 'resetToCommit':
 				this.sendMessage({
 					command: 'resetToCommit',
-					error: await this.dataSource.resetToCommit(msg.repo, msg.commit, msg.resetMode)
+					error: await this.undoManager.trackHead(msg.repo, t('Reset to "{0}"', abbrevCommit(msg.commit)), () => this.dataSource.resetToCommit(msg.repo, msg.commit, msg.resetMode), (error) => error === null)
 				});
 				break;
 			case 'revertCommit':
 				this.sendMessage({
 					command: 'revertCommit',
-					error: await this.dataSource.revertCommit(msg.repo, msg.commitHash, msg.parentIndex)
+					error: await this.undoManager.trackHead(msg.repo, t('Revert "{0}"', abbrevCommit(msg.commitHash)), () => this.dataSource.revertCommit(msg.repo, msg.commitHash, msg.parentIndex), (error) => error === null)
 				});
 				break;
 			case 'setGlobalViewState':
@@ -675,6 +684,12 @@ export class GitGraphView extends Disposable {
 				this.sendMessage({
 					command: 'viewFileAtRevision',
 					error: await viewFileAtRevision(msg.repo, msg.hash, msg.filePath)
+				});
+				break;
+			case 'undo':
+				this.sendMessage({
+					command: 'undo',
+					error: await this.undoManager.undo(msg.repo)
 				});
 				break;
 			case 'viewScm':
@@ -787,6 +802,7 @@ export class GitGraphView extends Disposable {
 					<div id="controlsSpacer"></div>
 					<div id="scrollToHeadBtn" class="controlPill" title="${t('Scroll to HEAD')}"></div>
 					<div id="syncControl" role="group"><div id="fetchBtn" class="syncBtn"></div><div id="pullBtn" class="syncBtn"></div><div id="pushBtn" class="syncBtn"></div></div>
+					<div id="undoBtn" class="controlBtn hidden"></div>
 					<div id="refreshBtn" class="controlBtn"></div>
 					<div id="terminalBtn" class="controlBtn" title="${t('Open a Terminal for this Repository')}"></div>
 					<div id="settingsBtn" class="controlBtn" title="${t('Repository Settings')}"></div>
@@ -899,6 +915,25 @@ export class GitGraphView extends Disposable {
 			loadViewTo: loadViewTo
 		});
 	}
+}
+
+/**
+ * The Undo Manager of each DataSource (shared by all Git Map Views, so that an action can still be undone after the view is reopened).
+ */
+const undoManagers = new WeakMap<DataSource, UndoManager>();
+
+/**
+ * Get the Undo Manager of a DataSource (creating it if required).
+ * @param dataSource The DataSource.
+ * @returns The Undo Manager.
+ */
+function getUndoManager(dataSource: DataSource) {
+	let undoManager = undoManagers.get(dataSource);
+	if (typeof undoManager === 'undefined') {
+		undoManager = new UndoManager(dataSource);
+		undoManagers.set(dataSource, undoManager);
+	}
+	return undoManager;
 }
 
 /**

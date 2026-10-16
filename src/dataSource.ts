@@ -2082,6 +2082,17 @@ export class DataSource extends Disposable {
 	 * @param repo The repository to run the command in.
 	 * @returns The returned ErrorInfo (suitable for being sent to the Git Map View).
 	 */
+	/**
+	 * Run a Git command, resolving with its output (or rejecting with its error message). Used to inspect & restore the state of a
+	 * repository when an action is undone (see UndoManager).
+	 * @param args The arguments to pass to Git.
+	 * @param repo The repository to run the command in.
+	 * @returns The output of the command.
+	 */
+	public execGit(args: string[], repo: string): Promise<string> {
+		return this.spawnGit(args, repo, (stdout) => stdout);
+	}
+
 	private runGitCommand(args: string[], repo: string): Promise<ErrorInfo> {
 		return this._spawnGit(args, repo, () => null).catch((errorMessage: string) => errorMessage);
 	}

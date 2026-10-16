@@ -2368,6 +2368,7 @@ describe('GitGraphView', () => {
 							stashes: getRepoInfoResolvedValue.stashes,
 							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
+							undo: null,
 							error: getRepoInfoResolvedValue.error
 						}
 					]);
@@ -2418,6 +2419,7 @@ describe('GitGraphView', () => {
 							stashes: getRepoInfoResolvedValue.stashes,
 							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
+							undo: null,
 							error: getRepoInfoResolvedValue.error
 						}
 					]);
@@ -2469,6 +2471,7 @@ describe('GitGraphView', () => {
 							stashes: getRepoInfoResolvedValue.stashes,
 							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: true,
+							undo: null,
 							error: getRepoInfoResolvedValue.error
 						}
 					]);
@@ -2520,6 +2523,7 @@ describe('GitGraphView', () => {
 							stashes: getRepoInfoResolvedValue.stashes,
 							upstreams: getRepoInfoResolvedValue.upstreams,
 							isRepo: false,
+							undo: null,
 							error: null
 						}
 					]);

@@ -1091,6 +1091,22 @@ export interface ResponseLoadRepoInfo extends ResponseWithErrorInfo {
 	readonly upstreams: GitBranchUpstreams;
 	readonly stashes: ReadonlyArray<GitStash>;
 	readonly isRepo: boolean;
+	readonly undo: UndoInfo | null; // The last action in the repository that can be undone
+}
+
+/**
+ * An action that can be undone.
+ */
+export interface UndoInfo {
+	readonly id: number; // Identifies the action (each action that can be undone has a different id)
+	readonly description: string;
+}
+
+export interface RequestUndo extends RepoRequest {
+	readonly command: 'undo';
+}
+export interface ResponseUndo extends ResponseWithErrorInfo {
+	readonly command: 'undo';
 }
 
 export interface RequestSearchCommits extends RepoRequest {
@@ -1469,6 +1485,7 @@ export type RequestMessage =
 	| RequestCheckoutCommit
 	| RequestCherrypickCommit
 	| RequestCherrypickCommits
+	| RequestUndo
 	| RequestCleanUntrackedFiles
 	| RequestCommitDetails
 	| RequestCompareCommits
@@ -1541,6 +1558,7 @@ export type ResponseMessage =
 	| ResponseCheckoutCommit
 	| ResponseCherrypickCommit
 	| ResponseCherrypickCommits
+	| ResponseUndo
 	| ResponseCleanUntrackedFiles
 	| ResponseCompareCommits
 	| ResponseCommitDetails

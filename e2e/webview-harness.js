@@ -39,10 +39,14 @@
 		return commits;
 	};
 
+	let undoInfo = null; // The action that the extension says can be undone
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
-				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: STASHES, upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, error: null };
+				return { command: 'loadRepoInfo', refreshId: msg.refreshId, branches: ['feature', 'main'], head: 'main', remotes: ['origin'], stashes: STASHES, upstreams: { main: { name: 'origin/main', ahead: 2, behind: 1, gone: false } }, isRepo: true, undo: undoInfo, error: null };
+			case 'undo':
+				undoInfo = null;
+				return { command: 'undo', error: null };
 			case 'loadCommits':
 				if (msg.filePath === 'e2e-wide.txt') {
 					const base = makeCommits(1)[0], tips = [];
@@ -1118,6 +1122,35 @@
 			document.getElementById('commitTable').dispatchEvent(new MouseEvent('mouseleave'));
 			assert(document.getElementById('rowActions') === null, 'The buttons weren\'t hidden');
 			return 'Buttons: ' + titles.join(' | ') + '; copied ' + copied.data.substring(32) + ', opened the Create Branch dialog & the context menu';
+		});
+
+		await check('ui-undo', '[GitKraken] After an action that can be undone, an Undo button & a notification are shown, which undo it (after confirming)', async () => {
+			const undoBtn = document.getElementById('undoBtn'), toast = document.getElementById('undoToast');
+			assert(undoBtn.classList.contains('hidden') && !toast.classList.contains('active'), 'Undo is shown when there\'s nothing to undo');
+			undoInfo = { id: 7, description: 'Merge "feature"' };
+			mouse(document.getElementById('refreshBtn'), 'click');
+			await waitFor('the Undo button to be shown', () => !undoBtn.classList.contains('hidden'));
+			assert(undoBtn.title === 'Undo: Merge "feature"' && toast.classList.contains('active') && toast.textContent === 'Merge "feature"Undo', 'Unexpected Undo button / notification: ' + undoBtn.title + ' / ' + toast.textContent);
+
+			// The notification's Undo asks to confirm undoing the action
+			mouse(toast.querySelector('.undoToastAction'), 'click');
+			const dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+			assert(dialogElem.textContent.includes('Are you sure you want to undo Merge "feature"?') && dialogElem.textContent.includes('Uncommitted changes are kept') && !toast.classList.contains('active'), 'Unexpected dialog: ' + dialogElem.textContent);
+			const before = requestsOf('undo').length;
+			mouse(document.getElementById('dialogAction'), 'click');
+			const request = await waitFor('the action to be undone', () => requestsOf('undo').length > before ? requestsOf('undo').slice(-1)[0] : null);
+			assert(request.repo === REPO, 'Unexpected request: ' + JSON.stringify(request));
+			await waitFor('the Undo button to be hidden', () => undoBtn.classList.contains('hidden'));
+
+			// An action that could already be undone isn't notified again (e.g. when the view is refreshed)
+			undoInfo = { id: 7, description: 'Merge "feature"' };
+			mouse(document.getElementById('refreshBtn'), 'click');
+			await waitFor('the Undo button to be shown', () => !undoBtn.classList.contains('hidden'));
+			assert(!toast.classList.contains('active'), 'The same action was notified again');
+			undoInfo = null;
+			mouse(document.getElementById('refreshBtn'), 'click');
+			await waitFor('the Undo button to be hidden', () => undoBtn.classList.contains('hidden'));
+			return 'Button: ' + 'Undo: Merge "feature"' + '; notified once; undo requested for ' + request.repo;
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {
