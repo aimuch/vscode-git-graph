@@ -17,6 +17,12 @@ Git Map has two parts that communicate with messages: the extension (`src/`, run
 | `diffDocProvider.ts` | Provides the contents of files at a revision to the Visual Studio Code Diff View. |
 | `statusBarItem.ts` | The Git Map Status Bar Item. |
 | `config.ts` | Typed access to the `git-map.*` Extension Settings. |
+| `lineHistory.ts`, `lineHistoryDrawer.ts`, `lineHistoryInline.ts` | The history of lines: the drawer (a Webview view in the Secondary Side Bar) and the inline window (a comment thread), and their actions. |
+| `lineMapping.ts` | Maps the lines of an editor's contents to the same lines in HEAD (Myers' diff algorithm). |
+| `lineBlame.ts`, `fileBlame.ts` | The blame of the current line (and its hover), and the File Blame (with a heatmap). |
+| `revisionNavigation.ts` | Show Previous / Next Revision of a file. |
+| `codeLens.ts` | The optional Git CodeLens. |
+| `remoteLinks.ts` | Links to lines & commits on the web pages of remote repositories. |
 | `settingsMigration.ts` | Copies the Extension Settings named `git-graph.*` (before version 2.1.0, and by the original Git Graph extension) to `git-map.*` when Git Map starts. |
 | `l10n.ts` | Translation of messages (see [Localisation](#localisation)). |
 | `askpass/` | Git Map's integrated Askpass, which prompts for credentials needed by Git. |

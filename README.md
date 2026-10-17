@@ -74,8 +74,14 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * `Escape`: Closes the active dialog, context menu or the Commit Details View.
     * Resize the width of each column, and show/hide the Date, Author & Commit columns.
     * Common Emoji Shortcodes are automatically replaced with the corresponding emoji in commit messages (including all [gitmoji](https://gitmoji.carloscuesta.me/)). Custom Emoji Shortcode mappings can be defined in `git-map.customEmojiShortcodeMappings`.
-* File & Line History: "View File History in Git Map" (in the context menus of files in the Explorer & editor tabs) and "View Line History in Git Map" (in the context menu of editors) show only the commits that change a file (following it through renames) or the selected lines, and how each commit changes them.
-* Current Line Blame: the line the cursor is on shows who last changed it, and when & why, at its end. Hovering over it shows the commit, with a link that opens it in the Git Map View.
+* Line History (right-click on lines > Git Map > View Line History): how the selected lines changed, without leaving the editor, in a drawer on the right or an inline window below the lines (`git-map.lineHistory.location`). A timeline of the uncommitted changes & each commit that changed the lines (following them as they move, and the file through renames), with the author, their avatar and the date, and the selected change's diff of the lines, with actions to open the changes, open the file at the commit, show the lines before the change, view the commit in Git Map, and copy a link to the lines on the remote. The drawer can follow the cursor (`git-map.lineHistory.followCursor`).
+* File History: "View File History in Git Map" (in the context menus of files in the Explorer & editor tabs) shows only the commits that change a file (following it through renames), and how each commit changes it. "View Line History in Git Map" does the same for lines.
+* Current Line Blame: the line the cursor is on shows who last changed it, and when & why, at its end. Hovering over it shows how the commit changed the line, with links to view the history of the line, open the changes, view the commit in Git Map, and copy a link to the line on the remote.
+* File Blame: "Toggle File Blame" annotates each block of lines with the date & author of the commit that last changed it, coloured by how recently it was made (a heatmap from blue, the oldest, to orange, the newest).
+* Revisions: "Show Previous Revision" & "Show Next Revision" (arrow buttons on the diffs & files opened by Git Map) step through the commits that changed a file.
+* Remote Links: "Copy Remote Link to Lines" & "Open Lines on Remote" link to the selected lines on the remote's web page (GitHub, GitLab, Bitbucket, Gitea / Forgejo / Codeberg & Azure DevOps), at a commit.
+* Git CodeLens (`git-map.codeLens.enabled`, off by default): who changed each function, method & class most recently, and how many authors changed it.
+* The editor's context menu has a "Git Map" submenu with these actions. No other extension is required: everything uses Visual Studio Code's API and Git.
 * A broad range of configurable settings (e.g. graph style, branch colours, and more...). See the 'Extension Settings' section below for more information.
 * "Git Map" launch button in the Status Bar
 * "Git Map: View Git Map" launch command in the Command Palette
@@ -114,9 +120,14 @@ A summary of the Git Map extension settings are:
     * **Node Style**: Specifies how commits are drawn on the graph: as dots (default), or as the avatars of their authors.
     * **Style**: Specifies the style of the graph.
     * **Uncommitted Changes**: Specifies how the Uncommitted Changes are displayed on the graph.
+* **CodeLens**:
+    * **Enabled**: Show who changed functions, methods & classes most recently (and when), and how many authors changed them, above them in the editor (default: disabled).
 * **Integrated Terminal Shell**: Specifies the path and filename of the Shell executable to be used by the Visual Studio Code Integrated Terminal, when it is opened by Git Map.
 * **Keyboard Shortcut > \***: Configures the keybindings used for all keyboard shortcuts in the Git Map View.
 * **Language**: Specifies the language that Git Map is displayed in: Auto (the display language of Visual Studio Code, default), English or Simplified Chinese. The descriptions of Git Map's commands and settings always follow the display language of Visual Studio Code.
+* **Line History**:
+    * **Follow Cursor**: The Line History drawer shows the history of the line the cursor is on, following the cursor (default: disabled).
+    * **Location**: Where the history of lines is shown: in a drawer on the right (default), or in an inline window below the lines.
 * **Markdown**: Parse and render a frequently used subset of inline Markdown formatting rules in commit messages and tag details (bold, italics, bold & italics, and inline code blocks).
 * **Max Depth Of Repo Search**: Specifies the maximum depth of subfolders to search when discovering repositories in the workspace.
 * **Open New Tab Editor Group**: Specifies the Editor Group where Git Map should open new tabs, when performing the following actions from the Git Map View: Viewing the Visual Studio Code Diff View, Opening a File, Viewing a File at a Specific Revision.
@@ -178,10 +189,14 @@ This extension contributes the following commands:
 * `git-map.removeGitRepository`: Git Map: Remove Git Repository... _(used to remove repositories from Git Map)_
 * `git-map.resumeWorkspaceCodeReview`: Git Map: Resume a specific Code Review in Workspace... _(used to open the Git Map View to a Code Review that is already in progress)_
 * `git-map.selectGraphColourPreset`: Git Map: Select Graph Colour Preset...
+* `git-map.toggleFileBlame`: Git Map: Toggle File Blame
 * `git-map.toggleLineBlame`: Git Map: Toggle Current Line Blame
 * `git-map.version`: Git Map: Get Version Information
 * `git-map.viewFileHistory`: Git Map: View File History in Git Map
-* `git-map.viewLineHistory`: Git Map: View Line History in Git Map
+* `git-map.viewLineHistory`: Git Map: View Line History _(in the drawer or an inline window)_
+* `git-map.viewLineHistoryInGitMap`: Git Map: View Line History in Git Map
+* `git-map.openPreviousRevision` / `git-map.openNextRevision`: Git Map: Show Previous / Next Revision
+* `git-map.copyRemoteLinkToLines` / `git-map.openLinesOnRemote`: Git Map: Copy Remote Link to Lines / Open Lines on Remote
 
 ## Release Notes
 
