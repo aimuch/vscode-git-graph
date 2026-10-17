@@ -4,13 +4,15 @@ View a graph of your repository's Git history, and easily perform Git actions fr
 
 > This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-map`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
 
+**Git Map and the Source Control Graph of Visual Studio Code:** Visual Studio Code has a built-in Source Control Graph (in the Source Control View), which shows the history of the current branch (and the branches you choose) alongside your changes: it's ideal for seeing your incoming & outgoing commits at a glance. Git Map is a full view in the editor area for working with the whole history of a repository: all of its branches, remote branches, tags, stashes & worktrees on one graph, the actions of Git from the context menus of the graph (with an undo of the last one), the details & comparisons of commits (with code reviews), the history of files & lines, the blame of the current line, and interactive rebasing in an editor. It stays fast with tens of thousands of commits. Both can be used side by side.
+
 ![Recording of Git Map](resources/demo.gif)
 
 ## Features
 
 * Git Map View:
     * A minimap of the activity of the loaded commits, markers alongside the scrollbar (HEAD, branches, tags & find matches), and highlighting of the branch of the commit under the mouse.
-    * Find commits by text, or with the search operators `author:` (`@:`), `message:` (`=:`) and `commit:` (`#:`).
+    * Find commits by text, or with the search operators `author:` (`@:`), `message:` (`=:`), `commit:` (`#:`), `file:` (`?:`), `change:` (`~:`), `after:` (`>:`) and `before:` (`<:`), and highlight the matching commits or only show them.
     * Display:
         * Local & Remote Branches
         * Local Refs: Heads, Tags & Remotes
@@ -23,6 +25,11 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * Apply, Create Branch From, Drop & Pop Stashes
         * View annotated tag details (name, email, date and message)
         * Copy commit hashes, and branch, stash & tag names to the clipboard
+        * Create, Open, Remove & Prune Worktrees
+    * Select several commits (Shift + click selects a range, Ctrl/Cmd + Shift + click adds or removes a commit) to cherry pick them together, or copy their hashes. Hovering over a commit shows buttons of its most common actions at the end of its row.
+    * Undo the last action run by Git Map in a repository (e.g. a merge, rebase, reset, cherry pick, checkout, or creating / deleting a branch or tag) with the Undo button, unless the repository has changed since. Uncommitted changes are never discarded.
+    * Rebase interactively in the Rebase Editor: reorder the commits by dragging them, and pick, reword, squash, fixup or drop each one. While a rebase, merge, cherry pick or revert is in progress, a bar explains it, with buttons to continue, skip or abort it.
+    * The Worktrees & Stashes buttons list the worktrees & stashes of the repository. Branches checked out in other worktrees are marked.
     * View commit details and file changes by clicking on a commit. On the Commit Details View you can:
         * View the Visual Studio Code Diff of any file change by clicking on it.
         * Open the current version of any file that was affected in the commit.
@@ -67,6 +74,8 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * `Escape`: Closes the active dialog, context menu or the Commit Details View.
     * Resize the width of each column, and show/hide the Date, Author & Commit columns.
     * Common Emoji Shortcodes are automatically replaced with the corresponding emoji in commit messages (including all [gitmoji](https://gitmoji.carloscuesta.me/)). Custom Emoji Shortcode mappings can be defined in `git-graph.customEmojiShortcodeMappings`.
+* File & Line History: "View File History in Git Map" (in the context menus of files in the Explorer & editor tabs) and "View Line History in Git Map" (in the context menu of editors) show only the commits that change a file (following it through renames) or the selected lines, and how each commit changes them.
+* Current Line Blame: the line the cursor is on shows who last changed it, and when & why, at its end. Hovering over it shows the commit, with a link that opens it in the Git Map View.
 * A broad range of configurable settings (e.g. graph style, branch colours, and more...). See the 'Extension Settings' section below for more information.
 * "Git Map" launch button in the Status Bar
 * "Git Map: View Git Map" launch command in the Command Palette
@@ -76,6 +85,8 @@ View a graph of your repository's Git history, and easily perform Git actions fr
 Every setting is described in the Visual Studio Code Settings Editor (search for `@ext:aimdev.git-map`), and the settings that need more explanation are documented in [Extension Settings](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md).
 
 A summary of the Git Map extension settings are:
+* **Blame**:
+    * **Current Line**: Show who last changed the line the cursor is on, and when & why (the author, date & subject of the commit), at the end of the line in the editor (default: enabled).
 * **Commit Details View**:
     * **Auto Center**: Automatically center the Commit Details View when it is opened.
     * **File View**:
@@ -98,6 +109,9 @@ A summary of the Git Map extension settings are:
     * **Minimap**: Show a minimap of the activity of the loaded commits at the top of the Git Map View (default: enabled).
     * **Colour Preset**: Specifies the colour preset used on the graph: Default (the colours of the "Colours" setting), Pastel, Vivid, High Contrast, Colour Blind Safe or Tokyo Subway. It can also be selected with the "Git Map: Select Graph Colour Preset..." command.
     * **Colours**: Specifies the colours used on the graph.
+    * **Density**: Specifies the height of the rows of the commits: Comfortable (32 pixel rows, default) or Compact (24 pixel rows).
+    * **Freeze Column Headers** & **Freeze Footer**: Keep the column headers & the footer visible while scrolling through the commits (default: enabled).
+    * **Node Style**: Specifies how commits are drawn on the graph: as dots (default), or as the avatars of their authors.
     * **Style**: Specifies the style of the graph.
     * **Uncommitted Changes**: Specifies how the Uncommitted Changes are displayed on the graph.
 * **Integrated Terminal Shell**: Specifies the path and filename of the Shell executable to be used by the Visual Studio Code Integrated Terminal, when it is opened by Git Map.
@@ -163,7 +177,11 @@ This extension contributes the following commands:
 * `git-graph.fetch`: Git Map: Fetch from Remote(s) _(used to open the Git Map View and immediately run "Fetch from Remote(s)")_
 * `git-graph.removeGitRepository`: Git Map: Remove Git Repository... _(used to remove repositories from Git Map)_
 * `git-graph.resumeWorkspaceCodeReview`: Git Map: Resume a specific Code Review in Workspace... _(used to open the Git Map View to a Code Review that is already in progress)_
+* `git-graph.selectGraphColourPreset`: Git Map: Select Graph Colour Preset...
+* `git-graph.toggleLineBlame`: Git Map: Toggle Current Line Blame
 * `git-graph.version`: Git Map: Get Version Information
+* `git-graph.viewFileHistory`: Git Map: View File History in Git Map
+* `git-graph.viewLineHistory`: Git Map: View Line History in Git Map
 
 ## Release Notes
 
