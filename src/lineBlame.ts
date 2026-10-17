@@ -131,12 +131,19 @@ export class LineBlame extends Disposable {
 		if (blame === null) return;
 
 		const end = document.lineAt(line).range.end;
-		editor.setDecorations(this.decorationType, [{
+		const decorate = (change: ReadonlyArray<string> | null) => editor.setDecorations(this.decorationType, [{
 			range: new vscode.Range(end, end),
-			hoverMessage: getBlameHover(repo, blame),
+			hoverMessage: getBlameHover(repo, blame, document.uri, line + 1, change),
 			renderOptions: { after: { contentText: getBlameText(blame) } }
 		}]);
+		decorate(null);
 		this.decoratedEditor = editor;
+
+		// The hover also shows how the commit changed the line, once it has been loaded
+		if (!blame.committed) return;
+		const change = await this.dataSource.getLineChange(repo, blame.hash, blame.originalFilePath, blame.originalLine);
+		if (change === null || requestId !== this.requestId || editor !== vscode.window.activeTextEditor || editor.selection.active.line !== line || this.decoratedEditor !== editor) return;
+		decorate(change.diff);
 	}
 }
 
@@ -152,23 +159,43 @@ export function getBlameText(blame: GitLineBlame) {
 }
 
 /**
- * Get the hover of the blame of a line: the commit, and a link that opens it in the Git Map View.
+ * The maximum number of lines of the diff shown in the hover of the blame of a line.
+ */
+const MAX_HOVER_DIFF_LINES = 12;
+
+/**
+ * Get the hover of the blame of a line: the commit, how it changed the line, and links to view the history of the line, open the changes,
+ * view the commit in the Git Map View, and copy a link to the line on the remote.
  * @param repo The repository containing the line.
  * @param blame The blame of the line.
+ * @param uri The file.
+ * @param line The line (1-based) in the editor.
+ * @param change The diff of the line in the commit, or NULL if it hasn't been loaded.
  * @returns The hover.
  */
-function getBlameHover(repo: string, blame: GitLineBlame) {
+export function getBlameHover(repo: string, blame: GitLineBlame, uri: vscode.Uri, line: number, change: ReadonlyArray<string> | null) {
 	const hover = new vscode.MarkdownString(undefined, true);
+	const args = (value: any[]) => encodeURIComponent(JSON.stringify(value));
+	const lineHistoryLink = '[$(history) ' + t('View Line History') + '](command:git-map.viewLineHistory?' + args([{ uri: uri.toString(), start: line, end: line }]) + ')';
+	hover.isTrusted = { enabledCommands: ['git-map.viewCommitInGitMap', 'git-map.viewLineHistory', 'git-map.openLineChanges', 'git-map.copyRemoteLink'] };
 	if (!blame.committed) {
 		hover.appendText(t('This line has uncommitted changes.'));
+		hover.appendMarkdown('\n\n' + lineHistoryLink);
 		return hover;
 	}
-	const args = encodeURIComponent(JSON.stringify([repo, blame.hash]));
-	hover.isTrusted = { enabledCommands: ['git-map.viewCommitInGitMap'] };
 	hover.appendMarkdown('$(git-commit) **' + abbrevCommit(blame.hash) + '** · ');
 	hover.appendText(blame.author + ' <' + blame.authorEmail + '> · ' + new Date(blame.authorDate * 1000).toLocaleString(getLanguage() === 'zh-cn' ? 'zh-CN' : 'en'));
 	hover.appendMarkdown('\n\n');
 	hover.appendText(blame.summary);
-	hover.appendMarkdown('\n\n[$(git-merge) ' + t('View Commit in Git Map') + '](command:git-map.viewCommitInGitMap?' + args + ')');
+	if (change !== null && change.length > 0) {
+		const lines = change.slice(0, MAX_HOVER_DIFF_LINES), fence = '`'.repeat(Math.max(3, ...lines.map((diffLine) => (diffLine.match(/`+/g) || ['']).reduce((max, run) => Math.max(max, run.length + 1), 0))));
+		hover.appendMarkdown('\n\n' + fence + 'diff\n' + lines.join('\n') + (change.length > MAX_HOVER_DIFF_LINES ? '\n…' : '') + '\n' + fence);
+	}
+	hover.appendMarkdown('\n\n' + [
+		lineHistoryLink,
+		'[$(diff) ' + t('Open Changes') + '](command:git-map.openLineChanges?' + args([repo, blame.hash, blame.originalFilePath, blame.originalLine]) + ')',
+		'[$(git-merge) ' + t('View Commit in Git Map') + '](command:git-map.viewCommitInGitMap?' + args([repo, blame.hash]) + ')',
+		'[$(link) ' + t('Copy Remote Link') + '](command:git-map.copyRemoteLink?' + args([repo, blame.hash, blame.originalFilePath, blame.originalLine, blame.originalLine]) + ')'
+	].join(' · '));
 	return hover;
 }

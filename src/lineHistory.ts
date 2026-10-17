@@ -99,6 +99,16 @@ export class LineHistory extends Disposable {
 			entryCommand('git-map.lineHistory.openBefore', 'openBefore'),
 			entryCommand('git-map.lineHistory.viewCommit', 'viewCommit'),
 			entryCommand('git-map.lineHistory.copyRemoteLink', 'copyRemoteLink'),
+			vscode.commands.registerCommand('git-map.openLineChanges', (repo: any, hash: any, filePath: any, line: any) => this.openLineChanges(repo, hash, filePath, line)),
+			vscode.commands.registerCommand('git-map.copyRemoteLink', (repo: any, hash: any, filePath: any, start: any, end: any) => {
+				if (typeof repo === 'string' && typeof hash === 'string' && typeof filePath === 'string' && typeof start === 'number' && typeof end === 'number') {
+					this.remoteLinkToLines(repo, hash, filePath, { start: start, end: end }, false).then((error) => {
+						if (error !== null) showErrorMessage(error);
+					});
+				}
+			}),
+			vscode.commands.registerCommand('git-map.copyRemoteLinkToLines', () => this.remoteLinkToSelectedLines(false)),
+			vscode.commands.registerCommand('git-map.openLinesOnRemote', () => this.remoteLinkToSelectedLines(true)),
 			vscode.window.onDidChangeTextEditorSelection((event) => this.onSelectionChange(event.textEditor)),
 			avatarManager.onAvatar((event) => this.onAvatar(event.email, event.image)),
 			onDidChangeConfiguration((event) => {
@@ -145,12 +155,13 @@ export class LineHistory extends Disposable {
 	/**
 	 * The method run when the `git-map.viewLineHistory` command is invoked: show the history of the selected lines (or the line the cursor is
 	 * on) in the active text editor, or of the lines given (e.g. by a CodeLens).
-	 * @param arg The file & lines (`{ uri, start, end }`), or undefined to use the active text editor.
+	 * @param arg The file & lines (`{ uri, start, end }`, where `uri` is a URI or its string), or undefined to use the active text editor.
 	 */
 	private async viewLineHistory(arg: any) {
 		let document: vscode.TextDocument, range: GitLineRange;
-		if (typeof arg === 'object' && arg !== null && arg.uri instanceof vscode.Uri && typeof arg.start === 'number' && typeof arg.end === 'number') {
-			document = await vscode.workspace.openTextDocument(arg.uri);
+		if (typeof arg === 'object' && arg !== null && (arg.uri instanceof vscode.Uri || typeof arg.uri === 'string') && typeof arg.start === 'number' && typeof arg.end === 'number') {
+			// The file is a URI, or a string (from the link in the hover of the blame of a line)
+			document = await vscode.workspace.openTextDocument(typeof arg.uri === 'string' ? vscode.Uri.parse(arg.uri) : arg.uri);
 			range = { start: arg.start, end: arg.end };
 		} else {
 			const editor = vscode.window.activeTextEditor;
@@ -362,20 +373,73 @@ export class LineHistory extends Disposable {
 	 * @param entry The change made by the commit.
 	 * @returns The error that occurred, or NULL.
 	 */
-	private async copyRemoteLink(repo: string, entry: GitLineHistoryEntry): Promise<ErrorInfo> {
-		const remote = await this.dataSource.getDefaultRemote(repo), webRepo = remote !== null ? getRemoteWebRepo(remote.url) : null;
-		if (remote === null || webRepo === null) return t('Unable to Copy Remote Link: {0}', t('The repository doesn\'t have a remote with a web page (e.g. on GitHub or GitLab).'));
+	private copyRemoteLink(repo: string, entry: GitLineHistoryEntry): Promise<ErrorInfo> {
 		// If the commit deleted the lines, the link is to the lines in its parent
 		const deleted = entry.newRange === null && entry.parents.length > 0;
-		const hash = deleted ? entry.parents[0] : entry.hash;
-		const error = await copyToClipboard(getRemoteFileUrl(webRepo, hash, deleted && entry.oldFilePath !== null ? entry.oldFilePath : entry.filePath, deleted ? entry.oldRange : entry.newRange));
+		return this.remoteLinkToLines(repo, deleted ? entry.parents[0] : entry.hash, deleted && entry.oldFilePath !== null ? entry.oldFilePath : entry.filePath, deleted ? entry.oldRange : entry.newRange, false);
+	}
+
+	/**
+	 * Copy the link to (or open) the selected lines of the active text editor on the web page of the repository's remote, at HEAD (the
+	 * lines are mapped to the same lines in HEAD, if the file has uncommitted changes).
+	 * @param open TRUE => Open the link, FALSE => Copy the link to the clipboard.
+	 */
+	private async remoteLinkToSelectedLines(open: boolean) {
+		const fail = (reason: string) => showErrorMessage(open ? t('Unable to Open Lines on Remote: {0}', reason) : t('Unable to Copy Remote Link: {0}', reason));
+		const editor = vscode.window.activeTextEditor;
+		if (typeof editor === 'undefined' || editor.document.uri.scheme !== 'file') return fail(t('Open a file in an editor, and select the lines.'));
+		const target = await this.getTarget(editor.document.uri, getSelectedLines(editor.selection));
+		if (target === null) return fail(t('The file {0} isn\'t in a repository known by Git Map.', getPathFromUri(editor.document.uri)));
+		const head = await this.dataSource.getHeadHash(target.repo), lines = await this.dataSource.getLinesInHead(target.repo, target.filePath, target.range, editor.document.getText());
+		if (head === null || lines === null) return fail(t('The selected lines haven\'t been committed yet.'));
+		const error = await this.remoteLinkToLines(target.repo, head, target.filePath, lines, open);
+		if (error !== null) showErrorMessage(error);
+	}
+
+	/**
+	 * Copy the link to (or open) lines of a file at a commit, on the web page of the repository's remote (a permanent link to the commit).
+	 * @param repo The repository.
+	 * @param hash The hash of the commit.
+	 * @param filePath The path of the file in the commit.
+	 * @param lines The lines (or NULL for the whole file).
+	 * @param open TRUE => Open the link, FALSE => Copy the link to the clipboard.
+	 * @returns The error that occurred, or NULL.
+	 */
+	private async remoteLinkToLines(repo: string, hash: string, filePath: string, lines: GitLineRange | null, open: boolean): Promise<ErrorInfo> {
+		const remote = await this.dataSource.getDefaultRemote(repo), webRepo = remote !== null ? getRemoteWebRepo(remote.url) : null;
+		if (remote === null || webRepo === null) {
+			const reason = t('The repository doesn\'t have a remote with a web page (e.g. on GitHub or GitLab).');
+			return open ? t('Unable to Open Lines on Remote: {0}', reason) : t('Unable to Copy Remote Link: {0}', reason);
+		}
+		const url = getRemoteFileUrl(webRepo, hash, filePath, lines), onRemote = await this.dataSource.isCommitOnRemote(repo, hash, remote.name);
+		if (open) {
+			if (!onRemote) vscode.window.showWarningMessage(t('The commit {0} isn\'t on the remote "{1}" yet, so the page may not exist. Push it for the link to work.', abbrevCommit(hash), remote.name));
+			return openExternalUrl(url);
+		}
+		const error = await copyToClipboard(url);
 		if (error !== null) return error;
-		if (await this.dataSource.isCommitOnRemote(repo, hash, remote.name)) {
+		if (onRemote) {
 			vscode.window.setStatusBarMessage(t('Copied the link to the lines at commit {0} to the clipboard.', abbrevCommit(hash)), 4000);
 		} else {
 			vscode.window.showWarningMessage(t('Copied the link to the clipboard, but the commit {0} isn\'t on the remote "{1}" yet. Push it for the link to work.', abbrevCommit(hash), remote.name));
 		}
 		return null;
+	}
+
+	/**
+	 * Open the changes a commit made to a file, selecting a line (from the link in the hover of the blame of a line).
+	 * @param repo The repository.
+	 * @param hash The hash of the commit.
+	 * @param filePath The path of the file in the commit.
+	 * @param line The line in the commit (1-based).
+	 */
+	private async openLineChanges(repo: any, hash: any, filePath: any, line: any) {
+		if (typeof repo !== 'string' || typeof hash !== 'string' || typeof filePath !== 'string' || typeof line !== 'number') return;
+		const change = await this.dataSource.getLineChange(repo, hash, filePath, line);
+		const oldFilePath = change !== null && change.oldFilePath !== null ? change.oldFilePath : filePath;
+		const type = change !== null && change.fileAdded ? GitFileStatus.Added : oldFilePath !== filePath ? GitFileStatus.Renamed : GitFileStatus.Modified;
+		const error = await viewDiff(repo, hash, hash, oldFilePath, filePath, type, { start: line, end: line });
+		if (error !== null) showErrorMessage(error);
 	}
 
 	/**

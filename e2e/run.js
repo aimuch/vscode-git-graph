@@ -191,7 +191,8 @@ async function main() {
 				'--disable-workspace-trust',
 				'--skip-welcome',
 				'--skip-release-notes',
-				'--disable-telemetry'
+				'--disable-telemetry',
+				'--remote-debugging-port=0' // The checks take screenshots of the workbench through the DevTools protocol (the port is in DevToolsActivePort)
 			],
 			extensionTestsEnv: {
 				E2E_FIXTURES: JSON.stringify(fixtures),

@@ -1884,7 +1884,7 @@ export class DataSource extends Disposable {
 	 */
 	public getLineBlame(repo: string, filePath: string, line: number, contents: string): Promise<GitLineBlame | null> {
 		return this._spawnGit(['blame', '--porcelain', '-L', line + ',' + line, '--contents', '-', '--', filePath], repo, (stdout) => {
-			const lines = stdout.toString().split(LF_REGEX), header = lines.length > 0 ? lines[0].match(/^([0-9a-f]{40,64}) /) : null;
+			const lines = stdout.toString().split(LF_REGEX), header = lines.length > 0 ? lines[0].match(/^([0-9a-f]{40,64}) (\d+) /) : null;
 			if (header === null) return null;
 			const field = (name: string) => {
 				const fieldLine = lines.find((fieldLine) => fieldLine.startsWith(name + ' '));
@@ -1896,9 +1896,32 @@ export class DataSource extends Disposable {
 				author: field('author'),
 				authorEmail: field('author-mail').replace(/^<|>$/g, ''),
 				authorDate: parseInt(field('author-time')) || 0,
-				summary: field('summary')
+				summary: field('summary'),
+				originalLine: parseInt(header[2]),
+				originalFilePath: field('filename') || filePath
 			};
 		}, false, contents).catch(() => null);
+	}
+
+	/**
+	 * Get how a commit changed a line of a file (as found by blaming the line).
+	 * @param repo The path of the repository.
+	 * @param hash The hash of the commit.
+	 * @param filePath The path of the file in the commit.
+	 * @param line The line in the commit (1-based).
+	 * @returns The change (the diff of the line, and the paths of the file), or NULL if it couldn't be determined.
+	 */
+	public getLineChange(repo: string, hash: string, filePath: string, line: number) {
+		return this.spawnGit(['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--max-count=1', '--format=', '-L', line + ',' + line + ':' + filePath, hash, '--'], repo, (stdout) => parseLineHistoryDiff(stdout, filePath)).catch(() => null);
+	}
+
+	/**
+	 * Get the hash of the commit that HEAD refers to.
+	 * @param repo The path of the repository.
+	 * @returns The hash, or NULL if the repository doesn't have any commits.
+	 */
+	public getHeadHash(repo: string): Promise<string | null> {
+		return this.resolveCommitHash(repo, 'HEAD').catch(() => null);
 	}
 
 	/**

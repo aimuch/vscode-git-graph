@@ -45,6 +45,36 @@ function assert(condition, message) {
 	if (!condition) throw new Error(message);
 }
 
+/**
+ * Take a screenshot of the workbench of Visual Studio Code (through the DevTools protocol, as it's started with --remote-debugging-port=0),
+ * saved in e2e/.artifacts/screenshots.
+ * @param name The name of the screenshot.
+ * @returns The path of the screenshot, or NULL if it couldn't be taken.
+ */
+async function screenshot(name) {
+	try {
+		const port = parseInt(fs.readFileSync(path.join(path.dirname(fixtures.workspace), 'user-data', 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+		const targets = await (await fetch('http://127.0.0.1:' + port + '/json')).json();
+		const target = targets.find((t) => t.type === 'page' && t.url.includes('workbench'));
+		const ws = new WebSocket(target.webSocketDebuggerUrl);
+		await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
+		const data = await new Promise((resolve, reject) => {
+			ws.onmessage = (event) => {
+				const msg = JSON.parse(event.data);
+				if (msg.id === 1) msg.result ? resolve(msg.result.data) : reject(new Error(JSON.stringify(msg.error)));
+			};
+			ws.send(JSON.stringify({ id: 1, method: 'Page.captureScreenshot', params: { format: 'png' } }));
+		});
+		ws.close();
+		const dir = path.join(path.dirname(fixtures.workspace), 'screenshots'), file = path.join(dir, name + '.png');
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(file, Buffer.from(data, 'base64'));
+		return file;
+	} catch (_) {
+		return null;
+	}
+}
+
 // E2E_ONLY (a comma separated list of check ids, and / or "harness") only runs those checks, while developing them
 const ONLY = process.env.E2E_ONLY ? process.env.E2E_ONLY.split(',') : null;
 
@@ -829,6 +859,8 @@ async function run() {
 		assert(config().get('lineHistory.location') === 'Inline Window' && thread.canReply === false && thread.range.start.line === 5 && thread.range.end.line === 6 && thread.uri.toString() === document.uri.toString(), 'Unexpected inline window: ' + JSON.stringify({ canReply: thread.canReply, range: thread.range }));
 		assert(comments.length === history.entries.length && comments[0].author.name === 'You' && comments[2].author.name === 'Second Author' && comments[2].timestamp instanceof Date && comments[2].author.iconPath.scheme === 'data' && comments[1].label === latest.substring(0, 8), 'Unexpected comments: ' + JSON.stringify(comments.map((comment) => ({ author: comment.author.name, label: comment.label }))));
 		assert(comments[1].body.value.includes('```diff') && comments[1].body.value.includes('+line 4 (latest)') && comments[1].body.value.includes('command:git-map.lineHistory.openChanges'), 'Unexpected comment: ' + comments[1].body.value);
+		await sleep(1500);
+		await screenshot('line-history-inline');
 		await vscode.commands.executeCommand('git-map.lineHistory.close');
 		assert(lineHistory.getInline().getThread() === null, 'The inline window wasn\'t closed');
 		await vscode.commands.executeCommand('git-map.lineHistory.switchToDrawer');
@@ -874,8 +906,77 @@ async function run() {
 		await vscode.commands.executeCommand('git-map.viewLineHistory');
 		await waitForHistory('the history of lines 6-7 again', (value) => value.target.range.start === 6 && value.history.entries.length === 4);
 		fs.writeFileSync(path.join(path.dirname(fixtures.workspace), 'line-history-drawer.html'), getLineHistoryPage(drawer.getContent(), ''));
+		await sleep(1500);
+		await screenshot('line-history-drawer');
 		await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
 		return 'Lines 6-7 of the editor = lines 4-5 in HEAD: ' + history.entries.map((entry) => entry.hash === '*' ? 'uncommitted' : entry.subject + ' (' + entry.author + ')').join(' ← ') + '; inline window: ' + comments.length + ' comments; link: ' + link;
+	});
+
+	// The hover of the blame of a line, and links to lines on the remote. The ways it could go wrong, which this check asserts don't happen:
+	// the hover's diff isn't how the commit changed the line (e.g. the line has moved since, or the file was renamed), its links have the
+	// wrong arguments (or aren't allowed to run), the changes are opened without selecting the line, and the link to the selected lines of
+	// an editor with uncommitted changes is to the wrong lines (or a different commit than HEAD).
+	await check('blame-hover-and-links', '[GitLens] The hover of the blame of a line shows how the commit changed it, with links to the history of the line, its changes, the commit & a link to it on the remote; the selected lines can be copied as a link to the remote', async () => {
+		const view = await getView(), dataSource = view.dataSource;
+		const { getBlameHover } = require(path.join(extension.extensionPath, 'out', 'lineBlame.js'));
+		const { LineHistory } = require(path.join(extension.extensionPath, 'out', 'lineHistory.js'));
+		const repo = createScratchRepo('blame-hover', { 'old.txt': 'one\ntwo\nthree\nfour\n' });
+		git(repo, 'mv', 'old.txt', 'code.txt');
+		git(repo, 'commit', '-q', '-m', 'Rename old.txt');
+		const changedTwo = commitFile(repo, 'code.txt', 'one\ntwo (changed)\nthree\nfour\n', 'Change line two');
+		git(repo, 'remote', 'add', 'origin', 'https://gitlab.com/e2e-group/e2e-repo.git');
+		await view.repoManager.registerRepo(repo, false);
+
+		// An uncommitted line is added above the line, so line 3 of the editor is line 2 of the commit
+		const contents = 'zero (uncommitted)\none\ntwo (changed)\nthree\nfour\n';
+		const blame = await dataSource.getLineBlame(repo, 'code.txt', 3, contents);
+		assert(blame !== null && blame.hash === changedTwo && blame.originalLine === 2 && blame.originalFilePath === 'code.txt', 'Unexpected blame: ' + JSON.stringify(blame));
+		const change = await dataSource.getLineChange(repo, blame.hash, blame.originalFilePath, blame.originalLine);
+		assert(change !== null && JSON.stringify(change.diff) === JSON.stringify(['-two', '+two (changed)']), 'Unexpected change: ' + JSON.stringify(change));
+		const uri = vscode.Uri.file(path.join(repo, 'code.txt'));
+		const hover = getBlameHover(repo, blame, uri, 3, change.diff);
+		const links = (hover.value.match(/command:git-map\.[a-zA-Z.]+/g) || []).map((link) => link.substring(8));
+		assert(hover.value.includes('```diff\n-two\n+two (changed)\n```') && JSON.stringify(links) === JSON.stringify(['git-map.viewLineHistory', 'git-map.openLineChanges', 'git-map.viewCommitInGitMap', 'git-map.copyRemoteLink']) && links.every((link) => hover.isTrusted.enabledCommands.includes(link)), 'Unexpected hover: ' + hover.value);
+
+		// The links: the changes (selecting the line), the history of the line (the file is given as a string), and the link to the line on the remote
+		await vscode.commands.executeCommand('git-map.openLineChanges', repo, changedTwo, 'code.txt', 2);
+		const diffEditor = await waitFor('the changes', () => {
+			const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+			return tab && tab.input instanceof vscode.TabInputTextDiff && tab.input.modified.scheme === 'git-map' && vscode.window.activeTextEditor ? vscode.window.activeTextEditor : null;
+		});
+		assert(diffEditor.selection.start.line === 1, 'The line wasn\'t selected: ' + diffEditor.selection.start.line);
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		const document = await vscode.workspace.openTextDocument(uri);
+		const editor = await vscode.window.showTextDocument(document);
+		await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), 'zero (uncommitted)\n'));
+		await vscode.commands.executeCommand('git-map.viewLineHistory', { uri: uri.toString(), start: 3, end: 3 });
+		const shown = await waitFor('the history of the line', () => {
+			const value = LineHistory.getInstance().getShown();
+			return value !== null && value.target.uri.toString() === uri.toString() && value.target.range.start === 3 ? value : null;
+		});
+		assert(shown.history.entries[0].hash === changedTwo && JSON.stringify(shown.history.headRange) === JSON.stringify({ start: 2, end: 2 }), 'Unexpected history: ' + JSON.stringify(shown.history.entries.map((entry) => entry.subject)));
+		const head = git(repo, 'rev-parse', 'HEAD');
+		await vscode.env.clipboard.writeText('');
+		await vscode.commands.executeCommand('git-map.copyRemoteLink', repo, changedTwo, 'code.txt', 2, 2);
+		const commitLink = await waitFor('the link to the line', async () => (await vscode.env.clipboard.readText()) || null);
+		assert(commitLink === 'https://gitlab.com/e2e-group/e2e-repo/-/blob/' + changedTwo + '/code.txt#L2', 'Unexpected link: ' + commitLink);
+
+		// The link to the selected lines of the editor (lines 3-4, which are lines 2-3 at HEAD)
+		await vscode.window.showTextDocument(document, { selection: new vscode.Selection(2, 0, 3, 2) });
+		await vscode.env.clipboard.writeText('');
+		await vscode.commands.executeCommand('git-map.copyRemoteLinkToLines');
+		const linesLink = await waitFor('the link to the selected lines', async () => (await vscode.env.clipboard.readText()) || null);
+		assert(linesLink === 'https://gitlab.com/e2e-group/e2e-repo/-/blob/' + head + '/code.txt#L2-3', 'Unexpected link: ' + linesLink);
+
+		// The hover in the editor (for screenshots): the cursor is at the end of the blamed line
+		const blamedLine = document.lineAt(2);
+		vscode.window.activeTextEditor.selection = new vscode.Selection(blamedLine.range.end, blamedLine.range.end);
+		await sleep(1200);
+		await vscode.commands.executeCommand('editor.action.showHover');
+		await sleep(800);
+		await screenshot('blame-hover');
+		await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+		return 'Hover of line 3 (line 2 at ' + changedTwo.substring(0, 8) + '): ' + change.diff.join(' / ') + '; links: ' + links.join(', ') + '; remote links: ' + commitLink + ', ' + linesLink;
 	});
 
 	await check('remote-links', '[GitLens] Links to lines & commits on the web pages of remote repositories (GitHub, GitLab, Bitbucket, Gitea / Forgejo, Azure DevOps)', async () => {

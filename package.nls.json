@@ -390,5 +390,9 @@
 	"config.lineHistory.location.description": "Where the history of lines (Git Map: View Line History) is shown. The drawer is shown in the Explorer before Visual Studio Code 1.106.",
 	"config.lineHistory.location.drawer": "In a drawer (a view in the Secondary Side Bar, on the right).",
 	"config.lineHistory.location.inlineWindow": "In an inline window below the lines in the editor. The first time it's shown in a window, Visual Studio Code may open its Comments panel (see `comments.openView`).",
-	"config.lineHistory.followCursor.description": "The drawer shows the history of the line the cursor is on (or the selected lines) as the cursor moves. Otherwise it keeps showing the lines it was opened for."
+	"config.lineHistory.followCursor.description": "The drawer shows the history of the line the cursor is on (or the selected lines) as the cursor moves. Otherwise it keeps showing the lines it was opened for.",
+	"command.copyRemoteLinkToLines.title": "Copy Remote Link to Lines",
+	"command.openLinesOnRemote.title": "Open Lines on Remote",
+	"command.openLineChanges.title": "Open Changes of the Line",
+	"command.copyRemoteLink.title": "Copy Remote Link"
 }

@@ -145,8 +145,8 @@ function renderContent(content: LineHistoryDrawerContent) {
 	let html = '<div class="lhHeader"><div class="lhHeaderFile"><b title="' + escapeHtml(history.filePath) + '">' + escapeHtml(getFileName(history.filePath)) + '</b>' +
 		'<span class="lhMuted">' + escapeHtml(getDirectory(history.filePath)) + '</span></div>' +
 		'<div class="lhHeaderMeta"><span class="lhRange">' + escapeHtml(formatRange(history.range)) + '</span>' +
-		(history.headRange !== null && (history.headRange.start !== history.range.start || history.headRange.end !== history.range.end) ? '<span class="lhMuted">' + escapeHtml(t('(lines {0}–{1} in HEAD)', history.headRange.start, history.headRange.end)) + '</span>' : '') +
-		'<span class="lhMuted">' + escapeHtml(t('{0} commits · {1} authors', numCommits + (history.moreAvailable ? '+' : ''), authors)) + '</span></div></div>';
+		(history.headRange !== null && (history.headRange.start !== history.range.start || history.headRange.end !== history.range.end) ? '<span class="lhMuted">' + escapeHtml(history.headRange.start === history.headRange.end ? t('(line {0} in HEAD)', history.headRange.start) : t('(lines {0}–{1} in HEAD)', history.headRange.start, history.headRange.end)) + '</span>' : '') +
+		'<span class="lhMuted">' + escapeHtml((numCommits === 1 && !history.moreAvailable ? t('1 commit') : t('{0} commits', numCommits + (history.moreAvailable ? '+' : ''))) + ' · ' + (authors === 1 ? t('1 author') : t('{0} authors', authors))) + '</span></div></div>';
 	if (history.error !== null) {
 		html += '<div class="lhError">' + escapeHtml(t('Unable to load the history of the lines: {0}', history.error)) + '</div>';
 	}

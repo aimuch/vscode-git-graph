@@ -206,6 +206,8 @@ export interface GitLineBlame {
 	readonly authorEmail: string;
 	readonly authorDate: number;
 	readonly summary: string;
+	readonly originalLine: number; // The line in the commit (1-based)
+	readonly originalFilePath: string; // The path of the file in the commit
 }
 
 /**

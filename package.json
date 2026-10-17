@@ -209,6 +209,30 @@
 				"command": "git-map.lineHistory.copyRemoteLink",
 				"title": "%command.lineHistory.copyRemoteLink.title%",
 				"icon": "$(link)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.copyRemoteLinkToLines",
+				"title": "%command.copyRemoteLinkToLines.title%",
+				"icon": "$(link)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.openLinesOnRemote",
+				"title": "%command.openLinesOnRemote.title%",
+				"icon": "$(link-external)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.openLineChanges",
+				"title": "%command.openLineChanges.title%",
+				"icon": "$(diff)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.copyRemoteLink",
+				"title": "%command.copyRemoteLink.title%",
+				"icon": "$(link)"
 			}
 		],
 		"configuration": {
@@ -1764,6 +1788,22 @@
 				{
 					"command": "git-map.lineHistory.openInGitMap",
 					"when": "false"
+				},
+				{
+					"command": "git-map.openLineChanges",
+					"when": "false"
+				},
+				{
+					"command": "git-map.copyRemoteLink",
+					"when": "false"
+				},
+				{
+					"command": "git-map.copyRemoteLinkToLines",
+					"when": "editorIsOpen && resourceScheme == file"
+				},
+				{
+					"command": "git-map.openLinesOnRemote",
+					"when": "editorIsOpen && resourceScheme == file"
 				}
 			],
 			"editor/context": [
@@ -1881,6 +1921,18 @@
 				{
 					"command": "git-map.viewFileHistory",
 					"group": "1_history@3"
+				},
+				{
+					"command": "git-map.toggleLineBlame",
+					"group": "2_blame@2"
+				},
+				{
+					"command": "git-map.copyRemoteLinkToLines",
+					"group": "4_remote@1"
+				},
+				{
+					"command": "git-map.openLinesOnRemote",
+					"group": "4_remote@2"
 				}
 			]
 		},

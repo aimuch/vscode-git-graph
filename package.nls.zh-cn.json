@@ -390,5 +390,9 @@
 	"config.lineHistory.location.description": "行历史（Git Map: 查看行历史）的显示位置。Visual Studio Code 1.106 之前，抽屉显示在资源管理器中。",
 	"config.lineHistory.location.drawer": "在抽屉中（右侧辅助侧边栏中的视图）。",
 	"config.lineHistory.location.inlineWindow": "在编辑器中这些行下方的行内窗口中。在一个窗口中首次显示时，Visual Studio Code 可能会打开它的“注释”面板（见 `comments.openView`）。",
-	"config.lineHistory.followCursor.description": "抽屉随光标移动，显示光标所在行（或所选行）的历史。否则一直显示打开时的那些行。"
+	"config.lineHistory.followCursor.description": "抽屉随光标移动，显示光标所在行（或所选行）的历史。否则一直显示打开时的那些行。",
+	"command.copyRemoteLinkToLines.title": "复制这些行的远程链接",
+	"command.openLinesOnRemote.title": "在远程打开这些行",
+	"command.openLineChanges.title": "打开此行的更改",
+	"command.copyRemoteLink.title": "复制远程链接"
 }

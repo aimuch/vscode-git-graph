@@ -925,7 +925,6 @@
 	"Right-click on lines in an editor, and select Git Map > View Line History to see how they changed.": "在编辑器中右键点击代码行，选择“Git Map > 查看行历史”，即可查看这些行是如何一步步变化的。",
 	"Loading the history of lines {0}–{1} of {2} ...": "正在加载 {2} 第 {0}–{1} 行的历史...",
 	"(lines {0}–{1} in HEAD)": "（HEAD 中第 {0}–{1} 行）",
-	"{0} commits · {1} authors": "{0} 个提交 · {1} 位作者",
 	"Unable to load the history of the lines: {0}": "无法加载这些行的历史：{0}",
 	"No changes to these lines were found.": "没有找到这些行的更改。",
 	"You": "你",
@@ -943,5 +942,11 @@
 	"Git Map Line History": "Git Map 行历史",
 	"Older changes are shown in the drawer: [Show in the Drawer]({0})": "更早的更改显示在抽屉中：[在抽屉中显示]({0})",
 	"Git Map": "Git Map",
-	"{0} changes": "{0} 次更改"
+	"{0} changes": "{0} 次更改",
+	"View Line History": "查看行历史",
+	"Unable to Open Lines on Remote: {0}": "无法在远程打开这些行：{0}",
+	"The commit {0} isn't on the remote \"{1}\" yet, so the page may not exist. Push it for the link to work.": "提交 {0} 还不在远程仓库“{1}”上，页面可能不存在。推送之后链接才能打开。",
+	"(line {0} in HEAD)": "（HEAD 中第 {0} 行）",
+	"1 commit": "1 个提交",
+	"1 author": "1 位作者"
 }
