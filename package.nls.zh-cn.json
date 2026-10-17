@@ -398,5 +398,18 @@
 	"command.toggleFileBlame.title": "切换文件 Blame（热力图）",
 	"command.openPreviousRevision.title": "查看上一个版本的更改",
 	"command.openNextRevision.title": "查看下一个版本的更改",
-	"config.codeLens.enabled.description": "在编辑器中函数、方法和类的上方（CodeLens）显示最近修改者及时间，以及共有几位作者修改过。点击可查看这些行的历史。"
+	"config.codeLens.enabled.description": "在编辑器中函数、方法和类的上方（CodeLens）显示最近修改者及时间，以及共有几位作者修改过。点击可查看这些行的历史。",
+	"command.escape.title": "关闭行历史或文件 Blame",
+	"config.editorContextMenu.markdownDescription": "每个 Git Map 操作在编辑器右键菜单中的位置：在 \"Git Map\" 子菜单中（默认）、直接在右键菜单中，或者隐藏。",
+	"config.editorContextMenu.submenu": "在 \"Git Map\" 子菜单中。",
+	"config.editorContextMenu.contextMenu": "直接显示在编辑器的右键菜单中。",
+	"config.editorContextMenu.hidden": "不显示。",
+	"config.editorContextMenu.viewLineHistory": "查看行历史",
+	"config.editorContextMenu.viewLineHistoryInGitMap": "在 Git Map 中查看行历史",
+	"config.editorContextMenu.viewFileHistory": "在 Git Map 中查看文件历史",
+	"config.editorContextMenu.toggleFileBlame": "切换文件 Blame（热力图）",
+	"config.editorContextMenu.toggleLineBlame": "切换当前行 Blame",
+	"config.editorContextMenu.openPreviousRevision": "查看上一个版本的更改",
+	"config.editorContextMenu.copyRemoteLinkToLines": "复制这些行的远程链接",
+	"config.editorContextMenu.openLinesOnRemote": "在远程打开这些行"
 }

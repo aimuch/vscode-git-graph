@@ -5,6 +5,7 @@ import { CommandManager } from './commands';
 import { getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffDocProvider } from './diffDocProvider';
+import { EscapeStack } from './escapeStack';
 import { ExtensionState } from './extensionState';
 import { FileBlame } from './fileBlame';
 import { LineBlame } from './lineBlame';
@@ -55,6 +56,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const commandManager = new CommandManager(context, avatarManager, dataSource, extensionState, repoManager, gitExecutable, onDidChangeGitExecutable, logger);
 	const diffDocProvider = new DiffDocProvider(dataSource);
 	const lineBlame = new LineBlame(dataSource, repoManager, onDidChangeConfiguration, logger);
+	const escapeStack = new EscapeStack();
 	const lineHistory = new LineHistory(dataSource, repoManager, avatarManager, onDidChangeConfiguration, logger);
 	const fileBlame = new FileBlame(dataSource, repoManager, logger);
 	const revisionNavigation = new RevisionNavigation(dataSource, repoManager);
@@ -85,6 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 		diffDocProvider,
 		lineBlame,
+		escapeStack,
 		lineHistory,
 		fileBlame,
 		revisionNavigation,

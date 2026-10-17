@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { AvatarManager } from './avatarManager';
 import { getConfig } from './config';
 import { DataSource } from './dataSource';
+import { EscapeStack } from './escapeStack';
 import { t } from './l10n';
 import { LineHistoryDrawer, LineHistoryDrawerMessage } from './lineHistoryDrawer';
 import { LineHistoryComment, LineHistoryInline, getInitialAvatar } from './lineHistoryInline';
@@ -192,7 +193,7 @@ export class LineHistory extends Disposable {
 		const loadId = ++this.loadId;
 		if (location === LineHistoryLocation.Drawer) {
 			if (this.shown === null || !isSameTarget(this.shown.target, target)) this.drawer.show({ kind: 'loading', filePath: target.filePath, range: target.range });
-			if (reveal) await this.drawer.reveal();
+			if (reveal) await this.revealDrawer();
 		}
 		const history = await this.dataSource.getLineHistory(target.repo, target.filePath, target.range, contents, maxCommits);
 		if (loadId !== this.loadId) return;
@@ -212,9 +213,26 @@ export class LineHistory extends Disposable {
 		this.drawer.show({ kind: 'history', history: shown.history, avatars: this.avatars });
 		if (location === LineHistoryLocation.InlineWindow) {
 			this.inline.show(shown.target.uri, shown.history, (entry) => this.getAvatarUri(entry));
+			EscapeStack.push('lineHistory.inline', () => this.inline.getThread() !== null, () => this.inline.close());
 		} else {
 			this.inline.close();
 		}
+	}
+
+	/**
+	 * Show the drawer, which Escape closes.
+	 */
+	private async revealDrawer() {
+		await this.drawer.reveal();
+		EscapeStack.push('lineHistory.drawer', () => this.drawer.isVisible(), () => this.closeDrawer());
+	}
+
+	/**
+	 * Close the drawer (the Secondary Side Bar it's in), returning to the editor.
+	 */
+	private async closeDrawer() {
+		await vscode.commands.executeCommand('workbench.action.closeAuxiliaryBar');
+		await vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
 	}
 
 	/**
@@ -224,11 +242,11 @@ export class LineHistory extends Disposable {
 	private async switchLocation(location: LineHistoryLocation) {
 		await vscode.workspace.getConfiguration('git-map').update('lineHistory.location', location === LineHistoryLocation.InlineWindow ? 'Inline Window' : 'Drawer', vscode.ConfigurationTarget.Global);
 		if (this.shown === null) {
-			if (location === LineHistoryLocation.Drawer) await this.drawer.reveal();
+			if (location === LineHistoryLocation.Drawer) await this.revealDrawer();
 			return;
 		}
 		if (location === LineHistoryLocation.Drawer) {
-			await this.drawer.reveal();
+			await this.revealDrawer();
 		} else {
 			// The inline window is shown in the editor of the file
 			await vscode.window.showTextDocument(this.shown.target.uri, { selection: new vscode.Range(this.shown.target.range.start - 1, 0, this.shown.target.range.start - 1, 0), preview: false });
@@ -299,6 +317,11 @@ export class LineHistory extends Disposable {
 	 * @param message The message.
 	 */
 	private onDrawerMessage(message: LineHistoryDrawerMessage) {
+		if (message.command === 'escape') {
+			EscapeStack.remove('lineHistory.drawer');
+			this.closeDrawer();
+			return;
+		}
 		if (this.shown === null) return;
 		if (message.command === 'loadMore') {
 			this.refresh(this.shown.maxCommits + COMMITS_PER_LOAD);

@@ -477,18 +477,23 @@ async function run() {
 	});
 
 	await check('ui-file-history-command', '[Redesign] The "View File History in Git Map" command opens the view showing the history of the file (relative to its repository)', async () => {
-		const view = await getView();
+		await getView();
+		await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 		const since = { requests: record.requests.length, responses: record.responses.length };
 		await vscode.commands.executeCommand('git-map.viewFileHistory', vscode.Uri.file(path.join(main, 'file.txt')));
 		const request = await waitFor('the history of file.txt to be requested', () => record.requests.slice(since.requests).find((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === 'file.txt'));
 		const response = await waitFor('the history to be loaded', () => record.responses.slice(since.responses).find((msg) => msg.command === 'loadCommits' && msg.refreshId === request.refreshId));
 		const hashes = response.commits.map((commit) => commit.hash);
 		assert(response.error === null && response.fileHistory !== null && hashes.length === 4 && hashes.includes(fixtures.firstCommit) && hashes.includes(fixtures.secondAuthorCommit) && !hashes.includes(fixtures.headCommit), 'Unexpected history of file.txt: ' + hashes.length + ' commits');
-		// Exit the history of the file (so all commits are shown for the following checks)
-		const exitSince = record.requests.length;
-		view.respondLoadRepos(view.repoManager.getRepos(), { repo: main, fileHistory: null });
-		await waitFor('all of the commits to be requested', () => record.requests.slice(exitSince).some((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === null));
-		return 'file.txt: ' + hashes.length + ' commits';
+		// The latest commit that changed the file is selected (its details are opened)
+		const latest = git(main, 'log', '-n', '1', '--format=%H', '--', 'file.txt');
+		await waitFor('the latest commit of file.txt to be selected', () => record.requests.slice(since.requests).some((msg) => msg.command === 'commitDetails' && msg.commitHash === latest));
+		// Exit the history of the file (so all commits are shown for the following checks), in the view that was opened (as closing the editors closed the previous one)
+		const exitSince = record.requests.length, opened = await getView();
+		opened.respondLoadRepos(opened.repoManager.getRepos(), { repo: main, fileHistory: null });
+		await waitFor('all of the commits to be requested', () => record.requests.slice(exitSince).some((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === null))
+			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(exitSince).map((msg) => msg.command + (msg.command === 'loadCommits' ? ' ' + msg.filePath : '')).join(', ') + ')'); });
+		return 'file.txt: ' + hashes.length + ' commits, the latest selected';
 	});
 
 	await check('#940', 'Interactive rebase on a branch whose name contains shell syntax does not execute it', async () => {
@@ -908,6 +913,14 @@ async function run() {
 		fs.writeFileSync(path.join(path.dirname(fixtures.workspace), 'line-history-drawer.html'), getLineHistoryPage(drawer.getContent(), ''));
 		await sleep(1500);
 		await screenshot('line-history-drawer');
+		await config().update('language', 'Simplified Chinese', vscode.ConfigurationTarget.Global);
+		try {
+			await vscode.commands.executeCommand('git-map.lineHistory.refresh');
+			await sleep(1500);
+			await screenshot('line-history-drawer-zh');
+		} finally {
+			await config().update('language', undefined, vscode.ConfigurationTarget.Global);
+		}
 		await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
 		return 'Lines 6-7 of the editor = lines 4-5 in HEAD: ' + history.entries.map((entry) => entry.hash === '*' ? 'uncommitted' : entry.subject + ' (' + entry.author + ')').join(' ← ') + '; inline window: ' + comments.length + ' comments; link: ' + link;
 	});
@@ -1111,6 +1124,109 @@ async function run() {
 		} finally {
 			await config.update('codeLens.enabled', undefined, vscode.ConfigurationTarget.Global);
 		}
+	});
+
+	// Toggling the blame of the current line. The ways it could go wrong, which this check asserts don't happen: the blame isn't hidden or
+	// shown again, and a workspace's setting (which overrides the user's) stops the toggle from changing anything.
+	await check('line-blame-toggle', '[GitLens] Toggle Current Line Blame hides & shows the blame of the current line (changing the workspace\'s setting if it has one)', async () => {
+		const view = await getView();
+		const { LineBlame } = require(path.join(extension.extensionPath, 'out', 'lineBlame.js'));
+		const repo = createScratchRepo('line-blame-toggle', { 'code.txt': 'one\ntwo\nthree\n' });
+		await view.repoManager.registerRepo(repo, false);
+		const uri = vscode.Uri.file(path.join(repo, 'code.txt')), lineBlame = LineBlame.getInstance();
+		const config = () => vscode.workspace.getConfiguration('git-map');
+		const shownLine = () => {
+			const shown = lineBlame.getShownLine();
+			return shown !== null && shown.uri.toString() === uri.toString() ? shown.line : null;
+		};
+		await vscode.window.showTextDocument(uri, { selection: new vscode.Selection(1, 0, 1, 0) });
+		try {
+			await waitFor('the blame of line 2', () => shownLine() === 1);
+			await vscode.commands.executeCommand('git-map.toggleLineBlame');
+			await waitFor('the blame to be hidden', () => shownLine() === null && config().inspect('blame.currentLine').globalValue === false);
+			await vscode.commands.executeCommand('git-map.toggleLineBlame');
+			await waitFor('the blame to be shown again', () => shownLine() === 1 && config().inspect('blame.currentLine').globalValue === true);
+			// A workspace's setting overrides the user's, so it's the one that's changed
+			await config().update('blame.currentLine', true, vscode.ConfigurationTarget.Workspace);
+			await vscode.commands.executeCommand('git-map.toggleLineBlame');
+			await waitFor('the blame to be hidden for the workspace', () => shownLine() === null && config().inspect('blame.currentLine').workspaceValue === false && config().inspect('blame.currentLine').globalValue === true);
+			return 'Hidden & shown again (user setting); hidden by changing the workspace\'s setting';
+		} finally {
+			await config().update('blame.currentLine', undefined, vscode.ConfigurationTarget.Workspace);
+			await config().update('blame.currentLine', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+		}
+	});
+
+	// Escape. The ways it could go wrong, which this check asserts don't happen: it doesn't close what was shown most recently first, it
+	// closes the File Blame of a file that isn't in the active editor, it closes something that was already closed (instead of the next
+	// thing), and its keybinding takes Escape from the editor's own uses (selections, widgets, suggestions).
+	await check('escape', '[GitLens] Escape closes what Git Map showed most recently (the File Blame, the Line History inline window or drawer), returning to how it was before', async () => {
+		const view = await getView();
+		const { LineHistory } = require(path.join(extension.extensionPath, 'out', 'lineHistory.js'));
+		const { FileBlame } = require(path.join(extension.extensionPath, 'out', 'fileBlame.js'));
+		const repo = createScratchRepo('escape', { 'a.txt': 'one\ntwo\nthree\n', 'b.txt': 'b\n' });
+		commitFile(repo, 'a.txt', 'one\ntwo (changed)\nthree\n', 'Change two');
+		await view.repoManager.registerRepo(repo, false);
+		const a = vscode.Uri.file(path.join(repo, 'a.txt')), b = vscode.Uri.file(path.join(repo, 'b.txt'));
+		const lineHistory = LineHistory.getInstance(), fileBlame = FileBlame.getInstance(), config = vscode.workspace.getConfiguration('git-map');
+		const binding = extension.packageJSON.contributes.keybindings.find((keybinding) => keybinding.command === 'git-map.escape');
+		assert(binding.key === 'escape' && ['git-map:escapable', '!editorHasSelection', '!editorHasMultipleSelections', '!suggestWidgetVisible', '!findWidgetVisible', '!inlineSuggestionVisible', '!renameInputVisible'].every((term) => binding.when.split(' && ').includes(term)), 'Unexpected keybinding: ' + JSON.stringify(binding));
+		const closed = [];
+		try {
+			// The drawer, then the File Blame of a.txt, then the inline window
+			await vscode.window.showTextDocument(a, { selection: new vscode.Selection(1, 0, 1, 0) });
+			await vscode.commands.executeCommand('git-map.viewLineHistory');
+			await waitFor('the drawer', () => lineHistory.getDrawer().isVisible() && lineHistory.getShown() !== null && lineHistory.getShown().target.uri.toString() === a.toString());
+			await vscode.window.showTextDocument(a);
+			await vscode.commands.executeCommand('git-map.toggleFileBlame');
+			await waitFor('the File Blame', () => fileBlame.getAnnotations(a) !== null);
+			await config.update('lineHistory.location', 'Inline Window', vscode.ConfigurationTarget.Global);
+			await vscode.commands.executeCommand('git-map.viewLineHistory');
+			await waitFor('the inline window', () => lineHistory.getInline().getThread() !== null);
+
+			await vscode.commands.executeCommand('git-map.escape');
+			await waitFor('the inline window to close', () => lineHistory.getInline().getThread() === null);
+			assert(fileBlame.getAnnotations(a) !== null && lineHistory.getDrawer().isVisible(), 'Escape closed more than the inline window');
+			closed.push('inline window');
+			// In another file's editor, Escape doesn't close the File Blame of a.txt (the drawer is closed instead)
+			await vscode.window.showTextDocument(b);
+			await vscode.commands.executeCommand('git-map.escape');
+			await waitFor('the drawer to close', () => !lineHistory.getDrawer().isVisible());
+			assert(fileBlame.getAnnotations(a) !== null, 'Escape closed the File Blame of a file that isn\'t in the active editor');
+			closed.push('drawer (in b.txt, keeping the File Blame of a.txt)');
+			await vscode.window.showTextDocument(a);
+			await vscode.commands.executeCommand('git-map.escape');
+			await waitFor('the File Blame to close', () => fileBlame.getAnnotations(a) === null);
+			closed.push('File Blame of a.txt');
+			return 'Escape closed: ' + closed.join(', then ');
+		} finally {
+			await config.update('lineHistory.location', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+		}
+	});
+
+	// The context menu of editors. The ways it could go wrong, which this check asserts don't happen: an action is shown both in the submenu &
+	// directly (or neither, unless it's hidden), the submenu is shown when it's empty, and a setting that only sets some actions loses the
+	// default of the others (the menus' conditions read each action's value).
+	await check('editor-context-menu', '[GitLens] The Git Map actions of the context menu of editors are in a "Git Map" submenu, or directly in the context menu, or hidden, as set by git-map.editorContextMenu', async () => {
+		const menus = extension.packageJSON.contributes.menus, actions = Object.keys(extension.packageJSON.contributes.configuration.properties['git-map.editorContextMenu'].properties);
+		const submenuItems = menus['git-map.editorContext'], contextItems = menus['editor/context'];
+		const submenuEntry = contextItems.find((item) => item.submenu === 'git-map.editorContext');
+		const problems = actions.filter((action) => {
+			const inSubmenu = submenuItems.find((item) => item.command === 'git-map.' + action), direct = contextItems.find((item) => item.command === 'git-map.' + action);
+			return !inSubmenu || !direct || !inSubmenu.when.includes("editorContextMenu." + action + " == 'Submenu'") || !direct.when.includes("editorContextMenu." + action + " == 'Context Menu'") || !submenuEntry.when.includes("editorContextMenu." + action + " == 'Submenu'");
+		});
+		assert(actions.length === 8 && problems.length === 0, 'Unexpected menus for: ' + problems.join(', '));
+		const config = vscode.workspace.getConfiguration('git-map');
+		await config.update('editorContextMenu', { viewLineHistory: 'Context Menu', openLinesOnRemote: 'Hidden' }, vscode.ConfigurationTarget.Global);
+		try {
+			const value = (action) => vscode.workspace.getConfiguration().get('git-map.editorContextMenu.' + action);
+			assert(value('viewLineHistory') === 'Context Menu' && value('openLinesOnRemote') === 'Hidden' && value('toggleFileBlame') === 'Submenu', 'The setting isn\'t merged with its default: ' + JSON.stringify(vscode.workspace.getConfiguration().get('git-map.editorContextMenu')));
+		} finally {
+			await config.update('editorContextMenu', undefined, vscode.ConfigurationTarget.Global);
+		}
+		return actions.length + ' actions, each in the submenu or directly in the context menu (exclusively); a partial setting keeps the defaults of the other actions';
 	});
 
 	await check('remote-links', '[GitLens] Links to lines & commits on the web pages of remote repositories (GitHub, GitLab, Bitbucket, Gitea / Forgejo, Azure DevOps)', async () => {

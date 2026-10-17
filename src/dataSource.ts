@@ -2000,6 +2000,20 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Get the latest commit that changed lines of a file (in the history of HEAD).
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param range The lines (1-based) in HEAD.
+	 * @returns The hash of the commit, or NULL if it couldn't be determined.
+	 */
+	public getLatestCommitOfLines(repo: string, filePath: string, range: GitLineRange): Promise<string | null> {
+		return this.spawnGit(['-c', 'log.showSignature=false', 'log', '--max-count=1', '--format=%H', '-L', range.start + ',' + range.end + ':' + filePath, 'HEAD', '--'], repo, (stdout) => {
+			const hash = stdout.split(LF_REGEX)[0];
+			return /^[0-9a-f]{40,64}$/.test(hash) ? hash : null;
+		}).catch(() => null);
+	}
+
+	/**
 	 * Get the hash of the commit that HEAD refers to.
 	 * @param repo The path of the repository.
 	 * @returns The hash, or NULL if the repository doesn't have any commits.

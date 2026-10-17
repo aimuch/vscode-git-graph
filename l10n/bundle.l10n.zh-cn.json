@@ -959,5 +959,17 @@
 	"There isn't a newer revision of {0} in the history of HEAD.": "HEAD 的历史中没有 {0} 更新的版本。",
 	"{0} doesn't have an earlier revision.": "{0} 没有更早的版本。",
 	"Showing the changes of commit {0}": "正在显示提交 {0} 的更改",
-	"View the history of these lines": "查看这些行的历史"
+	"View the history of these lines": "查看这些行的历史",
+	"$(eye) Git Map: Current Line Blame On": "$(eye) Git Map：已显示当前行 Blame",
+	"$(eye-closed) Git Map: Current Line Blame Off": "$(eye-closed) Git Map：已隐藏当前行 Blame",
+	"Git Map shows the blame of the current line again. GitLens also shows it (the \"gitlens.currentLine.enabled\" setting).": "Git Map 已重新显示当前行 Blame。GitLens 也在显示当前行 Blame（设置 \"gitlens.currentLine.enabled\"）。",
+	"Git Map no longer shows the blame of the current line. The blame still shown is GitLens' (the \"gitlens.currentLine.enabled\" setting).": "Git Map 已不再显示当前行 Blame。仍然显示的是 GitLens 的当前行 Blame（设置 \"gitlens.currentLine.enabled\"）。",
+	"Open the file, selecting the lines": "打开文件，并选中这些行",
+	"Open the file as it was at this commit, selecting the lines": "打开此提交时的文件，并选中这些行",
+	"Open the file at HEAD, selecting the lines": "打开 HEAD 中的文件，并选中这些行",
+	"Open the file as it was before this commit, selecting the lines": "打开此提交之前的文件，并选中这些行",
+	"Show the commit in the Git Map View": "在 Git Map 视图中显示此提交",
+	"Copy a permanent link to these lines at this commit, on the web page of the remote": "复制此提交中这些行在远程网页上的永久链接",
+	"Open the commit on the web page of the remote": "在远程网页上打开此提交",
+	"Open the changes of this commit to the file, selecting the lines": "打开此提交对文件的更改，并选中这些行"
 }

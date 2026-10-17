@@ -20,6 +20,8 @@ const BLAME_DELAY = 150;
  * Git Map View.
  */
 export class LineBlame extends Disposable {
+	private static instance: LineBlame | null = null;
+
 	private readonly dataSource: DataSource;
 	private readonly repoManager: RepoManager;
 	private readonly logger: Logger;
@@ -28,6 +30,7 @@ export class LineBlame extends Disposable {
 	private timeout: NodeJS.Timeout | null = null;
 	private requestId: number = 0;
 	private decoratedEditor: vscode.TextEditor | null = null;
+	private decoratedLine: number = -1;
 
 	/**
 	 * Creates the Line Blame.
@@ -51,6 +54,7 @@ export class LineBlame extends Disposable {
 			rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen
 		});
 
+		LineBlame.instance = this;
 		this.registerDisposables(
 			this.decorationType,
 			vscode.window.onDidChangeTextEditorSelection((event) => this.schedule(event.textEditor)),
@@ -69,9 +73,29 @@ export class LineBlame extends Disposable {
 					if (this.enabled && vscode.window.activeTextEditor) this.schedule(vscode.window.activeTextEditor);
 				}
 			}),
-			{ dispose: () => this.cancel() }
+			{
+				dispose: () => {
+					this.cancel();
+					if (LineBlame.instance === this) LineBlame.instance = null;
+				}
+			}
 		);
 		if (this.enabled && vscode.window.activeTextEditor) this.schedule(vscode.window.activeTextEditor);
+	}
+
+	/**
+	 * Get the Line Blame (used by the end-to-end tests to inspect the blame that's shown).
+	 */
+	public static getInstance() {
+		return LineBlame.instance;
+	}
+
+	/**
+	 * Get the line whose blame is shown.
+	 * @returns The file & line (0-based), or NULL if no blame is shown.
+	 */
+	public getShownLine() {
+		return this.decoratedEditor !== null ? { uri: this.decoratedEditor.document.uri, line: this.decoratedLine } : null;
 	}
 
 	/**
@@ -138,6 +162,7 @@ export class LineBlame extends Disposable {
 		}]);
 		decorate(null);
 		this.decoratedEditor = editor;
+		this.decoratedLine = line;
 
 		// The hover also shows how the commit changed the line, once it has been loaded
 		if (!blame.committed) return;

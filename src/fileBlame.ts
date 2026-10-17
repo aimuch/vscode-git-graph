@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DataSource } from './dataSource';
+import { EscapeStack } from './escapeStack';
 import { getLanguage, t } from './l10n';
 import { getBlameHover } from './lineBlame';
 import { Logger } from './logger';
@@ -135,6 +136,9 @@ export class FileBlame extends Disposable {
 			return;
 		}
 		this.files.set(key, { repo: repo, filePath: path.substring(repo.length + 1), annotations: [], decorations: [], version: -1 });
+		// Escape removes the annotations of the file (while it's in the active editor)
+		const uri = document.uri;
+		EscapeStack.push('fileBlame:' + key, () => this.files.has(key) && typeof vscode.window.activeTextEditor !== 'undefined' && vscode.window.activeTextEditor.document.uri.toString() === key, () => this.close(uri));
 		if (!await this.blame(document)) {
 			this.close(document.uri);
 			showErrorMessage(t('Unable to Toggle File Blame: {0}', t('The file {0} isn\'t tracked by Git.', filePath)));
@@ -149,6 +153,7 @@ export class FileBlame extends Disposable {
 		const key = uri.toString(), timeout = this.timeouts.get(key);
 		if (typeof timeout !== 'undefined') clearTimeout(timeout);
 		this.timeouts.delete(key);
+		EscapeStack.remove('fileBlame:' + key);
 		if (!this.files.delete(key)) return;
 		vscode.window.visibleTextEditors.filter((editor) => editor.document.uri.toString() === key).forEach((editor) => editor.setDecorations(this.decorationType, []));
 		this.updateContext();

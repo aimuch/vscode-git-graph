@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { EscapeStack } from './escapeStack';
 import { t } from './l10n';
 import { formatRange, getFileName, getHue, getInitial } from './lineHistoryDrawer';
 import { GitLineHistory, GitLineHistoryEntry } from './types';
@@ -97,6 +98,7 @@ export class LineHistoryInline extends Disposable {
 		if (this.thread !== null) {
 			this.thread.dispose();
 			this.thread = null;
+			EscapeStack.update();
 		}
 	}
 

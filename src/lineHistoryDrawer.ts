@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { EscapeStack } from './escapeStack';
 import { getLanguage, t } from './l10n';
 import { GitLineHistory, GitLineHistoryEntry, GitLineRange } from './types';
 import { UNCOMMITTED, abbrevCommit, getNonce, getRelativeTimeDiff } from './utils';
@@ -14,7 +15,8 @@ const MAX_DIFF_LINES = 200;
  */
 export type LineHistoryDrawerMessage =
 	{ readonly command: 'action', readonly action: string, readonly index: number } |
-	{ readonly command: 'loadMore' };
+	{ readonly command: 'loadMore' } |
+	{ readonly command: 'escape' };
 
 /**
  * What the drawer shows: nothing yet, the history of lines that's loading, or the history of lines.
@@ -56,7 +58,9 @@ export class LineHistoryDrawer extends Disposable implements vscode.WebviewViewP
 		webviewView.webview.onDidReceiveMessage((message: LineHistoryDrawerMessage) => this.onMessage(message));
 		webviewView.onDidDispose(() => {
 			if (this.view === webviewView) this.view = null;
+			EscapeStack.update();
 		});
+		webviewView.onDidChangeVisibility(() => EscapeStack.update());
 	}
 
 	/**
@@ -155,7 +159,7 @@ function renderContent(content: LineHistoryDrawerContent) {
 	}
 
 	html += '<div class="lhLayout"><ol class="lhTimeline" role="listbox" aria-label="' + escapeHtml(t('Changes')) + '">' + entries.map((entry, index) => renderTimelineItem(entry, index, content.avatars)).join('') +
-		(history.moreAvailable ? '<li class="lhMore"><button type="button" class="lhButton" data-command="loadMore">' + escapeHtml(t('Load More Commits')) + '</button></li>' : '') +
+		(history.moreAvailable ? '<li class="lhMore"><button type="button" class="lhAction" data-command="loadMore">' + ICONS.more + '<span>' + escapeHtml(t('Load More Commits')) + '</span></button></li>' : '') +
 		'</ol><div class="lhSide"><div class="lhDetails">' + entries.map((entry, index) => renderDetails(history, entry, index, content.avatars)).join('') + '</div></div></div>';
 	return html;
 }
@@ -179,23 +183,31 @@ function renderTimelineItem(entry: GitLineHistoryEntry, index: number, avatars: 
  */
 function renderDetails(history: GitLineHistory, entry: GitLineHistoryEntry, index: number, avatars: { readonly [email: string]: string }) {
 	const uncommitted = entry.hash === UNCOMMITTED, canSeeBefore = !entry.fileAdded && (uncommitted || entry.parents.length > 0);
-	const button = (action: string, label: string, primary: boolean = false) => '<button type="button" class="lhButton' + (primary ? ' primary' : '') + '" data-action="' + action + '">' + escapeHtml(label) + '</button>';
+	const action = (name: string, icon: string, label: string, title: string) => '<button type="button" class="lhAction" data-action="' + name + '" title="' + escapeHtml(title) + '">' + icon + '<span>' + escapeHtml(label) + '</span></button>';
+	const fileActions = [
+		action('openFile', ICONS.file, uncommitted ? t('Open File') : t('Open File at this Commit'), uncommitted ? t('Open the file, selecting the lines') : t('Open the file as it was at this commit, selecting the lines')),
+		...(canSeeBefore ? [action('openBefore', ICONS.history, t('Show the Lines Before this Change'), uncommitted ? t('Open the file at HEAD, selecting the lines') : t('Open the file as it was before this commit, selecting the lines'))] : [])
+	];
+	const commitActions = uncommitted ? [] : [
+		action('viewCommit', ICONS.graph, t('View Commit in Git Map'), t('Show the commit in the Git Map View')),
+		action('copyRemoteLink', ICONS.link, t('Copy Remote Link'), t('Copy a permanent link to these lines at this commit, on the web page of the remote')),
+		action('openCommitOnRemote', ICONS.external, t('Open Commit on Remote'), t('Open the commit on the web page of the remote'))
+	];
 	return '<section class="lhDetail" data-index="' + index + '" hidden>' +
 		'<h3 class="lhDetailSubject">' + escapeHtml(uncommitted ? t('Uncommitted Changes') : entry.subject) + '</h3>' +
 		'<div class="lhDetailAuthor">' + renderAvatar(entry, avatars) + '<span><b>' + escapeHtml(uncommitted ? t('You') : entry.author) + '</b>' +
 		(entry.authorEmail !== '' ? ' <span class="lhMuted">&lt;' + escapeHtml(entry.authorEmail) + '&gt;</span>' : '') + '<br>' +
 		'<span class="lhMuted">' + escapeHtml(uncommitted ? t('Not committed yet') : formatDate(entry.authorDate) + ' (' + getRelativeTimeDiff(entry.authorDate) + ')') + '</span></span></div>' +
-		'<div class="lhChips">' + (uncommitted ? '' : '<button type="button" class="lhChip mono" data-action="copyHash" title="' + escapeHtml(t('Copy Commit Hash to Clipboard')) + '">' + escapeHtml(abbrevCommit(entry.hash)) + '</button>') +
-		'<span class="lhChip" title="' + escapeHtml(entry.filePath) + '">' + escapeHtml(entry.oldFilePath !== null ? t('{0} (renamed from {1})', getFileName(entry.filePath), entry.oldFilePath) : getFileName(entry.filePath)) + '</span>' +
-		'<span class="lhChip">' + escapeHtml(entry.newRange !== null ? formatRange(entry.newRange) : t('Lines deleted')) + '</span>' +
+		'<div class="lhChips">' + (uncommitted ? '' : '<button type="button" class="lhChip mono" data-action="copyHash" title="' + escapeHtml(t('Copy Commit Hash to Clipboard')) + '">' + ICONS.commit + escapeHtml(abbrevCommit(entry.hash)) + '</button>') +
+		'<span class="lhChip" title="' + escapeHtml(entry.filePath) + '">' + ICONS.file + '<span>' + escapeHtml(entry.oldFilePath !== null ? t('{0} (renamed from {1})', getFileName(entry.filePath), entry.oldFilePath) : getFileName(entry.filePath)) + '</span></span>' +
+		'<span class="lhChip">' + ICONS.lines + escapeHtml(entry.newRange !== null ? formatRange(entry.newRange) : t('Lines deleted')) + '</span>' +
 		'<span class="lhChip stat"><span class="lhAdd">+' + entry.additions + '</span> <span class="lhDel">−' + entry.deletions + '</span></span></div>' +
 		(entry.body !== '' ? '<div class="lhBody">' + escapeHtml(entry.body) + '</div>' : '') +
 		renderDiff(entry) +
-		'<div class="lhActions">' + button('openChanges', t('Open Changes'), true) +
-		button('openFile', uncommitted ? t('Open File') : t('Open File at this Commit')) +
-		(canSeeBefore ? button('openBefore', t('Show the Lines Before this Change')) : '') +
-		(uncommitted ? '' : button('viewCommit', t('View Commit in Git Map')) + button('copyRemoteLink', t('Copy Remote Link')) + button('openCommitOnRemote', t('Open Commit on Remote'))) +
-		'</div>' + (index === history.entries.length - 1 && !history.moreAvailable && !uncommitted ? '<p class="lhMuted lhOrigin">' + escapeHtml(entry.oldRange === null ? t('These lines were added by this commit.') : t('This is the oldest change found.')) + '</p>' : '') +
+		'<div class="lhActions"><button type="button" class="lhPrimary" data-action="openChanges" title="' + escapeHtml(t('Open the changes of this commit to the file, selecting the lines')) + '">' + ICONS.diff + '<span>' + escapeHtml(t('Open Changes')) + '</span></button>' +
+		'<div class="lhActionGroup">' + fileActions.join('') + '</div>' +
+		(commitActions.length > 0 ? '<div class="lhActionGroup">' + commitActions.join('') + '</div>' : '') + '</div>' +
+		(index === history.entries.length - 1 && !history.moreAvailable && !uncommitted ? '<p class="lhOrigin">' + ICONS.info + '<span>' + escapeHtml(entry.oldRange === null ? t('These lines were added by this commit.') : t('This is the oldest change found.')) + '</span></p>' : '') +
 		'</section>';
 }
 
@@ -281,6 +293,22 @@ export function escapeHtml(str: string) {
 }
 
 /**
+ * The icons of the drawer (in the style of Visual Studio Code's icons, drawn with the colour of the text).
+ */
+const ICONS = {
+	diff: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M6.5 6.3h3.5M8.25 4.5v3.6M6.5 11h3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+	file: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L13 5v9.5H4z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M9.5 1.5V5H13M6 8.2h4.5M6 10.7h4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+	history: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 8.8A5.3 5.3 0 1 0 4.2 4.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M2.4 2.4v3h3M8 5.2V8l2 1.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+	graph: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="4" cy="12.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="6" r="1.6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M4 5.1v5.8M12 7.6c0 2.6-2.2 3.3-6.4 4.3" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
+	link: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.9.9M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.9-.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+	external: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 9v4.5h-10v-10H7M9.5 2.5h4v4M13.5 2.5l-6 6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+	commit: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 8h3.9M10.6 8h3.9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+	lines: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h1M2.5 8h1M2.5 12h1M6 4h7.5M6 8h7.5M6 12h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+	info: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 7.2v4M8 4.9v.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+	more: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+
+/**
  * The styles of the drawer, using the colours of the Visual Studio Code theme.
  */
 const STYLES = `
@@ -329,9 +357,11 @@ body.narrow .lhDetail{padding:8px 12px 12px 44px;border-bottom:1px solid var(--v
 .lhDetailAuthor{display:flex;gap:8px;align-items:center;margin-bottom:8px;line-height:1.35;font-size:12px;}
 .lhDetailAuthor .lhAvatar{width:28px;height:28px;box-shadow:none;}
 .lhChips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
-.lhChip{display:inline-flex;align-items:center;gap:2px;max-width:100%;padding:1px 7px;border-radius:10px;font-size:11px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);border:none;}
+.lhChip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:1px 7px;border-radius:10px;font-size:11px;line-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--vscode-badge-background);color:var(--vscode-badge-foreground);border:none;}
 button.lhChip{cursor:pointer;}
 .lhChip.mono{font-family:var(--vscode-editor-font-family);}
+.lhChip svg{flex:none;width:12px;height:12px;}
+.lhChip span{overflow:hidden;text-overflow:ellipsis;}
 .lhChip.stat{background:transparent;color:inherit;box-shadow:inset 0 0 0 1px var(--vscode-editorWidget-border,var(--vscode-panel-border));}
 .lhBody{margin:0 0 8px;white-space:pre-wrap;word-break:break-word;max-height:9.5em;overflow:auto;color:var(--vscode-descriptionForeground);font-size:12px;line-height:1.45;}
 .lhDiff{margin:0 0 10px;border:1px solid var(--vscode-editorWidget-border,var(--vscode-panel-border));border-radius:4px;overflow:auto;background:var(--vscode-editor-background);}
@@ -342,13 +372,23 @@ button.lhChip{cursor:pointer;}
 .lhDiff tr.add{background:var(--vscode-diffEditor-insertedLineBackground,rgba(155,185,85,.2));}
 .lhDiff tr.del{background:var(--vscode-diffEditor-removedLineBackground,rgba(255,0,0,.2));}
 .lhDiff p{margin:4px 8px;font-family:var(--vscode-font-family);}
-.lhActions{display:flex;flex-wrap:wrap;gap:6px;}
+.lhActions{display:flex;flex-direction:column;gap:6px;}
+.lhPrimary{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:5px 10px;border:1px solid var(--vscode-button-border,transparent);border-radius:4px;cursor:pointer;color:var(--vscode-button-foreground);background:var(--vscode-button-background);font-weight:500;line-height:18px;}
+.lhPrimary:hover{background:var(--vscode-button-hoverBackground);}
+.lhPrimary svg{width:16px;height:16px;flex:none;}
+.lhActionGroup{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1px;padding:3px;border-radius:6px;border:1px solid var(--vscode-editorWidget-border,var(--vscode-panel-border));background:var(--vscode-editorWidget-background,transparent);}
+.lhAction{display:flex;align-items:center;gap:8px;min-width:0;padding:4px 8px;border:none;border-radius:4px;cursor:pointer;text-align:left;color:var(--vscode-foreground);background:transparent;line-height:18px;}
+.lhAction svg{flex:none;width:16px;height:16px;color:var(--vscode-icon-foreground,currentColor);}
+.lhAction span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lhAction:hover{background:var(--vscode-list-hoverBackground);}
+.lhPrimary:focus-visible,.lhAction:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:-1px;}
 .lhButton{padding:3px 10px;border-radius:2px;cursor:pointer;border:1px solid var(--vscode-button-border,transparent);color:var(--vscode-button-secondaryForeground);background:var(--vscode-button-secondaryBackground);line-height:18px;}
 .lhButton:hover{background:var(--vscode-button-secondaryHoverBackground);}
 .lhButton.primary{color:var(--vscode-button-foreground);background:var(--vscode-button-background);}
 .lhButton.primary:hover{background:var(--vscode-button-hoverBackground);}
 .lhButton:focus-visible,.lhChip:focus-visible{outline:1px solid var(--vscode-focusBorder);outline-offset:1px;}
-.lhOrigin{margin:10px 0 0;font-size:12px;}
+.lhOrigin{display:flex;align-items:center;gap:6px;margin:10px 0 0;font-size:12px;color:var(--vscode-descriptionForeground);}
+.lhOrigin svg{flex:none;width:14px;height:14px;}
 `;
 
 /**
@@ -420,6 +460,8 @@ const SCRIPT = `
 			if (item) item.focus();
 		} else if (event.key === 'Enter') {
 			vscode.postMessage({ command: 'action', action: 'openChanges', index: selected });
+		} else if (event.key === 'Escape') {
+			vscode.postMessage({ command: 'escape' });
 		}
 	});
 	window.addEventListener('focus', function () { document.body.classList.add('focused'); });

@@ -81,7 +81,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
 * Revisions: "Show Previous Revision" & "Show Next Revision" (arrow buttons on the diffs & files opened by Git Map) step through the commits that changed a file.
 * Remote Links: "Copy Remote Link to Lines" & "Open Lines on Remote" link to the selected lines on the remote's web page (GitHub, GitLab, Bitbucket, Gitea / Forgejo / Codeberg & Azure DevOps), at a commit.
 * Git CodeLens (`git-map.codeLens.enabled`, off by default): who changed each function, method & class most recently, and how many authors changed it.
-* The editor's context menu has a "Git Map" submenu with these actions. No other extension is required: everything uses Visual Studio Code's API and Git.
+* The editor's context menu has a "Git Map" submenu with these actions (each can be moved directly into the context menu, or hidden, with `git-map.editorContextMenu`). Escape closes the drawer, inline window or File Blame that was shown most recently. No other extension is required: everything uses Visual Studio Code's API and Git.
 * A broad range of configurable settings (e.g. graph style, branch colours, and more...). See the 'Extension Settings' section below for more information.
 * "Git Map" launch button in the Status Bar
 * "Git Map: View Git Map" launch command in the Command Palette
@@ -122,6 +122,7 @@ A summary of the Git Map extension settings are:
     * **Uncommitted Changes**: Specifies how the Uncommitted Changes are displayed on the graph.
 * **CodeLens**:
     * **Enabled**: Show who changed functions, methods & classes most recently (and when), and how many authors changed them, above them in the editor (default: disabled).
+* **Editor Context Menu**: Where each Git Map action is shown in the context menu of editors: in the "Git Map" submenu (default), directly in the context menu, or hidden. Example: `{"viewLineHistory": "Context Menu", "openLinesOnRemote": "Hidden"}`
 * **Integrated Terminal Shell**: Specifies the path and filename of the Shell executable to be used by the Visual Studio Code Integrated Terminal, when it is opened by Git Map.
 * **Keyboard Shortcut > \***: Configures the keybindings used for all keyboard shortcuts in the Git Map View.
 * **Language**: Specifies the language that Git Map is displayed in: Auto (the display language of Visual Studio Code, default), English or Simplified Chinese. The descriptions of Git Map's commands and settings always follow the display language of Visual Studio Code.

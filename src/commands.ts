@@ -144,7 +144,27 @@ export class CommandManager extends Disposable {
 			showErrorMessage(t('Unable to View File History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', getPathFromUri(uri))));
 			return;
 		}
-		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path });
+		// The commit that last changed the line the cursor is on (or the file) is selected in the history
+		const commit = await this.getCommitToSelect(file.repo, file.path, uri);
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, ...getCommitDetails(commit) });
+	}
+
+	/**
+	 * Get the commit selected in the history of a file: the commit that last changed the line the cursor is on (if the file is in the active
+	 * text editor, and the line is committed), otherwise the latest commit that changed the file.
+	 * @param repo The repository containing the file.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param uri The URI of the file.
+	 * @returns The hash of the commit, or NULL if the file doesn't have any commits.
+	 */
+	private async getCommitToSelect(repo: string, filePath: string, uri: vscode.Uri) {
+		const editor = vscode.window.activeTextEditor;
+		if (typeof editor !== 'undefined' && editor.document.uri.toString() === uri.toString()) {
+			const blame = await this.dataSource.getLineBlame(repo, filePath, editor.selection.active.line + 1, editor.document.getText());
+			if (blame !== null && blame.committed) return blame.hash;
+		}
+		const latest = await this.dataSource.getFileRevision(repo, 'HEAD', filePath, 'latest');
+		return latest !== null ? latest.hash : null;
 	}
 
 	/**
@@ -154,7 +174,9 @@ export class CommandManager extends Disposable {
 	 */
 	private async viewLineHistoryInGitMap(arg: any) {
 		if (typeof arg === 'object' && arg !== null && typeof arg.repo === 'string' && typeof arg.filePath === 'string' && typeof arg.lineRange === 'object' && arg.lineRange !== null) {
-			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: arg.repo, fileHistory: arg.filePath, lineRange: { start: arg.lineRange.start, end: arg.lineRange.end } });
+			const lineRange = { start: arg.lineRange.start, end: arg.lineRange.end };
+			const commit = await this.dataSource.getLatestCommitOfLines(arg.repo, arg.filePath, lineRange);
+			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: arg.repo, fileHistory: arg.filePath, lineRange: lineRange, ...getCommitDetails(commit) });
 			return;
 		}
 		const editor = vscode.window.activeTextEditor;
@@ -173,7 +195,9 @@ export class CommandManager extends Disposable {
 			showErrorMessage(t('Unable to View Line History: {0}', t('The selected lines haven\'t been committed yet.')));
 			return;
 		}
-		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, lineRange: lineRange });
+		// The latest commit that changed the lines is selected in their history
+		const commit = await this.dataSource.getLatestCommitOfLines(file.repo, file.path, lineRange);
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, lineRange: lineRange, ...getCommitDetails(commit) });
 	}
 
 	/**
@@ -188,10 +212,21 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-map.toggleLineBlame` command is invoked: show or hide the blame of the current line (for all workspaces).
+	 * The method run when the `git-map.toggleLineBlame` command is invoked: show or hide the blame of the current line. The setting is
+	 * changed where it's set (a workspace's setting overrides the user's), and the change is reported (also if GitLens shows the blame of the
+	 * current line, as it would otherwise look like nothing changed).
 	 */
-	private toggleLineBlame() {
-		return vscode.workspace.getConfiguration('git-map').update('blame.currentLine', !getConfig().blameCurrentLine, vscode.ConfigurationTarget.Global);
+	private async toggleLineBlame() {
+		const config = vscode.workspace.getConfiguration('git-map'), values = config.inspect<boolean>('blame.currentLine'), show = !getConfig().blameCurrentLine;
+		const target = typeof values !== 'undefined' && typeof values.workspaceValue !== 'undefined' ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+		await config.update('blame.currentLine', show, target);
+		vscode.window.setStatusBarMessage(show ? t('$(eye) Git Map: Current Line Blame On') : t('$(eye-closed) Git Map: Current Line Blame Off'), 4000);
+		if (vscode.extensions.getExtension('eamodio.gitlens') !== undefined && vscode.workspace.getConfiguration('gitlens').get<boolean>('currentLine.enabled', true)) {
+			// The message isn't awaited, as it's only resolved when it's closed
+			showInformationMessage(show
+				? t('Git Map shows the blame of the current line again. GitLens also shows it (the "gitlens.currentLine.enabled" setting).')
+				: t('Git Map no longer shows the blame of the current line. The blame still shown is GitLens\' (the "gitlens.currentLine.enabled" setting).'));
+		}
 	}
 
 	/**
@@ -509,4 +544,13 @@ export class CommandManager extends Disposable {
 interface CodeReviewQuickPickItem extends vscode.QuickPickItem {
 	codeReviewRepo: string;
 	codeReviewId: string;
+}
+
+/**
+ * Get the commit whose details are opened when the Git Map View is loaded (selecting it in the history of a file or lines).
+ * @param commit The hash of the commit, or NULL.
+ * @returns The part of the view's "load view to" that opens the commit's details.
+ */
+function getCommitDetails(commit: string | null): { commitDetails?: { commitHash: string, compareWithHash: null } } {
+	return commit !== null ? { commitDetails: { commitHash: commit, compareWithHash: null } } : {};
 }

@@ -398,5 +398,18 @@
 	"command.toggleFileBlame.title": "Toggle File Blame",
 	"command.openPreviousRevision.title": "Show Previous Revision",
 	"command.openNextRevision.title": "Show Next Revision",
-	"config.codeLens.enabled.description": "Show who changed functions, methods & classes most recently (and when), and how many authors changed them, above them in the editor (a CodeLens). Clicking it shows the history of their lines."
+	"config.codeLens.enabled.description": "Show who changed functions, methods & classes most recently (and when), and how many authors changed them, above them in the editor (a CodeLens). Clicking it shows the history of their lines.",
+	"command.escape.title": "Close the Line History or File Blame",
+	"config.editorContextMenu.markdownDescription": "Where each Git Map action is shown in the context menu of editors: in the \"Git Map\" submenu (default), directly in the context menu, or hidden.",
+	"config.editorContextMenu.submenu": "In the \"Git Map\" submenu.",
+	"config.editorContextMenu.contextMenu": "Directly in the context menu of editors.",
+	"config.editorContextMenu.hidden": "Not shown.",
+	"config.editorContextMenu.viewLineHistory": "View Line History",
+	"config.editorContextMenu.viewLineHistoryInGitMap": "View Line History in Git Map",
+	"config.editorContextMenu.viewFileHistory": "View File History in Git Map",
+	"config.editorContextMenu.toggleFileBlame": "Toggle File Blame",
+	"config.editorContextMenu.toggleLineBlame": "Toggle Current Line Blame",
+	"config.editorContextMenu.openPreviousRevision": "Show Previous Revision",
+	"config.editorContextMenu.copyRemoteLinkToLines": "Copy Remote Link to Lines",
+	"config.editorContextMenu.openLinesOnRemote": "Open Lines on Remote"
 }

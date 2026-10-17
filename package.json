@@ -251,6 +251,11 @@
 				"command": "git-map.openNextRevision",
 				"title": "%command.openNextRevision.title%",
 				"icon": "$(arrow-right)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.escape",
+				"title": "%command.escape.title%"
 			}
 		],
 		"configuration": {
@@ -884,6 +889,135 @@
 					"type": "boolean",
 					"default": true,
 					"description": "%config.dialog.stashUncommittedChanges.includeUntracked.description%"
+				},
+				"git-map.editorContextMenu": {
+					"type": "object",
+					"default": {
+						"viewLineHistory": "Submenu",
+						"viewLineHistoryInGitMap": "Submenu",
+						"viewFileHistory": "Submenu",
+						"toggleFileBlame": "Submenu",
+						"toggleLineBlame": "Submenu",
+						"openPreviousRevision": "Submenu",
+						"copyRemoteLinkToLines": "Submenu",
+						"openLinesOnRemote": "Submenu"
+					},
+					"properties": {
+						"viewLineHistory": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.viewLineHistory%"
+						},
+						"viewLineHistoryInGitMap": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.viewLineHistoryInGitMap%"
+						},
+						"viewFileHistory": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.viewFileHistory%"
+						},
+						"toggleFileBlame": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.toggleFileBlame%"
+						},
+						"toggleLineBlame": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.toggleLineBlame%"
+						},
+						"openPreviousRevision": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.openPreviousRevision%"
+						},
+						"copyRemoteLinkToLines": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.copyRemoteLinkToLines%"
+						},
+						"openLinesOnRemote": {
+							"type": "string",
+							"enum": [
+								"Submenu",
+								"Context Menu",
+								"Hidden"
+							],
+							"enumDescriptions": [
+								"%config.editorContextMenu.submenu%",
+								"%config.editorContextMenu.contextMenu%",
+								"%config.editorContextMenu.hidden%"
+							],
+							"description": "%config.editorContextMenu.openLinesOnRemote%"
+						}
+					},
+					"additionalProperties": false,
+					"markdownDescription": "%config.editorContextMenu.markdownDescription%"
 				},
 				"git-map.enhancedAccessibility": {
 					"type": "boolean",
@@ -1839,13 +1973,57 @@
 				{
 					"command": "git-map.openNextRevision",
 					"when": "resourceScheme == git-map || resourceScheme == file"
+				},
+				{
+					"command": "git-map.escape",
+					"when": "false"
 				}
 			],
 			"editor/context": [
 				{
 					"submenu": "git-map.editorContext",
 					"group": "gitMap@1",
-					"when": "resourceScheme == file"
+					"when": "resourceScheme == file && (config.git-map.editorContextMenu.viewLineHistory == 'Submenu' || config.git-map.editorContextMenu.viewLineHistoryInGitMap == 'Submenu' || config.git-map.editorContextMenu.viewFileHistory == 'Submenu' || config.git-map.editorContextMenu.toggleFileBlame == 'Submenu' || config.git-map.editorContextMenu.toggleLineBlame == 'Submenu' || config.git-map.editorContextMenu.openPreviousRevision == 'Submenu' || config.git-map.editorContextMenu.copyRemoteLinkToLines == 'Submenu' || config.git-map.editorContextMenu.openLinesOnRemote == 'Submenu')"
+				},
+				{
+					"command": "git-map.viewLineHistory",
+					"group": "gitMap@2",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.viewLineHistory == 'Context Menu'"
+				},
+				{
+					"command": "git-map.viewLineHistoryInGitMap",
+					"group": "gitMap@3",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.viewLineHistoryInGitMap == 'Context Menu'"
+				},
+				{
+					"command": "git-map.viewFileHistory",
+					"group": "gitMap@4",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.viewFileHistory == 'Context Menu'"
+				},
+				{
+					"command": "git-map.toggleFileBlame",
+					"group": "gitMap@5",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.toggleFileBlame == 'Context Menu'"
+				},
+				{
+					"command": "git-map.toggleLineBlame",
+					"group": "gitMap@6",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.toggleLineBlame == 'Context Menu'"
+				},
+				{
+					"command": "git-map.openPreviousRevision",
+					"group": "gitMap@7",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.openPreviousRevision == 'Context Menu'"
+				},
+				{
+					"command": "git-map.copyRemoteLinkToLines",
+					"group": "gitMap@8",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.copyRemoteLinkToLines == 'Context Menu'"
+				},
+				{
+					"command": "git-map.openLinesOnRemote",
+					"group": "gitMap@9",
+					"when": "resourceScheme == file && config.git-map.editorContextMenu.openLinesOnRemote == 'Context Menu'"
 				}
 			],
 			"explorer/context": [
@@ -1957,35 +2135,43 @@
 			"git-map.editorContext": [
 				{
 					"command": "git-map.viewLineHistory",
-					"group": "1_history@1"
+					"group": "1_history@1",
+					"when": "config.git-map.editorContextMenu.viewLineHistory == 'Submenu'"
 				},
 				{
 					"command": "git-map.viewLineHistoryInGitMap",
-					"group": "1_history@2"
+					"group": "1_history@2",
+					"when": "config.git-map.editorContextMenu.viewLineHistoryInGitMap == 'Submenu'"
 				},
 				{
 					"command": "git-map.viewFileHistory",
-					"group": "1_history@3"
-				},
-				{
-					"command": "git-map.toggleLineBlame",
-					"group": "2_blame@2"
-				},
-				{
-					"command": "git-map.copyRemoteLinkToLines",
-					"group": "4_remote@1"
-				},
-				{
-					"command": "git-map.openLinesOnRemote",
-					"group": "4_remote@2"
+					"group": "1_history@3",
+					"when": "config.git-map.editorContextMenu.viewFileHistory == 'Submenu'"
 				},
 				{
 					"command": "git-map.toggleFileBlame",
-					"group": "2_blame@1"
+					"group": "2_blame@1",
+					"when": "config.git-map.editorContextMenu.toggleFileBlame == 'Submenu'"
+				},
+				{
+					"command": "git-map.toggleLineBlame",
+					"group": "2_blame@2",
+					"when": "config.git-map.editorContextMenu.toggleLineBlame == 'Submenu'"
 				},
 				{
 					"command": "git-map.openPreviousRevision",
-					"group": "3_revisions@1"
+					"group": "3_revisions@1",
+					"when": "config.git-map.editorContextMenu.openPreviousRevision == 'Submenu'"
+				},
+				{
+					"command": "git-map.copyRemoteLinkToLines",
+					"group": "4_remote@1",
+					"when": "config.git-map.editorContextMenu.copyRemoteLinkToLines == 'Submenu'"
+				},
+				{
+					"command": "git-map.openLinesOnRemote",
+					"group": "4_remote@2",
+					"when": "config.git-map.editorContextMenu.openLinesOnRemote == 'Submenu'"
 				}
 			]
 		},
@@ -2012,7 +2198,14 @@
 					"name": "%view.lineHistory.name%"
 				}
 			]
-		}
+		},
+		"keybindings": [
+			{
+				"command": "git-map.escape",
+				"key": "escape",
+				"when": "editorTextFocus && git-map:escapable && !editorHasSelection && !editorHasMultipleSelections && !suggestWidgetVisible && !findWidgetVisible && !parameterHintsVisible && !renameInputVisible && !referenceSearchVisible && !inSnippetMode && !inlineSuggestionVisible && !editorHoverVisible && !quickFixWidgetVisible && !inlineChatVisible && !notificationToastsVisible && !isInEmbeddedEditor && !markersNavigationVisible && !accessibilityHelpWidgetVisible"
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
