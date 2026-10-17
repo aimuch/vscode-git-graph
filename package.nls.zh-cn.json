@@ -394,5 +394,6 @@
 	"command.copyRemoteLinkToLines.title": "复制这些行的远程链接",
 	"command.openLinesOnRemote.title": "在远程打开这些行",
 	"command.openLineChanges.title": "打开此行的更改",
-	"command.copyRemoteLink.title": "复制远程链接"
+	"command.copyRemoteLink.title": "复制远程链接",
+	"command.toggleFileBlame.title": "切换文件 Blame（热力图）"
 }

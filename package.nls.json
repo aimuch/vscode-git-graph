@@ -394,5 +394,6 @@
 	"command.copyRemoteLinkToLines.title": "Copy Remote Link to Lines",
 	"command.openLinesOnRemote.title": "Open Lines on Remote",
 	"command.openLineChanges.title": "Open Changes of the Line",
-	"command.copyRemoteLink.title": "Copy Remote Link"
+	"command.copyRemoteLink.title": "Copy Remote Link",
+	"command.toggleFileBlame.title": "Toggle File Blame"
 }

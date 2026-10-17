@@ -979,6 +979,45 @@ async function run() {
 		return 'Hover of line 3 (line 2 at ' + changedTwo.substring(0, 8) + '): ' + change.diff.join(' / ') + '; links: ' + links.join(', ') + '; remote links: ' + commitLink + ', ' + linesLink;
 	});
 
+	// The File Blame. The ways it could go wrong, which this check asserts don't happen: lines are annotated with the wrong commits (e.g. the
+	// editor has uncommitted changes), the column repeats the commit on every line of a block, the heatmap doesn't show which commits are newer,
+	// the annotations aren't updated when the file is changed (so they're on the wrong lines), and toggling it doesn't remove them.
+	await check('file-blame', '[GitLens] Toggle File Blame annotates the blocks of lines with the date & author of the commit that last changed them, coloured by how recently it was made (a heatmap)', async () => {
+		const view = await getView();
+		const { FileBlame } = require(path.join(extension.extensionPath, 'out', 'fileBlame.js'));
+		const repo = createScratchRepo('file-blame', { 'placeholder.txt': 'x\n' });
+		const commitAt = (contents, message, name, email, date) => {
+			fs.writeFileSync(path.join(repo, 'notes.md'), contents);
+			git(repo, 'add', '-A');
+			cp.execFileSync('git', ['commit', '-q', '-m', message], { cwd: repo, env: Object.assign({}, GIT_ENV, { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date }) });
+		};
+		commitAt('# Notes\none\ntwo\nthree\nfour\nfive\n', 'Add the notes', 'Second Author', 'second@example.com', '2020-01-01T12:00:00Z');
+		commitAt('# Notes\none\ntwo\nTHREE\nFOUR\nfive\n', 'Shout three & four', 'E2E Author', 'author@example.com', '2024-06-01T12:00:00Z');
+		await view.repoManager.registerRepo(repo, false);
+		const uri = vscode.Uri.file(path.join(repo, 'notes.md')), fileBlame = FileBlame.getInstance();
+		const document = await vscode.workspace.openTextDocument(uri);
+		const editor = await vscode.window.showTextDocument(document);
+		await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), 'draft line\n'));
+
+		await vscode.commands.executeCommand('git-map.toggleFileBlame');
+		let annotations = await waitFor('the annotations', () => fileBlame.getAnnotations(uri) !== null && fileBlame.getAnnotations(uri).length === 7 ? fileBlame.getAnnotations(uri) : null);
+		const labels = annotations.map((annotation) => annotation.label);
+		assert(JSON.stringify(labels) === JSON.stringify(['Uncommitted You', '2020-01-01 Second Author', '', '', '2024-06-01 E2E Author', '', '2020-01-01 Second Author']), 'Unexpected labels: ' + JSON.stringify(labels));
+		assert(annotations[0].heat === 1 && annotations[1].heat === 0 && annotations[4].heat === 1 && annotations[1].colour !== annotations[4].colour && annotations[1].colour.startsWith('hsla(215') && annotations[4].colour.startsWith('hsla(30'), 'Unexpected heatmap: ' + JSON.stringify(annotations.slice(0, 5).map((annotation) => [annotation.heat, annotation.colour])));
+		await sleep(800);
+		await screenshot('file-blame');
+
+		// The annotations follow the lines when the file is changed
+		await editor.edit((builder) => builder.delete(new vscode.Range(0, 0, 1, 0)));
+		annotations = await waitFor('the annotations to be updated', () => fileBlame.getAnnotations(uri) !== null && fileBlame.getAnnotations(uri).length === 6 ? fileBlame.getAnnotations(uri) : null);
+		assert(annotations[0].label === '2020-01-01 Second Author' && annotations[3].label === '2024-06-01 E2E Author', 'The annotations weren\'t updated: ' + JSON.stringify(annotations.map((annotation) => annotation.label)));
+
+		await vscode.commands.executeCommand('git-map.toggleFileBlame');
+		assert(fileBlame.getAnnotations(uri) === null, 'Toggling File Blame didn\'t remove the annotations');
+		await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+		return 'Labels: ' + labels.filter((label) => label !== '').join(' | ') + '; heat: ' + annotations.map((annotation) => annotation.heat.toFixed(1)).join(' ');
+	});
+
 	await check('remote-links', '[GitLens] Links to lines & commits on the web pages of remote repositories (GitHub, GitLab, Bitbucket, Gitea / Forgejo, Azure DevOps)', async () => {
 		const { getRemoteWebRepo, getRemoteFileUrl, getRemoteCommitUrl } = require(path.join(extension.extensionPath, 'out', 'remoteLinks.js'));
 		const hash = 'a'.repeat(40), range = { start: 3, end: 5 }, line = { start: 7, end: 7 };

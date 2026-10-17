@@ -8,7 +8,7 @@ import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { getBaseRange, getRangeDiff, mapLines } from './lineMapping';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineHistory, GitLineHistoryEntry, GitLineRange, GitOperation, GitPushBranchMode, GitRebaseCommit, GitRebaseTodoItem, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBlameCommit, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileBlame, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineHistory, GitLineHistoryEntry, GitLineRange, GitOperation, GitPushBranchMode, GitRebaseCommit, GitRebaseTodoItem, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -1900,6 +1900,36 @@ export class DataSource extends Disposable {
 				originalLine: parseInt(header[2]),
 				originalFilePath: field('filename') || filePath
 			};
+		}, false, contents).catch(() => null);
+	}
+
+	/**
+	 * Get the commit that last changed each line of a file. The contents of the file are blamed (rather than the committed file), so that
+	 * the line numbers of a file with uncommitted changes match.
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param contents The contents of the file.
+	 * @returns The blame of the file, or NULL if it couldn't be determined (e.g. the file isn't tracked).
+	 */
+	public getFileBlame(repo: string, filePath: string, contents: string): Promise<GitFileBlame | null> {
+		return this._spawnGit(['blame', '--porcelain', '--contents', '-', '--', filePath], repo, (stdout) => {
+			const lines: { hash: string, originalLine: number }[] = [], commits: { [hash: string]: Writeable<GitBlameCommit> } = {};
+			let commit: Writeable<GitBlameCommit> | null = null, hash = '', match: RegExpMatchArray | null;
+			stdout.toString().split(LF_REGEX).forEach((line) => {
+				if ((match = line.match(/^([0-9a-f]{40,64}) (\d+) (\d+)/)) !== null) {
+					hash = match[1];
+					lines[parseInt(match[3]) - 1] = { hash: hash, originalLine: parseInt(match[2]) };
+					commit = commits[hash] || (commits[hash] = { committed: !/^0+$/.test(hash), author: '', authorEmail: '', authorDate: 0, summary: '', filePath: filePath });
+				} else if (commit !== null && !line.startsWith('\t')) {
+					const space = line.indexOf(' '), key = space > -1 ? line.substring(0, space) : line, value = space > -1 ? line.substring(space + 1) : '';
+					if (key === 'author') commit.author = value;
+					else if (key === 'author-mail') commit.authorEmail = value.replace(/^<|>$/g, '');
+					else if (key === 'author-time') commit.authorDate = parseInt(value) || 0;
+					else if (key === 'summary') commit.summary = value;
+					else if (key === 'filename') commit.filePath = value;
+				}
+			});
+			return lines.length > 0 ? { lines: lines, commits: commits } : null;
 		}, false, contents).catch(() => null);
 	}
 

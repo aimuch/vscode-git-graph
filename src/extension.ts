@@ -5,6 +5,7 @@ import { getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffDocProvider } from './diffDocProvider';
 import { ExtensionState } from './extensionState';
+import { FileBlame } from './fileBlame';
 import { LineBlame } from './lineBlame';
 import { LineHistory } from './lineHistory';
 import { Logger } from './logger';
@@ -53,6 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const diffDocProvider = new DiffDocProvider(dataSource);
 	const lineBlame = new LineBlame(dataSource, repoManager, onDidChangeConfiguration, logger);
 	const lineHistory = new LineHistory(dataSource, repoManager, avatarManager, onDidChangeConfiguration, logger);
+	const fileBlame = new FileBlame(dataSource, repoManager, logger);
 
 	context.subscriptions.push(
 		vscode.workspace.registerTextDocumentContentProvider(DiffDocProvider.scheme, diffDocProvider),
@@ -80,6 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		diffDocProvider,
 		lineBlame,
 		lineHistory,
+		fileBlame,
 		commandManager,
 		statusBarItem,
 		repoManager,

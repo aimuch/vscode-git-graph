@@ -948,5 +948,8 @@
 	"The commit {0} isn't on the remote \"{1}\" yet, so the page may not exist. Push it for the link to work.": "提交 {0} 还不在远程仓库“{1}”上，页面可能不存在。推送之后链接才能打开。",
 	"(line {0} in HEAD)": "（HEAD 中第 {0} 行）",
 	"1 commit": "1 个提交",
-	"1 author": "1 位作者"
+	"1 author": "1 位作者",
+	"Unable to Toggle File Blame: {0}": "无法切换文件 Blame：{0}",
+	"Open a file in an editor.": "请在编辑器中打开一个文件。",
+	"The file {0} isn't tracked by Git.": "文件 {0} 未被 Git 跟踪。"
 }

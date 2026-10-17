@@ -211,6 +211,26 @@ export interface GitLineBlame {
 }
 
 /**
+ * The blame of each line of a file.
+ */
+export interface GitFileBlame {
+	readonly lines: ReadonlyArray<{ readonly hash: string, readonly originalLine: number }>; // The commit that last changed each line, and the line in it
+	readonly commits: { readonly [hash: string]: GitBlameCommit };
+}
+
+/**
+ * A commit that last changed lines of a file.
+ */
+export interface GitBlameCommit {
+	readonly committed: boolean; // FALSE => The lines have uncommitted changes
+	readonly author: string;
+	readonly authorEmail: string;
+	readonly authorDate: number;
+	readonly summary: string;
+	readonly filePath: string; // The path of the file in the commit
+}
+
+/**
  * How a commit (or the uncommitted changes) changed a range of lines of a file.
  */
 export interface GitLineHistoryEntry {

@@ -233,6 +233,12 @@
 				"command": "git-map.copyRemoteLink",
 				"title": "%command.copyRemoteLink.title%",
 				"icon": "$(link)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.toggleFileBlame",
+				"title": "%command.toggleFileBlame.title%",
+				"icon": "$(person)"
 			}
 		],
 		"configuration": {
@@ -1804,6 +1810,10 @@
 				{
 					"command": "git-map.openLinesOnRemote",
 					"when": "editorIsOpen && resourceScheme == file"
+				},
+				{
+					"command": "git-map.toggleFileBlame",
+					"when": "editorIsOpen && resourceScheme == file"
 				}
 			],
 			"editor/context": [
@@ -1933,6 +1943,10 @@
 				{
 					"command": "git-map.openLinesOnRemote",
 					"group": "4_remote@2"
+				},
+				{
+					"command": "git-map.toggleFileBlame",
+					"group": "2_blame@1"
 				}
 			]
 		},
