@@ -479,15 +479,19 @@ async function run() {
 	// untracked files, undoing after the repository was changed by something else (or while a merge is in progress), restoring a
 	// different commit / tag object than was there, losing a branch's upstream, and offering to undo after it was undone.
 	const undoHelpers = (view, repo) => {
-		const respond = async (msg, command) => {
+		// The response to a message (the view also loads the info of its repository itself, e.g. when it's refreshed after an action)
+		const respond = async (msg, command, matches = () => true) => {
 			const count = record.responses.filter((response) => response.command === command).length;
 			await view.respondToMessage(msg);
-			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command)[count]);
+			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command).slice(count).find(matches));
 		};
 		let refreshId = 1000;
 		return {
 			respond: respond,
-			undoInfo: async () => (await respond({ command: 'loadRepoInfo', repo: repo, refreshId: ++refreshId, showRemoteBranches: true, showStashes: true, hideRemotes: [] }, 'loadRepoInfo')).undo,
+			undoInfo: async () => {
+				const id = ++refreshId;
+				return (await respond({ command: 'loadRepoInfo', repo: repo, refreshId: id, showRemoteBranches: true, showStashes: true, hideRemotes: [] }, 'loadRepoInfo', (response) => response.refreshId === id)).undo;
+			},
 			undo: async () => (await respond({ command: 'undo', repo: repo }, 'undo')).error
 		};
 	};
@@ -601,13 +605,14 @@ async function run() {
 
 	await check('worktrees', '[GitLens] The worktrees of a repository are listed, and can be added (for a branch, or at a commit), removed (only forced if they have changes) & pruned', async () => {
 		const view = await getView();
-		const respond = async (msg, command) => {
+		// The response to a message (the view also loads the worktrees of its repository itself, e.g. when it's refreshed after an action)
+		const respond = async (msg, command, matches = () => true) => {
 			const count = record.responses.filter((response) => response.command === command).length;
 			await view.respondToMessage(msg);
-			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command)[count]);
+			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command).slice(count).find(matches));
 		};
 		const list = async (repo) => {
-			const response = await respond({ command: 'loadWorktrees', repo: repo }, 'loadWorktrees');
+			const response = await respond({ command: 'loadWorktrees', repo: repo }, 'loadWorktrees', (response) => response.repo === repo);
 			assert(response.error === null, 'Loading the worktrees failed: ' + response.error);
 			return response.worktrees;
 		};
@@ -751,7 +756,7 @@ async function run() {
 		const response = await (async () => {
 			const count = record.responses.filter((msg) => msg.command === 'loadOperationInProgress').length;
 			await view.respondToMessage({ command: 'loadOperationInProgress', repo: repo });
-			return waitFor('the operation in progress', () => record.responses.filter((msg) => msg.command === 'loadOperationInProgress')[count]);
+			return waitFor('the operation in progress', () => record.responses.filter((msg) => msg.command === 'loadOperationInProgress').slice(count).find((msg) => msg.repo === repo));
 		})();
 		assert(response.operation === 'rebase', 'Unexpected operation: ' + JSON.stringify(response));
 		const aborted = await dataSource.controlOperation(repo, 'rebase', 'abort');
