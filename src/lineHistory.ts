@@ -385,7 +385,10 @@ export class LineHistory extends Disposable {
 	 * @param open TRUE => Open the link, FALSE => Copy the link to the clipboard.
 	 */
 	private async remoteLinkToSelectedLines(open: boolean) {
-		const fail = (reason: string) => showErrorMessage(open ? t('Unable to Open Lines on Remote: {0}', reason) : t('Unable to Copy Remote Link: {0}', reason));
+		const fail = (reason: string) => {
+			// The message isn't awaited, as it's only resolved when it's closed
+			showErrorMessage(open ? t('Unable to Open Lines on Remote: {0}', reason) : t('Unable to Copy Remote Link: {0}', reason));
+		};
 		const editor = vscode.window.activeTextEditor;
 		if (typeof editor === 'undefined' || editor.document.uri.scheme !== 'file') return fail(t('Open a file in an editor, and select the lines.'));
 		const target = await this.getTarget(editor.document.uri, getSelectedLines(editor.selection));

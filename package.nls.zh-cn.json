@@ -395,5 +395,8 @@
 	"command.openLinesOnRemote.title": "在远程打开这些行",
 	"command.openLineChanges.title": "打开此行的更改",
 	"command.copyRemoteLink.title": "复制远程链接",
-	"command.toggleFileBlame.title": "切换文件 Blame（热力图）"
+	"command.toggleFileBlame.title": "切换文件 Blame（热力图）",
+	"command.openPreviousRevision.title": "查看上一个版本的更改",
+	"command.openNextRevision.title": "查看下一个版本的更改",
+	"config.codeLens.enabled.description": "在编辑器中函数、方法和类的上方（CodeLens）显示最近修改者及时间，以及共有几位作者修改过。点击可查看这些行的历史。"
 }

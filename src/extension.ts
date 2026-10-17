@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { AvatarManager } from './avatarManager';
+import { GitCodeLens } from './codeLens';
 import { CommandManager } from './commands';
 import { getConfig } from './config';
 import { DataSource } from './dataSource';
@@ -10,6 +11,7 @@ import { LineBlame } from './lineBlame';
 import { LineHistory } from './lineHistory';
 import { Logger } from './logger';
 import { RepoManager } from './repoManager';
+import { RevisionNavigation } from './revisionNavigation';
 import { migrateSettings, showSettingsMigrationMessage } from './settingsMigration';
 import { StatusBarItem } from './statusBarItem';
 import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, findGit, getGitExecutableFromPaths, showErrorMessage, showInformationMessage } from './utils';
@@ -55,6 +57,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	const lineBlame = new LineBlame(dataSource, repoManager, onDidChangeConfiguration, logger);
 	const lineHistory = new LineHistory(dataSource, repoManager, avatarManager, onDidChangeConfiguration, logger);
 	const fileBlame = new FileBlame(dataSource, repoManager, logger);
+	const revisionNavigation = new RevisionNavigation(dataSource, repoManager);
+	const codeLens = new GitCodeLens(dataSource, repoManager, onDidChangeConfiguration);
 
 	context.subscriptions.push(
 		vscode.workspace.registerTextDocumentContentProvider(DiffDocProvider.scheme, diffDocProvider),
@@ -83,6 +87,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		lineBlame,
 		lineHistory,
 		fileBlame,
+		revisionNavigation,
+		codeLens,
 		commandManager,
 		statusBarItem,
 		repoManager,

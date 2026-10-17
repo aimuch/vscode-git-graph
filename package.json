@@ -239,6 +239,18 @@
 				"command": "git-map.toggleFileBlame",
 				"title": "%command.toggleFileBlame.title%",
 				"icon": "$(person)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.openPreviousRevision",
+				"title": "%command.openPreviousRevision.title%",
+				"icon": "$(arrow-left)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.openNextRevision",
+				"title": "%command.openNextRevision.title%",
+				"icon": "$(arrow-right)"
 			}
 		],
 		"configuration": {
@@ -249,6 +261,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "%config.blame.currentLine.description%"
+				},
+				"git-map.codeLens.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "%config.codeLens.enabled.description%"
 				},
 				"git-map.commitDetailsView.autoCenter": {
 					"type": "boolean",
@@ -1814,6 +1831,14 @@
 				{
 					"command": "git-map.toggleFileBlame",
 					"when": "editorIsOpen && resourceScheme == file"
+				},
+				{
+					"command": "git-map.openPreviousRevision",
+					"when": "resourceScheme == git-map || resourceScheme == file"
+				},
+				{
+					"command": "git-map.openNextRevision",
+					"when": "resourceScheme == git-map || resourceScheme == file"
 				}
 			],
 			"editor/context": [
@@ -1842,6 +1867,16 @@
 					"command": "git-map.openFile",
 					"group": "navigation",
 					"when": "isInDiffEditor && resourceScheme == git-map && git-map:codiconsSupported"
+				},
+				{
+					"command": "git-map.openPreviousRevision",
+					"group": "navigation@1",
+					"when": "resourceScheme == git-map"
+				},
+				{
+					"command": "git-map.openNextRevision",
+					"group": "navigation@2",
+					"when": "resourceScheme == git-map"
 				}
 			],
 			"scm/title": [
@@ -1947,6 +1982,10 @@
 				{
 					"command": "git-map.toggleFileBlame",
 					"group": "2_blame@1"
+				},
+				{
+					"command": "git-map.openPreviousRevision",
+					"group": "3_revisions@1"
 				}
 			]
 		},

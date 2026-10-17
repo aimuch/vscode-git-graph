@@ -1018,6 +1018,101 @@ async function run() {
 		return 'Labels: ' + labels.filter((label) => label !== '').join(' | ') + '; heat: ' + annotations.map((annotation) => annotation.heat.toFixed(1)).join(' ');
 	});
 
+	// Navigating through the revisions of a file. The ways it could go wrong, which this check asserts don't happen: the previous revision
+	// skips a commit or doesn't follow the file through a rename, the next revision isn't the next commit that changed the file, the first &
+	// latest revisions aren't recognised, and the uncommitted changes aren't shown after the latest commit.
+	await check('revision-navigation', '[GitLens] Show Previous / Next Revision step through the commits that changed a file (following it through renames), from its editor or the changes opened by Git Map', async () => {
+		const view = await getView();
+		const { decodeDiffDocUri } = require(path.join(extension.extensionPath, 'out', 'diffDocProvider.js'));
+		const repo = createScratchRepo('revision-navigation', { 'other.txt': 'other\n' });
+		const created = commitFile(repo, 'nav.txt', 'a\nb\n', 'Add nav.txt');
+		const changed = commitFile(repo, 'nav.txt', 'a\nb (changed)\n', 'Change nav.txt');
+		git(repo, 'mv', 'nav.txt', 'moved.txt');
+		git(repo, 'commit', '-q', '-m', 'Rename nav.txt');
+		const renamed = git(repo, 'rev-parse', 'HEAD');
+		const latest = commitFile(repo, 'moved.txt', 'a\nb (changed)\nc\n', 'Change moved.txt');
+		await view.repoManager.registerRepo(repo, false);
+		const shown = () => {
+			const tab = vscode.window.tabGroups.activeTabGroup.activeTab, input = tab ? tab.input : null;
+			if (!(input instanceof vscode.TabInputTextDiff)) return null;
+			if (input.modified.scheme === 'file') return { commit: '*', path: path.basename(input.modified.fsPath) };
+			const modified = decodeDiffDocUri(input.modified), original = decodeDiffDocUri(input.original);
+			return { commit: modified.commit, path: modified.filePath, originalPath: original.filePath, originalExists: original.exists };
+		};
+		const step = async (command, expected) => {
+			await vscode.commands.executeCommand(command);
+			return waitFor('the changes of ' + expected, () => shown() !== null && shown().commit === expected ? shown() : null, 10000)
+				.catch((err) => { throw new Error(err.message + ' (shown: ' + JSON.stringify(shown()) + ')'); });
+		};
+		await vscode.window.showTextDocument(vscode.Uri.file(path.join(repo, 'moved.txt')));
+		const steps = [];
+		steps.push(await step('git-map.openPreviousRevision', latest));
+		const renameStep = await step('git-map.openPreviousRevision', renamed);
+		steps.push(renameStep);
+		steps.push(await step('git-map.openPreviousRevision', changed));
+		const createdStep = await step('git-map.openPreviousRevision', created);
+		steps.push(createdStep);
+		assert(renameStep.path === 'moved.txt' && renameStep.originalPath === 'nav.txt' && createdStep.originalExists === false, 'Unexpected changes: ' + JSON.stringify([renameStep, createdStep]));
+		await vscode.commands.executeCommand('git-map.openPreviousRevision');
+		await sleep(500);
+		assert(shown().commit === created, 'The first revision isn\'t recognised');
+		steps.push(await step('git-map.openNextRevision', changed));
+		steps.push(await step('git-map.openNextRevision', renamed));
+		steps.push(await step('git-map.openNextRevision', latest));
+		await vscode.commands.executeCommand('git-map.openNextRevision');
+		await sleep(500);
+		assert(shown().commit === latest, 'The latest revision isn\'t recognised');
+		// After the latest commit, the uncommitted changes
+		fs.writeFileSync(path.join(repo, 'moved.txt'), 'a\nb (changed)\nc\nd (uncommitted)\n');
+		steps.push(await step('git-map.openNextRevision', '*'));
+		await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+		return 'Previous: ' + steps.slice(0, 4).map((value) => value.commit.substring(0, 8) + ' ' + (value.originalPath !== value.path ? value.originalPath + ' → ' : '') + value.path).join(' ← ') + '; next: ' + steps.slice(4).map((value) => value.commit === '*' ? 'uncommitted' : value.commit.substring(0, 8)).join(' → ');
+	});
+
+	// The Git CodeLens. The ways it could go wrong, which this check asserts don't happen: it's shown when it isn't enabled, the most recent
+	// change & the number of authors of a function are wrong (e.g. including the lines of other functions), and clicking it doesn't show the
+	// history of the function's lines.
+	await check('code-lens', '[GitLens] The Git CodeLens (git-map.codeLens.enabled) shows who changed functions & classes most recently, and how many authors changed them', async () => {
+		const view = await getView();
+		const { LineHistory } = require(path.join(extension.extensionPath, 'out', 'lineHistory.js'));
+		const repo = createScratchRepo('code-lens', { 'placeholder.txt': 'x\n' });
+		const commitAt = (contents, message, name, email, date) => {
+			fs.writeFileSync(path.join(repo, 'code.js'), contents);
+			git(repo, 'add', '-A');
+			cp.execFileSync('git', ['commit', '-q', '-m', message], { cwd: repo, env: Object.assign({}, GIT_ENV, { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date }) });
+		};
+		const code = (bodyB) => 'function first() {\n\treturn 1;\n}\n\nfunction second() {\n\treturn ' + bodyB + ';\n}\n';
+		commitAt(code('2'), 'Add the functions', 'Second Author', 'second@example.com', '2020-01-01T12:00:00Z');
+		commitAt(code('22'), 'Change second()', 'E2E Author', 'author@example.com', '2024-06-01T12:00:00Z');
+		await view.repoManager.registerRepo(repo, false);
+		const uri = vscode.Uri.file(path.join(repo, 'code.js'));
+		await vscode.window.showTextDocument(uri);
+		const config = vscode.workspace.getConfiguration('git-map');
+		const ourLenses = async () => ((await vscode.commands.executeCommand('vscode.executeCodeLensProvider', uri, 10)) || []).filter((lens) => lens.command && lens.command.command === 'git-map.viewLineHistory');
+		assert((await ourLenses()).length === 0, 'The CodeLens is shown while it isn\'t enabled');
+		await config.update('codeLens.enabled', true, vscode.ConfigurationTarget.Global);
+		try {
+			const lenses = await waitFor('the CodeLenses', async () => {
+				const value = await ourLenses();
+				return value.length === 2 ? value : null;
+			});
+			const titles = lenses.map((lens) => lens.command.title);
+			assert(/^Second Author, \d+ years ago · 1 author$/.test(titles[0]) && /^E2E Author, \d+ (years|months) ago · 2 authors$/.test(titles[1]) && lenses[1].range.start.line === 4, 'Unexpected CodeLenses: ' + JSON.stringify(titles));
+			await vscode.commands.executeCommand(lenses[1].command.command, ...lenses[1].command.arguments);
+			const shownHistory = await waitFor('the history of second()', () => {
+				const value = LineHistory.getInstance().getShown();
+				return value !== null && value.target.uri.toString() === uri.toString() && value.target.range.start === 5 && value.target.range.end === 7 ? value : null;
+			});
+			await config.update('codeLens.enabled', undefined, vscode.ConfigurationTarget.Global);
+			await sleep(300);
+			assert((await ourLenses()).length === 0, 'The CodeLens is still shown after it was disabled');
+			await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+			return 'CodeLenses: ' + titles.join(' | ') + '; clicking the second showed the history of lines 5-7 (' + shownHistory.history.entries.length + ' changes)';
+		} finally {
+			await config.update('codeLens.enabled', undefined, vscode.ConfigurationTarget.Global);
+		}
+	});
+
 	await check('remote-links', '[GitLens] Links to lines & commits on the web pages of remote repositories (GitHub, GitLab, Bitbucket, Gitea / Forgejo, Azure DevOps)', async () => {
 		const { getRemoteWebRepo, getRemoteFileUrl, getRemoteCommitUrl } = require(path.join(extension.extensionPath, 'out', 'remoteLinks.js'));
 		const hash = 'a'.repeat(40), range = { start: 3, end: 5 }, line = { start: 7, end: 7 };

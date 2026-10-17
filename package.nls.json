@@ -395,5 +395,8 @@
 	"command.openLinesOnRemote.title": "Open Lines on Remote",
 	"command.openLineChanges.title": "Open Changes of the Line",
 	"command.copyRemoteLink.title": "Copy Remote Link",
-	"command.toggleFileBlame.title": "Toggle File Blame"
+	"command.toggleFileBlame.title": "Toggle File Blame",
+	"command.openPreviousRevision.title": "Show Previous Revision",
+	"command.openNextRevision.title": "Show Next Revision",
+	"config.codeLens.enabled.description": "Show who changed functions, methods & classes most recently (and when), and how many authors changed them, above them in the editor (a CodeLens). Clicking it shows the history of their lines."
 }

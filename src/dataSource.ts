@@ -1934,6 +1934,60 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Does a file have uncommitted changes (compared with HEAD)?
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @returns TRUE => The file has uncommitted changes, FALSE => It doesn't (or it couldn't be determined).
+	 */
+	public hasUncommittedChanges(repo: string, filePath: string): Promise<boolean> {
+		return this.spawnGit(['-c', 'core.quotepath=false', 'diff', '--name-only', 'HEAD', '--', filePath], repo, (stdout) => stdout.trim() !== '').catch(() => false);
+	}
+
+	/**
+	 * Get a commit that changed a file: the latest commit (in the history of HEAD), or the commit before or after a commit.
+	 * @param repo The path of the repository.
+	 * @param from The commit to start from (the latest commit is searched for from HEAD).
+	 * @param filePath The path of the file in `from`.
+	 * @param which "latest" => The latest commit that changed the file at or before `from`, "before" => The commit before `from` that
+	 * changed the file (following it through renames), "after" => The commit after `from` that changed the file, in the history of HEAD.
+	 * @returns The commit, how it changed the file, and the paths of the file before & after it, or NULL if there isn't a commit.
+	 */
+	public async getFileRevision(repo: string, from: string, filePath: string, which: 'latest' | 'before' | 'after'): Promise<{ hash: string, type: GitFileStatus, oldFilePath: string, newFilePath: string } | null> {
+		const args = ['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--format=%x1e%H', '--name-status', '-M'];
+		if (which === 'after') {
+			args.push('--reverse', '--ancestry-path', from + '..HEAD');
+		} else {
+			args.push('--follow', '--max-count=2', from);
+		}
+		args.push('--', filePath);
+		const revisions = await this.spawnGit(args, repo, (stdout) => stdout.split('\x1e').slice(1).map((record) => {
+			const lines = record.split(LF_REGEX).filter((line) => line !== ''), change = typeof lines[1] === 'string' ? lines[1].split('\t') : [];
+			const status = change.length > 0 ? change[0].charAt(0) : 'M', newPath = change.length > 2 ? change[2] : change.length > 1 ? change[1] : filePath;
+			return {
+				hash: lines[0],
+				type: status === 'A' ? GitFileStatus.Added : status === 'D' ? GitFileStatus.Deleted : status === 'R' ? GitFileStatus.Renamed : GitFileStatus.Modified,
+				oldFilePath: change.length > 2 ? change[1] : newPath,
+				newFilePath: newPath
+			};
+		})).catch(() => []);
+		if (which === 'before') {
+			const fromHash = await this.resolveCommitHash(repo, from).catch(() => from);
+			const before = revisions.filter((revision) => revision.hash !== fromHash);
+			return before.length > 0 ? before[0] : null;
+		}
+		const revision = revisions.length > 0 ? revisions[0] : null;
+		if (which === 'after' && revision !== null && revision.type === GitFileStatus.Deleted) {
+			// The file may have been renamed by the commit (which looks like a deletion, as only its old path is in the pathspec)
+			const renamedTo = await this.spawnGit(['-c', 'core.quotepath=false', 'show', '-M', '--name-status', '--format=', revision.hash], repo, (stdout) => {
+				const rename = stdout.split(LF_REGEX).map((line) => line.split('\t')).find((change) => change.length === 3 && change[0].startsWith('R') && change[1] === filePath);
+				return typeof rename !== 'undefined' ? rename[2] : null;
+			}).catch(() => null);
+			if (renamedTo !== null) return { hash: revision.hash, type: GitFileStatus.Renamed, oldFilePath: filePath, newFilePath: renamedTo };
+		}
+		return revision;
+	}
+
+	/**
 	 * Get how a commit changed a line of a file (as found by blaming the line).
 	 * @param repo The path of the repository.
 	 * @param hash The hash of the commit.

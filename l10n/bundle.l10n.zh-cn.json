@@ -951,5 +951,13 @@
 	"1 author": "1 位作者",
 	"Unable to Toggle File Blame: {0}": "无法切换文件 Blame：{0}",
 	"Open a file in an editor.": "请在编辑器中打开一个文件。",
-	"The file {0} isn't tracked by Git.": "文件 {0} 未被 Git 跟踪。"
+	"The file {0} isn't tracked by Git.": "文件 {0} 未被 Git 跟踪。",
+	"Unable to Show the Next Revision: {0}": "无法查看下一个版本：{0}",
+	"Unable to Show the Previous Revision: {0}": "无法查看上一个版本：{0}",
+	"Open a file in an editor, or the changes of a file opened by Git Map.": "请在编辑器中打开一个文件，或打开 Git Map 中某个文件的更改。",
+	"This is the latest revision of {0}.": "这已经是 {0} 的最新版本。",
+	"There isn't a newer revision of {0} in the history of HEAD.": "HEAD 的历史中没有 {0} 更新的版本。",
+	"{0} doesn't have an earlier revision.": "{0} 没有更早的版本。",
+	"Showing the changes of commit {0}": "正在显示提交 {0} 的更改",
+	"View the history of these lines": "查看这些行的历史"
 }
