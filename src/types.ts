@@ -185,6 +185,27 @@ export interface GitFileHistory {
 	readonly filePath: string;
 	readonly paths: ReadonlyArray<string>;
 	readonly commits: { readonly [hash: string]: GitFileHistoryCommit };
+	readonly lineRange?: GitLineRange | null; // The lines whose history is shown (only the commits that change them are shown)
+}
+
+/**
+ * A range of lines of a file (1-based, inclusive).
+ */
+export interface GitLineRange {
+	readonly start: number;
+	readonly end: number;
+}
+
+/**
+ * The commit that last changed a line of a file.
+ */
+export interface GitLineBlame {
+	readonly hash: string;
+	readonly committed: boolean; // FALSE => The line has uncommitted changes
+	readonly author: string;
+	readonly authorEmail: string;
+	readonly authorDate: number;
+	readonly summary: string;
 }
 
 export interface GitFileHistoryCommit {
@@ -422,7 +443,8 @@ export type LoadGitGraphViewTo = {
 		readonly compareWithHash: string | null
 	},
 	readonly runCommandOnLoad?: 'fetch',
-	readonly fileHistory?: string | null // The path of a file whose history is shown (NULL => all commits are shown)
+	readonly fileHistory?: string | null, // The path of a file whose history is shown (NULL => all commits are shown)
+	readonly lineRange?: GitLineRange | null // The lines of the file whose history is shown (NULL => the whole file)
 } | null;
 
 export interface MuteCommitsConfig {
@@ -1065,6 +1087,7 @@ export interface RequestLoadCommits extends RepoRequest {
 	readonly stashes: ReadonlyArray<GitStash>;
 	readonly authors: ReadonlyArray<string> | null; // null => Show All
 	readonly filePath: string | null; // null => All commits (not the history of a file)
+	readonly lineRange?: GitLineRange | null; // The lines of the file whose history is shown (null => The history of the whole file)
 }
 export interface ResponseLoadCommits extends ResponseWithErrorInfo {
 	readonly command: 'loadCommits';

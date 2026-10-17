@@ -650,6 +650,66 @@ async function run() {
 		return 'Workspace: ' + mainWorktrees.map((worktree) => worktree.branch).join(', ') + '; refused a checked out branch: "' + checkedOut.errors[0].trim().split('\n')[0] + '"; removal refused without force: "' + refused.error.trim().split('\n')[0] + '"; pruned';
 	});
 
+	await check('line-history', '[GitLens] The history of a range of lines only includes the commits that change them (following them as they move, and the file through renames), with the graph kept connected', async () => {
+		const dataSource = (await getView()).dataSource;
+		const lines = (changes) => Array.from({ length: 10 }, (_, i) => (changes[i + 1] || 'line ' + (i + 1)) + '\n').join('');
+		const repo = createScratchRepo('line-history', { 'code.txt': lines({}) });
+		const created = git(repo, 'rev-parse', 'HEAD');
+		const changed3 = commitFile(repo, 'code.txt', lines({ 3: 'line 3 (changed)' }), 'Change line 3');
+		const changed8 = commitFile(repo, 'code.txt', lines({ 3: 'line 3 (changed)', 8: 'line 8 (changed)' }), 'Change line 8');
+		// Two lines are added above, so the line moves to line 5 (and the file is renamed)
+		fs.writeFileSync(path.join(repo, 'code.txt'), 'new 1\nnew 2\n' + lines({ 3: 'line 3 (changed again)', 8: 'line 8 (changed)' }));
+		git(repo, 'add', 'code.txt');
+		git(repo, 'commit', '-q', '-m', 'Change line 3 again');
+		const changedAgain = git(repo, 'rev-parse', 'HEAD');
+		git(repo, 'mv', 'code.txt', 'renamed.txt');
+		git(repo, 'commit', '-q', '-m', 'Rename the file');
+
+		const data = await dataSource.getCommits(repo, null, 300, true, true, false, false, 'date', [], [], [], null, 'renamed.txt', { start: 5, end: 5 });
+		assert(data.error === null, 'Loading the line history failed: ' + data.error);
+		const hashes = data.commits.map((commit) => commit.hash), history = data.fileHistory;
+		assert(JSON.stringify(hashes) === JSON.stringify([changedAgain, changed3, created]) && !hashes.includes(changed8), 'Unexpected commits: ' + data.commits.map((commit) => commit.message).join(', '));
+		assert(JSON.stringify(data.commits.map((commit) => commit.parents)) === JSON.stringify([[changed3], [created], []]), 'The graph isn\'t connected: ' + JSON.stringify(data.commits.map((commit) => commit.parents)));
+		assert(history.lineRange.start === 5 && history.commits[changed3].additions === 1 && history.commits[changed3].deletions === 1 && history.commits[changedAgain].additions === 1, 'Unexpected changes to the line: ' + JSON.stringify(history.commits));
+
+		// The "View Line History in Git Map" command shows the history of the selected lines of the active editor
+		const document = await vscode.workspace.openTextDocument(path.join(main, 'file.txt'));
+		const editor = await vscode.window.showTextDocument(document);
+		editor.selection = new vscode.Selection(0, 0, 0, 2);
+		const since = record.requests.length;
+		await vscode.commands.executeCommand('git-graph.viewLineHistory');
+		const request = await waitFor('the Webview to request the line history', () => record.requests.slice(since).find((msg) => msg.command === 'loadCommits' && msg.filePath === 'file.txt' && msg.lineRange))
+			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.command === 'loadCommits' ? ' ' + msg.repo + ' ' + msg.filePath + ' ' + JSON.stringify(msg.lineRange) : '')).join(', ') + '; HTML loadViewTo: ' + (record.html.length > 0 ? (record.html[record.html.length - 1].match(/"loadViewTo":(\{[^}]*\}[^,]*)/) || [])[1] : '') + ')'); });
+		assert(request.repo === main && request.lineRange.start === 1 && request.lineRange.end === 1, 'Unexpected request: ' + JSON.stringify(request));
+		const response = await waitFor('the line history', () => record.responses.find((msg) => msg.command === 'loadCommits' && msg.refreshId === request.refreshId));
+		const shown = response.commits.map((commit) => commit.hash);
+		assert(shown.includes(fixtures.firstCommit) && shown.includes(fixtures.secondAuthorCommit) && !shown.includes(fixtures.headCommit), 'Unexpected line history: ' + response.commits.map((commit) => commit.message).join(', '));
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		return 'Line 5 of renamed.txt: ' + data.commits.map((commit) => commit.message).join(' ← ') + '; command: line 1 of file.txt (' + shown.length + ' commits)';
+	});
+
+	await check('line-blame', '[GitLens] The line the cursor is on is blamed using the contents of the editor (so lines of files with uncommitted changes match), and the blame links to the commit in Git Map', async () => {
+		const view = await getView(), dataSource = view.dataSource;
+		const repo = createScratchRepo('line-blame', { 'code.txt': 'one\ntwo\nthree\n' });
+		const changedTwo = commitFile(repo, 'code.txt', 'one\ntwo (changed)\nthree\n', 'Change line two');
+		// Uncommitted changes add a line above the blamed line
+		const contents = 'zero (uncommitted)\none\ntwo (changed)\nthree\n';
+		const blame = await dataSource.getLineBlame(repo, 'code.txt', 3, contents), uncommitted = await dataSource.getLineBlame(repo, 'code.txt', 1, contents);
+		assert(blame !== null && blame.hash === changedTwo && blame.committed && blame.summary === 'Change line two' && blame.author === 'E2E Author' && blame.authorEmail === 'author@example.com', 'Unexpected blame: ' + JSON.stringify(blame));
+		assert(uncommitted !== null && !uncommitted.committed, 'The uncommitted line wasn\'t recognised: ' + JSON.stringify(uncommitted));
+		const { getBlameText } = require(path.join(extension.extensionPath, 'out', 'lineBlame.js'));
+		const text = getBlameText(blame);
+		assert(/^E2E Author, \d+ seconds? ago • Change line two$/.test(text) && getBlameText(uncommitted) === 'You, Uncommitted changes', 'Unexpected text: ' + text);
+		assert(await dataSource.getLineBlame(repo, 'untracked.txt', 1, 'x\n') === null, 'An untracked file was blamed');
+
+		// The link opens the commit in the Git Map View (as soon as the view, which was just shown again, has loaded)
+		const since = record.requests.length;
+		await vscode.commands.executeCommand('git-graph.viewCommitInGitMap', main, fixtures.firstCommit);
+		const details = await waitFor('the details of the commit to be requested', () => record.requests.slice(since).find((msg) => msg.command === 'commitDetails' && msg.commitHash === fixtures.firstCommit))
+			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.repo ? ' ' + msg.repo : '')).join(', ') + ')'); });
+		return 'Blame: ' + text + '; the link requested the details of ' + details.commitHash.substring(0, 8);
+	});
+
 	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
 		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');

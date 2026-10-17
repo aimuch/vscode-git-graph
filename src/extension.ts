@@ -5,6 +5,7 @@ import { getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffDocProvider } from './diffDocProvider';
 import { ExtensionState } from './extensionState';
+import { LineBlame } from './lineBlame';
 import { Logger } from './logger';
 import { RepoManager } from './repoManager';
 import { StatusBarItem } from './statusBarItem';
@@ -45,6 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	const statusBarItem = new StatusBarItem(repoManager.getNumRepos(), repoManager.onDidChangeRepos, onDidChangeConfiguration, logger);
 	const commandManager = new CommandManager(context, avatarManager, dataSource, extensionState, repoManager, gitExecutable, onDidChangeGitExecutable, logger);
 	const diffDocProvider = new DiffDocProvider(dataSource);
+	const lineBlame = new LineBlame(dataSource, repoManager, onDidChangeConfiguration, logger);
 
 	context.subscriptions.push(
 		vscode.workspace.registerTextDocumentContentProvider(DiffDocProvider.scheme, diffDocProvider),
@@ -70,6 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		}),
 		diffDocProvider,
+		lineBlame,
 		commandManager,
 		statusBarItem,
 		repoManager,

@@ -412,6 +412,13 @@ class Config {
 	}
 
 	/**
+	 * Get the value of the `git-graph.blame.currentLine` Extension Setting.
+	 */
+	get blameCurrentLine() {
+		return !!this.config.get('blame.currentLine', true);
+	}
+
+	/**
 	 * Get the value of the `git-graph.repository.commits.fetchAvatars` Extension Setting.
 	 */
 	get fetchAvatars() {

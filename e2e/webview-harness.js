@@ -62,6 +62,14 @@
 					for (let i = 0; i < 40; i++) tips.push(Object.assign(makeCommits(1)[0], { hash: 'e'.repeat(38) + i.toString(16).padStart(2, '0'), parents: [base.hash], date: base.date + 40 - i, message: 'Branch ' + i, heads: ['branch-' + i] }));
 					return { command: 'loadCommits', refreshId: msg.refreshId, commits: tips.concat([base]), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: {} }, error: null };
 				}
+				if (msg.filePath === 'src/lines.ts') {
+					// The history of lines 3-5 of a file: the commits that change them
+					const history = makeCommits(9).filter((_, i) => i % 4 === 0);
+					history.forEach((commit, i) => commit.parents = i < history.length - 1 ? [history[i + 1].hash] : []);
+					const commits = {};
+					history.forEach((commit, i) => commits[commit.hash] = { filePath: 'src/lines.ts', oldFilePath: null, additions: i + 1, deletions: 1 });
+					return { command: 'loadCommits', refreshId: msg.refreshId, commits: history, head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: [msg.filePath], commits: commits, lineRange: msg.lineRange }, error: null };
+				}
 				if (msg.filePath === 'e2e-dates.txt') {
 					// A commit each day, for the after: & before: search operators (commit 8 is a merge commit, for selecting commits)
 					const daily = makeCommits(20).map((commit, i) => Object.assign(commit, { date: NOW - i * 86400, heads: [] }));
@@ -1235,6 +1243,21 @@
 				mouse(document.getElementById('refreshBtn'), 'click');
 				await waitFor('the Worktrees button to be hidden', () => worktreeBtn.classList.contains('hidden') && document.querySelector('.gitRef.inWorktree') === null);
 			}
+		});
+
+		await check('ui-line-history', '[GitLens] The history of lines (opened by the extension) shows the commits that change them, and how they change them', async () => {
+			const rows = () => document.querySelectorAll('#commitTable tr.commit');
+			window.dispatchEvent(new MessageEvent('message', { data: { command: 'loadRepos', repos: initialState.repos, lastActiveRepo: REPO, loadViewTo: { repo: REPO, fileHistory: 'src/lines.ts', lineRange: { start: 3, end: 5 } } } }));
+			await waitFor('the history of the lines to be loaded', () => rows().length === 3);
+			const request = requestsOf('loadCommits').slice(-1)[0];
+			assert(request.filePath === 'src/lines.ts' && JSON.stringify(request.lineRange) === '{"start":3,"end":5}', 'Unexpected request: ' + JSON.stringify(request));
+			const bar = document.getElementById('fileHistoryBar').textContent, header = document.querySelector('#tableColHeaders .fileChangesCol').textContent;
+			const changes = Array.from(rows()).map((row) => row.querySelector('td.fileChangesCol').textContent);
+			assert(bar.includes('Line History') && bar.includes('Lines 3–5') && bar.includes('src/lines.ts') && bar.includes('Exit Line History') && header === 'Changes to these Lines', 'Unexpected bar / header: ' + bar + ' / ' + header);
+			assert(JSON.stringify(changes) === JSON.stringify(['+1−1', '+2−1', '+3−1']), 'Unexpected changes: ' + JSON.stringify(changes));
+			mouse(document.getElementById('fileHistoryExit'), 'click');
+			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && requestsOf('loadCommits').slice(-1)[0].lineRange === null && rows().length === 10);
+			return bar.replace(/\s+/g, ' ').trim() + '; changes: ' + changes.join(', ');
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {

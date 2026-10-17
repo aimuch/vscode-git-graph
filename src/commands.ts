@@ -59,6 +59,9 @@ export class CommandManager extends Disposable {
 		this.registerCommand('git-graph.selectGraphColourPreset', () => this.selectGraphColourPreset());
 		this.registerCommand('git-graph.openFile', (arg) => this.openFile(arg));
 		this.registerCommand('git-graph.viewFileHistory', (arg) => this.viewFileHistory(arg));
+		this.registerCommand('git-graph.viewLineHistory', () => this.viewLineHistory());
+		this.registerCommand('git-graph.viewCommitInGitMap', (repo, hash) => this.viewCommitInGitMap(repo, hash));
+		this.registerCommand('git-graph.toggleLineBlame', () => this.toggleLineBlame());
 
 		this.registerDisposable(
 			onDidChangeGitExecutable((gitExecutable) => {
@@ -136,20 +139,66 @@ export class CommandManager extends Disposable {
 			showErrorMessage(t('Unable to View File History: {0}', t('Select a file in the Explorer, or open a file in an editor.')));
 			return;
 		}
-		const filePath = getPathFromUri(uri);
-		let repo = this.repoManager.getRepoContainingFile(filePath);
-		if (repo === null) {
-			// The file may be in a repository known by its symbolic path
-			const symbolicPath = await resolveToSymbolicPath(filePath);
-			repo = this.repoManager.getRepoContainingFile(symbolicPath);
-			if (repo === null) {
-				showErrorMessage(t('Unable to View File History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', filePath)));
-				return;
-			}
-			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: repo, fileHistory: symbolicPath.substring(repo.length + 1) });
+		const file = await this.getRepoOfFile(uri);
+		if (file === null) {
+			showErrorMessage(t('Unable to View File History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', getPathFromUri(uri))));
 			return;
 		}
-		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: repo, fileHistory: filePath.substring(repo.length + 1) });
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path });
+	}
+
+	/**
+	 * The method run when the `git-graph.viewLineHistory` command is invoked: open the Git Map View showing the history of the selected
+	 * lines (or the line the cursor is on) in the active text editor.
+	 */
+	private async viewLineHistory() {
+		const editor = vscode.window.activeTextEditor;
+		if (typeof editor === 'undefined' || editor.document.uri.scheme !== 'file') {
+			showErrorMessage(t('Unable to View Line History: {0}', t('Open a file in an editor, and select the lines.')));
+			return;
+		}
+		const file = await this.getRepoOfFile(editor.document.uri);
+		if (file === null) {
+			showErrorMessage(t('Unable to View Line History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', getPathFromUri(editor.document.uri))));
+			return;
+		}
+		// A selection ending at the start of a line doesn't include that line
+		const selection = editor.selection, start = selection.start.line + 1;
+		const end = Math.max(start, selection.end.line + (selection.end.character === 0 && selection.end.line > selection.start.line ? 0 : 1));
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, lineRange: { start: start, end: end } });
+	}
+
+	/**
+	 * The method run when the `git-graph.viewCommitInGitMap` command is invoked (by the link in the hover of the blame of a line): open the
+	 * Git Map View showing the details of a commit.
+	 * @param repo The repository containing the commit.
+	 * @param hash The hash of the commit.
+	 */
+	private viewCommitInGitMap(repo: any, hash: any) {
+		if (typeof repo !== 'string' || typeof hash !== 'string') return;
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: repo, commitDetails: { commitHash: hash, compareWithHash: null } });
+	}
+
+	/**
+	 * The method run when the `git-graph.toggleLineBlame` command is invoked: show or hide the blame of the current line (for all workspaces).
+	 */
+	private toggleLineBlame() {
+		return vscode.workspace.getConfiguration('git-graph').update('blame.currentLine', !getConfig().blameCurrentLine, vscode.ConfigurationTarget.Global);
+	}
+
+	/**
+	 * Get the repository (known by Git Map) containing a file, and the path of the file within it.
+	 * @param uri The URI of the file.
+	 * @returns The repository & path, or NULL if the file isn't in a repository known by Git Map.
+	 */
+	private async getRepoOfFile(uri: vscode.Uri): Promise<{ repo: string, path: string } | null> {
+		const filePath = getPathFromUri(uri);
+		let repo = this.repoManager.getRepoContainingFile(filePath);
+		if (repo !== null) return { repo: repo, path: filePath.substring(repo.length + 1) };
+		// The file may be in a repository known by its symbolic path
+		const symbolicPath = await resolveToSymbolicPath(filePath);
+		repo = this.repoManager.getRepoContainingFile(symbolicPath);
+		return repo !== null ? { repo: repo, path: symbolicPath.substring(repo.length + 1) } : null;
 	}
 
 	/**

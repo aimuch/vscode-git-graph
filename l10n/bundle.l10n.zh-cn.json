@@ -856,5 +856,16 @@
 	"Create a worktree at commit <b><i>{0}</i></b>:": "在提交 <b><i>{0}</i></b> 上创建工作树：",
 	"New Branch": "新分支",
 	"Optional (a detached HEAD if empty)": "可选（留空则为分离的 HEAD）",
-	"A new branch created at the commit, which is checked out in the worktree.": "在该提交上创建的新分支，并在工作树中签出。"
+	"A new branch created at the commit, which is checked out in the worktree.": "在该提交上创建的新分支，并在工作树中签出。",
+	"Unable to View Line History: {0}": "无法查看行历史：{0}",
+	"Open a file in an editor, and select the lines.": "请在编辑器中打开文件，并选中要查看的行。",
+	"You, Uncommitted changes": "你，未提交的更改",
+	"{0}, {1} • {2}": "{0}，{1} • {2}",
+	"This line has uncommitted changes.": "此行有未提交的更改。",
+	"View Commit in Git Map": "在 Git Map 中查看提交",
+	"Changes to these Lines": "这些行的改动",
+	"Lines {0}–{1}": "第 {0}–{1} 行",
+	"Line {0}": "第 {0} 行",
+	"Line History": "行历史",
+	"Exit Line History": "退出行历史"
 }

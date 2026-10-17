@@ -121,12 +121,33 @@
 				"command": "git-graph.viewFileHistory",
 				"title": "%command.viewFileHistory.title%",
 				"icon": "$(history)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-graph.viewLineHistory",
+				"title": "%command.viewLineHistory.title%",
+				"icon": "$(history)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-graph.viewCommitInGitMap",
+				"title": "%command.viewCommitInGitMap.title%"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-graph.toggleLineBlame",
+				"title": "%command.toggleLineBlame.title%"
 			}
 		],
 		"configuration": {
 			"type": "object",
 			"title": "Git Map",
 			"properties": {
+				"git-graph.blame.currentLine": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.blame.currentLine.description%"
+				},
 				"git-graph.commitDetailsView.autoCenter": {
 					"type": "boolean",
 					"default": true,
@@ -1620,6 +1641,21 @@
 				},
 				{
 					"command": "git-graph.viewFileHistory",
+					"when": "resourceScheme == file"
+				},
+				{
+					"command": "git-graph.viewLineHistory",
+					"when": "editorIsOpen && resourceScheme == file"
+				},
+				{
+					"command": "git-graph.viewCommitInGitMap",
+					"when": "false"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "git-graph.viewLineHistory",
+					"group": "gitMap@1",
 					"when": "resourceScheme == file"
 				}
 			],

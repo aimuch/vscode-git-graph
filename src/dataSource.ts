@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineRange, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -264,7 +264,7 @@ export class DataSource extends Disposable {
 	 * @param filePath The path of a file whose history is returned (only the commits that change it, following it through renames), or NULL (all commits).
 	 * @returns The commits in the repository.
 	 */
-	public getCommits(repo: string, branches: ReadonlyArray<string> | null, maxCommits: number, showTags: boolean, showRemoteBranches: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, commitOrdering: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>, authors: ReadonlyArray<string> | null = null, filePath: string | null = null): Promise<GitCommitData> {
+	public getCommits(repo: string, branches: ReadonlyArray<string> | null, maxCommits: number, showTags: boolean, showRemoteBranches: boolean, includeCommitsMentionedByReflogs: boolean, onlyFollowFirstParent: boolean, commitOrdering: CommitOrdering, remotes: ReadonlyArray<string>, hideRemotes: ReadonlyArray<string>, stashes: ReadonlyArray<GitStash>, authors: ReadonlyArray<string> | null = null, filePath: string | null = null, lineRange: GitLineRange | null = null): Promise<GitCommitData> {
 		const config = getConfig(), includeTags = showTags && config.showCommitsOnlyReferencedByTags;
 		if (filePath !== null) stashes = []; // Stashes aren't part of the history of a file
 		const revisionArgs = this.getRevisionArgs(branches, includeTags, showRemoteBranches, includeCommitsMentionedByReflogs, remotes, hideRemotes, stashes);
@@ -272,13 +272,20 @@ export class DataSource extends Disposable {
 		return (filePath !== null ? this.getFileHistoryPaths(repo, filePath, revisionArgs, onlyFollowFirstParent) : Promise.resolve(null)).then((paths) => Promise.all([
 			this.getLog(repo, branches, maxCommits + 1, includeTags, showRemoteBranches, includeCommitsMentionedByReflogs, onlyFollowFirstParent, commitOrdering, remotes, hideRemotes, stashes, authors, paths),
 			this.getRefs(repo, showRemoteBranches, config.showRemoteHeads, hideRemotes).then((refData: GitRefData) => refData, (errorMessage: string) => errorMessage),
-			filePath !== null && paths !== null ? this.getFileHistoryCommits(repo, revisionArgs, paths, maxCommits + 1, onlyFollowFirstParent, commitOrdering).then((commits) => {
-				fileHistory = { filePath: filePath, paths: paths, commits: commits };
+			filePath !== null && paths !== null ? (lineRange !== null
+				? this.getLineHistoryCommits(repo, branches !== null && branches.length === 1 ? branches[0] : 'HEAD', filePath, lineRange, maxCommits + 1, onlyFollowFirstParent, commitOrdering)
+				: this.getFileHistoryCommits(repo, revisionArgs, paths, maxCommits + 1, onlyFollowFirstParent, commitOrdering)
+			).then((commits) => {
+				fileHistory = { filePath: filePath, paths: paths, commits: commits, lineRange: lineRange };
 			}) : Promise.resolve()
 		])).then(async (results) => {
 			let commits = <GitCommitRecord[]>results[0], refData = <GitRefData | string>results[1], i;
 			let moreCommitsAvailable = commits.length === maxCommits + 1;
 			if (moreCommitsAvailable) commits.pop();
+			if (lineRange !== null && fileHistory !== null) {
+				// Only the commits that change the lines are shown (keeping the graph connected)
+				commits = filterCommitRecords(commits, new Set(Object.keys((<GitFileHistory>fileHistory).commits)));
+			}
 
 			// It doesn't matter if getRefs() was rejected if no commits exist
 			if (typeof refData === 'string') {
@@ -1788,6 +1795,82 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Get how a range of lines of a file is changed by each commit in its history (following the lines as they move, and the file
+	 * through renames). The history of the lines can only be followed from one commit (`git log -L` doesn't support several).
+	 * @param repo The path of the repository.
+	 * @param revision The revision whose history is searched (the branch whose history is shown, or HEAD).
+	 * @param filePath The current path of the file.
+	 * @param lineRange The lines.
+	 * @param num The maximum number of commits to return.
+	 * @param onlyFollowFirstParent Only follow the first parent of commits.
+	 * @param order The order for commits to be returned.
+	 * @returns How the lines are changed by each commit.
+	 */
+	private getLineHistoryCommits(repo: string, revision: string, filePath: string, lineRange: GitLineRange, num: number, onlyFollowFirstParent: boolean, order: CommitOrdering) {
+		const args = ['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--max-count=' + num, '--format=' + GIT_LOG_SEPARATOR + '%H', '--' + order + '-order', '-L', lineRange.start + ',' + lineRange.end + ':' + filePath];
+		if (onlyFollowFirstParent) args.push('--first-parent');
+		args.push(revision, '--');
+		return this.spawnGit(args, repo, (stdout) => {
+			// Each commit is followed by the diff of the lines (the lines of the diff are counted, as `-L` can't be combined with `--numstat`)
+			const commits: { [hash: string]: Writeable<GitFileHistoryCommit> } = {};
+			let commit: Writeable<GitFileHistoryCommit> | null = null, inHunk = false;
+			stdout.split(LF_REGEX).forEach((line) => {
+				if (line.startsWith(GIT_LOG_SEPARATOR)) {
+					commit = commits[line.substring(GIT_LOG_SEPARATOR.length)] = { filePath: filePath, oldFilePath: null, additions: 0, deletions: 0 };
+					inHunk = false;
+				} else if (commit === null) {
+					return;
+				} else if (line.startsWith('diff --git ')) {
+					inHunk = false;
+				} else if (!inHunk && line.startsWith('+++ ')) {
+					if (line !== '+++ /dev/null') commit.filePath = line.substring(line.startsWith('+++ b/') ? 6 : 4);
+				} else if (!inHunk && line.startsWith('--- ')) {
+					if (line !== '--- /dev/null') commit.oldFilePath = line.substring(line.startsWith('--- a/') ? 6 : 4);
+				} else if (line.startsWith('@@')) {
+					inHunk = true;
+				} else if (inHunk && line.startsWith('+')) {
+					commit.additions!++;
+				} else if (inHunk && line.startsWith('-')) {
+					commit.deletions!++;
+				}
+			});
+			Object.keys(commits).forEach((hash) => {
+				// The old path is only kept if the commit renamed the file
+				if (commits[hash].oldFilePath === commits[hash].filePath) commits[hash].oldFilePath = null;
+			});
+			return <{ [hash: string]: GitFileHistoryCommit }>commits;
+		}).catch(() => <{ [hash: string]: GitFileHistoryCommit }>{});
+	}
+
+	/**
+	 * Get the commit that last changed a line of a file. The contents of the file are blamed (rather than the committed file), so that
+	 * the line numbers of a file with uncommitted changes match.
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param line The line (1-based).
+	 * @param contents The contents of the file.
+	 * @returns The blame of the line, or NULL if it couldn't be determined (e.g. the file isn't tracked).
+	 */
+	public getLineBlame(repo: string, filePath: string, line: number, contents: string): Promise<GitLineBlame | null> {
+		return this._spawnGit(['blame', '--porcelain', '-L', line + ',' + line, '--contents', '-', '--', filePath], repo, (stdout) => {
+			const lines = stdout.toString().split(LF_REGEX), header = lines.length > 0 ? lines[0].match(/^([0-9a-f]{40,64}) /) : null;
+			if (header === null) return null;
+			const field = (name: string) => {
+				const fieldLine = lines.find((fieldLine) => fieldLine.startsWith(name + ' '));
+				return typeof fieldLine === 'string' ? fieldLine.substring(name.length + 1) : '';
+			};
+			return {
+				hash: header[1],
+				committed: !/^0+$/.test(header[1]),
+				author: field('author'),
+				authorEmail: field('author-mail').replace(/^<|>$/g, ''),
+				authorDate: parseInt(field('author-time')) || 0,
+				summary: field('summary')
+			};
+		}, false, contents).catch(() => null);
+	}
+
+	/**
 	 * Get the changes made to a file by a commit, as a unified diff.
 	 * @param repo The path of the repository.
 	 * @param commitHash The hash of the commit.
@@ -2179,16 +2262,22 @@ export class DataSource extends Disposable {
 	 * @param resolveValue A callback invoked to resolve the data from `stdout` and `stderr`.
 	 * @param ignoreExitCode Ignore the exit code returned by Git (default: `FALSE`).
 	 */
-	private _spawnGit<T>(args: string[], repo: string, resolveValue: { (stdout: Buffer, stderr: string): T }, ignoreExitCode: boolean = false) {
+	private _spawnGit<T>(args: string[], repo: string, resolveValue: { (stdout: Buffer, stderr: string): T }, ignoreExitCode: boolean = false, input: string | null = null) {
 		return new Promise<T>((resolve, reject) => {
 			if (this.gitExecutable === null) {
 				return reject(UNABLE_TO_FIND_GIT_MSG);
 			}
 
-			resolveSpawnOutput(cp.spawn(this.gitExecutable.path, args, {
+			const gitProcess = cp.spawn(this.gitExecutable.path, args, {
 				cwd: repo,
 				env: Object.assign({}, process.env, this.askpassEnv)
-			})).then((values) => {
+			});
+			if (input !== null && gitProcess.stdin) {
+				// The input is written to the standard input of Git (if Git exits before reading it, the error is ignored)
+				gitProcess.stdin.on('error', () => { });
+				gitProcess.stdin.end(input);
+			}
+			resolveSpawnOutput(gitProcess).then((values) => {
 				const status = values[0], stdout = values[1], stderr = values[2];
 				if (status.code === 0 || ignoreExitCode) {
 					resolve(resolveValue(stdout, stderr));
@@ -2325,6 +2414,35 @@ interface GitCommitRecord {
 	email: string;
 	date: number;
 	message: string;
+}
+
+/**
+ * Filter commits to those in a set, rewriting the parents of each commit to its nearest ancestors in the set (so that the graph of
+ * the commits stays connected).
+ * @param commits The commits.
+ * @param filter The hashes of the commits to keep.
+ * @returns The filtered commits.
+ */
+function filterCommitRecords(commits: ReadonlyArray<GitCommitRecord>, filter: ReadonlySet<string>) {
+	const loaded = new Set(commits.map((commit) => commit.hash)), nearestMatches: { [hash: string]: string[] } = {}, filtered: GitCommitRecord[] = [];
+	const rewriteParents = (parents: ReadonlyArray<string>) => {
+		const rewritten: string[] = [];
+		parents.forEach((parent) => {
+			// Parents that aren't loaded are kept, as the graph continues below the loaded commits
+			(filter.has(parent) || !loaded.has(parent) ? [parent] : nearestMatches[parent] || []).forEach((hash) => {
+				if (!rewritten.includes(hash)) rewritten.push(hash);
+			});
+		});
+		return rewritten;
+	};
+	for (let i = commits.length - 1; i >= 0; i--) {
+		if (filter.has(commits[i].hash)) {
+			filtered.push(Object.assign({}, commits[i], { parents: rewriteParents(commits[i].parents) }));
+		} else {
+			nearestMatches[commits[i].hash] = rewriteParents(commits[i].parents);
+		}
+	}
+	return filtered.reverse();
 }
 
 /**

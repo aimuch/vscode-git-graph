@@ -58,6 +58,7 @@ declare global {
 		readonly commits: GG.GitCommit[];
 		readonly fileHistory?: string | null;
 		readonly fileHistoryData?: GG.GitFileHistory | null;
+		readonly fileHistoryLines?: GG.GitLineRange | null;
 		readonly commitHead: string | null;
 		readonly avatars: AvatarImageCollection;
 		readonly currentBranches: string[] | null;

@@ -16,6 +16,7 @@ class GitGraphView {
 	public loadedCommits: GG.GitCommit[] = []; // All of the loaded commits (when only the matches of the Find Widget are shown, this.commits only contains them)
 	private commitFilter: ReadonlySet<string> | null = null;
 	public fileHistory: string | null = null; // The path of the file whose history is shown (NULL => all commits are shown)
+	private fileHistoryLines: GG.GitLineRange | null = null; // The lines of the file whose history is shown (NULL => the whole file)
 	private fileHistoryData: GG.GitFileHistory | null = null;
 	private cdvShowWholeCommit: boolean = false;
 	private commitStats: { [hash: string]: GG.GitCommitStats | null } = {}; // The files & lines changed by the loaded commits (shown in the Changes column)
@@ -218,6 +219,7 @@ class GitGraphView {
 			this.gitConfig = prevState.gitConfig;
 			this.loadRepoInfo(prevState.gitBranches, prevState.gitBranchHead, prevState.gitRemotes, prevState.gitStashes, prevState.gitUpstreams || {}, true);
 			this.fileHistory = prevState.fileHistory || null;
+			this.fileHistoryLines = this.fileHistory !== null && prevState.fileHistoryLines ? prevState.fileHistoryLines : null;
 			this.fileHistoryData = prevState.fileHistoryData || null;
 			this.renderFileHistoryBar();
 			this.loadCommits(prevState.commits, prevState.commitHead, prevState.gitTags, prevState.moreCommitsAvailable, prevState.onlyFollowFirstParent, this.fileHistoryData);
@@ -298,23 +300,28 @@ class GitGraphView {
 		}
 
 		const fileHistory = loadViewTo !== null && loadViewTo.repo === newRepo && typeof loadViewTo.fileHistory === 'string' ? loadViewTo.fileHistory : null;
+		const lineRange = fileHistory !== null && loadViewTo !== null && loadViewTo.lineRange ? loadViewTo.lineRange : null;
 		if (this.currentRepo !== newRepo) {
-			this.loadRepo(newRepo, fileHistory);
+			this.loadRepo(newRepo, fileHistory, lineRange);
 			return true;
 		} else if (fileHistory !== null) {
-			this.setFileHistory(fileHistory);
+			this.setFileHistory(fileHistory, lineRange);
 			return true;
 		} else if (loadViewTo !== null && loadViewTo.repo === newRepo && loadViewTo.fileHistory === null && this.fileHistory !== null) {
 			this.setFileHistory(null);
 			return true;
+		} else if (this.loadViewTo !== null && (this.currentRepoLoading || this.currentRepoRefreshState.inProgress)) {
+			// The repository is being loaded (or refreshed), so the view is loaded to (e.g. the details of a commit are opened) once it has been
+			return false;
 		} else {
 			this.finaliseRepoLoad(false);
 			return false;
 		}
 	}
 
-	private loadRepo(repo: string, fileHistory: string | null = null) {
+	private loadRepo(repo: string, fileHistory: string | null = null, lineRange: GG.GitLineRange | null = null) {
 		this.fileHistory = fileHistory;
+		this.fileHistoryLines = fileHistory !== null ? lineRange : null;
 		this.fileHistoryData = null;
 		this.renderFileHistoryBar();
 		if (repo !== this.currentRepo) this.minimap.resetZoom();
@@ -435,7 +442,7 @@ class GitGraphView {
 	}
 
 	private loadCommits(commits: GG.GitCommit[], commitHead: string | null, tags: ReadonlyArray<string>, moreAvailable: boolean, onlyFollowFirstParent: boolean, fileHistory: GG.GitFileHistory | null = null) {
-		this.fileHistoryData = this.fileHistory !== null && fileHistory !== null && fileHistory.filePath === this.fileHistory ? fileHistory : null;
+		this.fileHistoryData = this.fileHistory !== null && fileHistory !== null && fileHistory.filePath === this.fileHistory && JSON.stringify(fileHistory.lineRange || null) === JSON.stringify(this.fileHistoryLines) ? fileHistory : null;
 		// This list of tags is just used to provide additional information in the dialogs. Tag information included in commits is used for all other purposes (e.g. rendering, context menus)
 		const tagsChanged = !arraysStrictlyEqual(this.gitTags, tags);
 		this.gitTags = tags;
@@ -608,6 +615,7 @@ class GitGraphView {
 	}
 
 	private finaliseRepoLoad(didLoadRepoData: boolean) {
+		let keepLoadViewTo = false;
 		if (this.loadViewTo !== null && this.currentRepo === this.loadViewTo.repo) {
 			if (this.loadViewTo.commitDetails && (this.expandedCommit === null || this.expandedCommit.commitHash !== this.loadViewTo.commitDetails.commitHash || this.expandedCommit.compareWithHash !== this.loadViewTo.commitDetails.compareWithHash)) {
 				const commitIndex = this.getCommitId(this.loadViewTo.commitDetails.commitHash);
@@ -622,6 +630,10 @@ class GitGraphView {
 					} else {
 						this.loadCommitDetails(commitElem);
 					}
+				} else if (this.moreCommitsAvailable && compareWithIndex === null) {
+					// The commit isn't loaded yet (e.g. the commit of the blame of a line), so more commits are loaded until it is
+					keepLoadViewTo = true;
+					if (!this.currentRepoRefreshState.inProgress) this.loadMoreCommits();
 				} else {
 					showErrorMessage(t('Unable to resume Code Review, it could not be found in the latest {0} commits that were loaded in this repository.', this.maxCommits));
 				}
@@ -633,7 +645,7 @@ class GitGraphView {
 				}
 			}
 		}
-		this.loadViewTo = null;
+		if (!keepLoadViewTo) this.loadViewTo = null;
 
 		if (this.gitConfig === null || (didLoadRepoData && this.currentRepoRefreshState.configChanges)) {
 			this.requestLoadConfig();
@@ -861,7 +873,8 @@ class GitGraphView {
 			hideRemotes: repoState.hideRemotes,
 			stashes: this.gitStashes,
 			authors: this.currentAuthors === null || this.currentAuthors.includes(SHOW_ALL_BRANCHES) ? null : this.currentAuthors,
-			filePath: this.fileHistory
+			filePath: this.fileHistory,
+			lineRange: this.fileHistory !== null ? this.fileHistoryLines : null
 		});
 	}
 
@@ -965,6 +978,7 @@ class GitGraphView {
 			gitTags: this.gitTags,
 			commits: this.loadedCommits,
 			fileHistory: this.fileHistory,
+			fileHistoryLines: this.fileHistoryLines,
 			fileHistoryData: this.fileHistoryData,
 			commitHead: this.commitHead,
 			avatars: this.avatars,
@@ -1172,7 +1186,7 @@ class GitGraphView {
 		if (colVisibility.date) headers.push('<th class="tableColHeader dateCol" data-col="2">' + t('Date') + '</th>');
 		if (colVisibility.author) headers.push('<th class="tableColHeader authorCol" data-col="3">' + t('Author') + '</th>');
 		if (fileHistory !== null) {
-			headers.push('<th class="fileChangesCol">' + t('Changes to this File') + '</th>');
+			headers.push('<th class="fileChangesCol">' + (this.fileHistoryLines !== null ? t('Changes to these Lines') : t('Changes to this File')) + '</th>');
 		} else if (showChanges) {
 			headers.push('<th class="changesCol">' + t('Changes') + '</th>');
 		}
@@ -2749,9 +2763,11 @@ class GitGraphView {
 	 * Show the history of a file (only the commits that change it), or all commits.
 	 * @param filePath The path of the file, or NULL to show all commits.
 	 */
-	public setFileHistory(filePath: string | null) {
-		if (filePath === this.fileHistory) return;
+	public setFileHistory(filePath: string | null, lineRange: GG.GitLineRange | null = null) {
+		if (filePath === null) lineRange = null;
+		if (filePath === this.fileHistory && JSON.stringify(lineRange) === JSON.stringify(this.fileHistoryLines)) return;
 		this.fileHistory = filePath;
+		this.fileHistoryLines = lineRange;
 		this.fileHistoryData = null;
 		this.cdvShowWholeCommit = false;
 		this.maxCommits = this.config.initialLoadCommits;
@@ -2781,12 +2797,13 @@ class GitGraphView {
 			this.moreCommitsAvailable ? t('{0}+ commits', count) : count !== 1 ? t('{0} commits', count) : t('{0} commit', count),
 			authors !== 1 ? t('{0} authors', authors) : t('{0} author', authors)
 		].concat(renames > 0 ? [renames !== 1 ? t('followed {0} renames', renames) : t('followed 1 rename')] : []);
-		elem.innerHTML = fileIcons.getFileIcon(this.fileHistory) + '<b>' + t('File History') + '</b>' +
+		const lines = this.fileHistoryLines !== null ? '<span class="fileHistoryLines">' + (this.fileHistoryLines.start !== this.fileHistoryLines.end ? t('Lines {0}–{1}', this.fileHistoryLines.start, this.fileHistoryLines.end) : t('Line {0}', this.fileHistoryLines.start)) + '</span>' : '';
+		elem.innerHTML = fileIcons.getFileIcon(this.fileHistory) + '<b>' + (this.fileHistoryLines !== null ? t('Line History') : t('File History')) + '</b>' + lines +
 			'<span class="fileHistoryPath" title="' + escapeHtml(this.fileHistory) + '"><span>' + escapeHtml(this.fileHistory) + '</span><span id="fileHistoryCopy" title="' + t('Copy Relative File Path to Clipboard') + '">' + SVG_ICONS.copy + '</span></span>' +
 			'<span class="fileHistorySummary">' + summary.join(' · ') + '</span><span class="fileHistorySpacer"></span>' +
 			'<span id="fileHistoryBranches" role="group"><span class="fileHistoryBranchesOption' + (allBranches ? ' active' : '') + '" data-value="all">' + t('All Branches') + '</span><span class="fileHistoryBranchesOption' + (currentBranch ? ' active' : '') + (this.gitBranchHead === null ? ' disabled' : '') + '" data-value="current">' + t('Current Branch') + '</span></span>' +
 			'<span id="fileHistoryOpen" class="fileHistoryBtn">' + SVG_ICONS.openFile + t('Open in Editor') + '</span>' +
-			'<span id="fileHistoryExit" class="fileHistoryBtn exit" title="' + t('Show all of the commits') + '">' + t('Exit File History') + SVG_ICONS.close + '</span>';
+			'<span id="fileHistoryExit" class="fileHistoryBtn exit" title="' + t('Show all of the commits') + '">' + (this.fileHistoryLines !== null ? t('Exit Line History') : t('Exit File History')) + SVG_ICONS.close + '</span>';
 
 		const filePath = this.fileHistory;
 		document.getElementById('fileHistoryCopy')!.addEventListener('click', () => sendMessage({ command: 'copyFilePath', repo: this.currentRepo, filePath: filePath, absolute: false }));
