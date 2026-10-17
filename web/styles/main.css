@@ -1791,7 +1791,7 @@ body.tagLabelsRightAligned .gitRef.tag{
 .controlPill.active{
 	border-color:var(--vscode-focusBorder);
 }
-#stashList{
+#stashList, #worktreeList{
 	position:fixed;
 	z-index:20;
 	width:min(560px, calc(100vw - 16px));
@@ -1906,6 +1906,41 @@ body.tagLabelsRightAligned .gitRef.tag{
 .stashListAction.disabled{
 	opacity:0.5;
 	cursor:default;
+}
+/* The worktrees (in the list of the Worktrees button). The start of a long path is truncated (its end is the folder's name). */
+.worktreeListItem .stashListMeta{
+	flex-wrap:nowrap;
+}
+.worktreeListItem .stashListMeta > span:not(.worktreeListPath){
+	flex:0 0 auto;
+}
+.worktreeListPath{
+	flex:0 1 auto;
+	min-width:0;
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+	direction:rtl;
+	text-align:left;
+}
+.worktreeListBadge{
+	padding:0 6px;
+	border:1px solid color-mix(in srgb, var(--vscode-foreground) 30%, transparent);
+	border-radius:8px;
+	font-size:11px;
+	line-height:15px;
+}
+/* The branches that are checked out in other worktrees */
+.gitRefWorktree{
+	display:inline-flex;
+	align-items:center;
+	margin:0 6px 0 -3px;
+	color:var(--git-graph-color);
+	filter:brightness(1.25);
+}
+.gitRefWorktree svg{
+	width:12px;
+	height:12px;
 }
 .stashListSpacer{
 	flex:1 1 auto;

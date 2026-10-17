@@ -40,6 +40,7 @@
 	};
 
 	let undoInfo = null; // The action that the extension says can be undone
+	let worktreesFixture = []; // The worktrees of the repository
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
@@ -47,6 +48,14 @@
 			case 'undo':
 				undoInfo = null;
 				return { command: 'undo', error: null };
+			case 'loadWorktrees':
+				return { command: 'loadWorktrees', repo: msg.repo, worktrees: worktreesFixture, error: null };
+			case 'addWorktree':
+				return { command: 'addWorktree', errors: [null] };
+			case 'removeWorktree':
+			case 'pruneWorktrees':
+			case 'openWorktree':
+				return { command: msg.command, error: null };
 			case 'loadCommits':
 				if (msg.filePath === 'e2e-wide.txt') {
 					const base = makeCommits(1)[0], tips = [];
@@ -1151,6 +1160,81 @@
 			mouse(document.getElementById('refreshBtn'), 'click');
 			await waitFor('the Undo button to be hidden', () => undoBtn.classList.contains('hidden'));
 			return 'Button: ' + 'Undo: Merge "feature"' + '; notified once; undo requested for ' + request.repo;
+		});
+
+		await check('ui-worktrees', '[GitLens] The Worktrees button lists the worktrees (opening, removing & pruning them), branches checked out in other worktrees are marked, and worktrees are created from the context menu', async () => {
+			const worktreeBtn = document.getElementById('worktreeBtn');
+			assert(worktreeBtn.classList.contains('hidden'), 'The Worktrees button is shown when there\'s only one worktree');
+			worktreesFixture = [
+				{ path: REPO, head: hash(HEAD_INDEX + 1), branch: 'main', isMain: true, isCurrent: true, locked: false, prunable: false },
+				{ path: '/e2e/harness-repo-feature', head: hash(1), branch: 'feature', isMain: false, isCurrent: false, locked: true, prunable: false },
+				{ path: '/e2e/harness-repo-old', head: hash(3), branch: null, isMain: false, isCurrent: false, locked: false, prunable: true }
+			];
+			try {
+				mouse(document.getElementById('refreshBtn'), 'click');
+				await waitFor('the Worktrees button to be shown', () => !worktreeBtn.classList.contains('hidden') && worktreeBtn.textContent === 'Worktrees3');
+				// The branch checked out in another worktree is marked
+				const featureLabel = await waitFor('the branch to be marked', () => commitRow(0).querySelector('.gitRef.head.inWorktree'));
+				assert(featureLabel.title === 'Checked out in the worktree /e2e/harness-repo-feature' && featureLabel.querySelector('.gitRefWorktree svg') !== null && featureLabel.textContent === 'feature', 'Unexpected marker: ' + featureLabel.title);
+
+				// The list of the worktrees
+				const openList = async () => {
+					mouse(worktreeBtn, 'click');
+					return waitFor('the list of worktrees', () => document.querySelectorAll('#worktreeList .worktreeListItem').length === 3 ? Array.from(document.querySelectorAll('#worktreeList .worktreeListItem')) : null);
+				};
+				let items = await openList();
+				const texts = items.map((item) => item.querySelector('.stashListMeta').textContent);
+				assert(texts[0].includes('Current') && texts[0].includes('Main') && texts[1].includes('Locked') && texts[2].includes('Detached HEAD') && texts[2].includes('The folder no longer exists'), 'Unexpected worktrees: ' + JSON.stringify(texts));
+				assert(items[0].querySelector('[data-action="remove"]').classList.contains('disabled') && !items[1].querySelector('[data-action="remove"]').classList.contains('disabled'), 'The main worktree can be removed');
+				mouse(items[1].querySelector('[data-action="open"]'), 'click');
+				const opened = await waitFor('the worktree to be opened', () => requestsOf('openWorktree').slice(-1)[0]);
+				assert(opened.path === '/e2e/harness-repo-feature', 'Unexpected request: ' + JSON.stringify(opened));
+
+				// Removing a worktree is confirmed (forcing it is optional)
+				items = await openList();
+				mouse(items[1].querySelector('[data-action="remove"]'), 'click');
+				let dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+				assert(dialogElem.textContent.includes('remove the worktree /e2e/harness-repo-feature') && document.getElementById('dialogInput0').checked === false, 'Unexpected dialog: ' + dialogElem.textContent);
+				mouse(document.getElementById('dialogAction'), 'click');
+				const removed = await waitFor('the worktree to be removed', () => requestsOf('removeWorktree').slice(-1)[0]);
+				assert(removed.path === '/e2e/harness-repo-feature' && removed.force === false, 'Unexpected request: ' + JSON.stringify(removed));
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null || document.querySelector('.dialog.actionRunning') === null);
+				if (document.querySelector('.dialog') !== null) key(document.body, 'Escape');
+
+				// Pruning the worktrees whose folders no longer exist
+				await openList();
+				mouse(document.getElementById('worktreeListPrune'), 'click');
+				await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+				mouse(document.getElementById('dialogAction'), 'click');
+				await waitFor('the worktrees to be pruned', () => requestsOf('pruneWorktrees').length > 0);
+
+				// Creating a worktree at a commit, with a new branch
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null || !document.querySelector('.dialog').textContent.includes('prune'));
+				mouse(commitRow(2), 'contextmenu', { button: 2 });
+				const menu = await waitFor('the context menu', () => document.querySelector('.contextMenu'));
+				mouse(Array.from(menu.querySelectorAll('.contextMenuItem')).find((item) => item.textContent === 'Create Worktree…'), 'click');
+				dialogElem = await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+				const folderInput = document.getElementById('dialogInput0'), branchInput = document.getElementById('dialogInput1');
+				assert(folderInput.value === '/e2e/harness-repo-00000000' && branchInput.value === '', 'Unexpected default folder: ' + folderInput.value);
+				branchInput.value = 'wt-test';
+				branchInput.dispatchEvent(new Event('input', { bubbles: true }));
+				mouse(document.getElementById('dialogAction'), 'click');
+				const added = await waitFor('the worktree to be created', () => requestsOf('addWorktree').slice(-1)[0]);
+				assert(added.path === '/e2e/harness-repo-00000000' && added.ref === hash(3) && added.newBranch === 'wt-test' && added.open === true, 'Unexpected request: ' + JSON.stringify(added));
+
+				// A branch that's checked out in another worktree can't be added as a worktree
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null || document.querySelector('.dialog.actionRunning') === null);
+				if (document.querySelector('.dialog') !== null) key(document.body, 'Escape');
+				mouse(commitRow(0).querySelector('.gitRef.head'), 'contextmenu', { button: 2 });
+				const branchMenu = Array.from((await waitFor('the context menu', () => document.querySelector('.contextMenu'))).querySelectorAll('.contextMenuItem')).map((item) => item.textContent);
+				assert(!branchMenu.includes('Create Worktree…'), 'A branch checked out in another worktree can be added as a worktree');
+				key(document.body, 'Escape');
+				return 'Listed ' + texts.length + ' worktrees; opened ' + opened.path + '; removed ' + removed.path + '; pruned; created ' + added.path + ' (' + added.newBranch + ')';
+			} finally {
+				worktreesFixture = [];
+				mouse(document.getElementById('refreshBtn'), 'click');
+				await waitFor('the Worktrees button to be hidden', () => worktreeBtn.classList.contains('hidden') && document.querySelector('.gitRef.inWorktree') === null);
+			}
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {

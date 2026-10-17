@@ -519,6 +519,18 @@ export function viewFileAtRevision(repo: string, hash: string, filePath: string)
  * Open the Visual Studio Code Source Control View.
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
+/**
+ * Open a folder (e.g. a worktree) in a new Visual Studio Code window.
+ * @param folderPath The path of the folder.
+ * @returns A promise resolving to the ErrorInfo of the executed command.
+ */
+export function openFolderInNewWindow(folderPath: string): Thenable<ErrorInfo> {
+	return vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(folderPath), { forceNewWindow: true }).then(
+		() => null,
+		() => t('Visual Studio Code was unable to open the folder "{0}".', folderPath)
+	);
+}
+
 export function viewScm(): Thenable<ErrorInfo> {
 	return vscode.commands.executeCommand('workbench.view.scm').then(
 		() => null,

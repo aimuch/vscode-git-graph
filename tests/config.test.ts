@@ -285,6 +285,7 @@ describe('Config', () => {
 					viewIssue: true,
 					createPullRequest: true,
 					createArchive: true,
+					createWorktree: true,
 					selectInBranchesDropdown: true,
 					unselectInBranchesDropdown: true,
 					copyName: true
@@ -292,6 +293,7 @@ describe('Config', () => {
 				commit: {
 					addTag: true,
 					createBranch: true,
+					createWorktree: true,
 					checkout: true,
 					cherrypick: true,
 					revert: true,
@@ -367,6 +369,7 @@ describe('Config', () => {
 					viewIssue: true,
 					createPullRequest: true,
 					createArchive: true,
+					createWorktree: true,
 					selectInBranchesDropdown: true,
 					unselectInBranchesDropdown: true,
 					copyName: true
@@ -374,6 +377,7 @@ describe('Config', () => {
 				commit: {
 					addTag: true,
 					createBranch: true,
+					createWorktree: true,
 					checkout: true,
 					cherrypick: true,
 					revert: true,
@@ -467,6 +471,7 @@ describe('Config', () => {
 					viewIssue: true,
 					createPullRequest: true,
 					createArchive: true,
+					createWorktree: true,
 					selectInBranchesDropdown: true,
 					unselectInBranchesDropdown: true,
 					copyName: true
@@ -474,6 +479,7 @@ describe('Config', () => {
 				commit: {
 					addTag: true,
 					createBranch: true,
+					createWorktree: true,
 					checkout: false,
 					cherrypick: true,
 					revert: true,

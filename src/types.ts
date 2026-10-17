@@ -213,6 +213,16 @@ export interface GitStashStats {
 	readonly untrackedFiles: number;
 }
 
+export interface GitWorktree {
+	readonly path: string;
+	readonly head: string | null; // The commit checked out in the worktree
+	readonly branch: string | null; // The branch checked out in the worktree, or NULL if its HEAD is detached
+	readonly isMain: boolean; // Is it the main worktree (of the repository)
+	readonly isCurrent: boolean; // Is it the worktree shown in the Git Map View
+	readonly locked: boolean;
+	readonly prunable: boolean; // Its directory no longer exists
+}
+
 export interface GitStash {
 	readonly hash: string;
 	readonly baseHash: string;
@@ -465,6 +475,7 @@ export interface ContextMenuActionsVisibility {
 		readonly viewIssue: boolean;
 		readonly createPullRequest: boolean;
 		readonly createArchive: boolean;
+		readonly createWorktree: boolean;
 		readonly selectInBranchesDropdown: boolean;
 		readonly unselectInBranchesDropdown: boolean;
 		readonly copyName: boolean;
@@ -472,6 +483,7 @@ export interface ContextMenuActionsVisibility {
 	readonly commit: {
 		readonly addTag: boolean;
 		readonly createBranch: boolean;
+		readonly createWorktree: boolean;
 		readonly checkout: boolean;
 		readonly cherrypick: boolean;
 		readonly revert: boolean;
@@ -1102,6 +1114,50 @@ export interface UndoInfo {
 	readonly description: string;
 }
 
+export interface RequestLoadWorktrees extends RepoRequest {
+	readonly command: 'loadWorktrees';
+}
+export interface ResponseLoadWorktrees extends ResponseWithErrorInfo {
+	readonly command: 'loadWorktrees';
+	readonly repo: string;
+	readonly worktrees: ReadonlyArray<GitWorktree>;
+}
+
+export interface RequestAddWorktree extends RepoRequest {
+	readonly command: 'addWorktree';
+	readonly path: string;
+	readonly ref: string; // The branch to check out in the worktree, or the commit it's created at
+	readonly newBranch: string | null; // The name of a new branch to create at `ref` (and check out in the worktree)
+	readonly open: boolean; // Open the worktree in a new window after it's created
+}
+export interface ResponseAddWorktree extends ResponseWithMultiErrorInfo {
+	readonly command: 'addWorktree';
+}
+
+export interface RequestRemoveWorktree extends RepoRequest {
+	readonly command: 'removeWorktree';
+	readonly path: string;
+	readonly force: boolean; // Remove the worktree even if it has uncommitted changes or untracked files (which are lost)
+}
+export interface ResponseRemoveWorktree extends ResponseWithErrorInfo {
+	readonly command: 'removeWorktree';
+}
+
+export interface RequestPruneWorktrees extends RepoRequest {
+	readonly command: 'pruneWorktrees';
+}
+export interface ResponsePruneWorktrees extends ResponseWithErrorInfo {
+	readonly command: 'pruneWorktrees';
+}
+
+export interface RequestOpenWorktree extends BaseMessage {
+	readonly command: 'openWorktree';
+	readonly path: string;
+}
+export interface ResponseOpenWorktree extends ResponseWithErrorInfo {
+	readonly command: 'openWorktree';
+}
+
 export interface RequestUndo extends RepoRequest {
 	readonly command: 'undo';
 }
@@ -1486,6 +1542,11 @@ export type RequestMessage =
 	| RequestCherrypickCommit
 	| RequestCherrypickCommits
 	| RequestUndo
+	| RequestLoadWorktrees
+	| RequestAddWorktree
+	| RequestRemoveWorktree
+	| RequestPruneWorktrees
+	| RequestOpenWorktree
 	| RequestCleanUntrackedFiles
 	| RequestCommitDetails
 	| RequestCompareCommits
@@ -1559,6 +1620,11 @@ export type ResponseMessage =
 	| ResponseCherrypickCommit
 	| ResponseCherrypickCommits
 	| ResponseUndo
+	| ResponseLoadWorktrees
+	| ResponseAddWorktree
+	| ResponseRemoveWorktree
+	| ResponsePruneWorktrees
+	| ResponseOpenWorktree
 	| ResponseCleanUntrackedFiles
 	| ResponseCompareCommits
 	| ResponseCommitDetails

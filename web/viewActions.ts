@@ -84,6 +84,11 @@ class ViewActions {
 				}
 			},
 			{
+				title: t('Create Worktree') + ELLIPSIS,
+				visible: visibility.createWorktree && this.view.gitBranchHead !== refName && this.view.worktreeList.getOtherWorktreeOfBranch(refName) === null,
+				onClick: () => this.view.worktreeList.createWorktreeAction(refName, true, target)
+			},
+			{
 				title: t('Select in Branches Dropdown'),
 				visible: visibility.selectInBranchesDropdown && !isSelectedInBranchesDropdown,
 				onClick: () => this.view.branchDropdown.selectOption(refName)
@@ -117,6 +122,10 @@ class ViewActions {
 				title: t('Create Branch') + ELLIPSIS,
 				visible: visibility.createBranch,
 				onClick: () => this.createBranchAction(hash, '', this.view.config.dialogDefaults.createBranch.checkout, target)
+			}, {
+				title: t('Create Worktree') + ELLIPSIS,
+				visible: visibility.createWorktree,
+				onClick: () => this.view.worktreeList.createWorktreeAction(hash, false, target)
 			}
 		], [
 			{

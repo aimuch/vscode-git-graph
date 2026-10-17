@@ -10,7 +10,7 @@ import { RepoFileWatcher } from './repoFileWatcher';
 import { RepoManager } from './repoManager';
 import { UndoManager } from './undoManager';
 import { ErrorInfo, GitConfigLocation, GitGraphViewInitialState, GitPushBranchMode, GitRepoSet, LoadGitGraphViewTo, MergeActionOn, RebaseActionOn, RequestMessage, ResponseMessage, TabIconColourTheme } from './types';
-import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, showErrorMessage, updateExtensionSetting, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
+import { UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, archive, copyFilePathToClipboard, copyToClipboard, createPullRequest, getNonce, openExtensionSettings, openExternalUrl, openFile, openFolderInNewWindow, showErrorMessage, updateExtensionSetting, viewDiff, viewDiffWithWorkingFile, viewFileAtRevision, viewScm } from './utils';
 import { Disposable, toDisposable } from './utils/disposable';
 import { getL10nBundle, getLanguage, t } from './l10n';
 
@@ -686,6 +686,38 @@ export class GitGraphView extends Disposable {
 					error: await viewFileAtRevision(msg.repo, msg.hash, msg.filePath)
 				});
 				break;
+			case 'loadWorktrees':
+				this.sendMessage({
+					command: 'loadWorktrees',
+					repo: msg.repo,
+					...await this.dataSource.getWorktrees(msg.repo)
+				});
+				break;
+			case 'addWorktree':
+				errorInfos = [await this.dataSource.addWorktree(msg.repo, msg.path, msg.ref, msg.newBranch)];
+				if (errorInfos[0] === null && msg.open) {
+					errorInfos.push(await openFolderInNewWindow(msg.path));
+				}
+				this.sendMessage({ command: 'addWorktree', errors: errorInfos });
+				break;
+			case 'removeWorktree':
+				this.sendMessage({
+					command: 'removeWorktree',
+					error: await this.dataSource.removeWorktree(msg.repo, msg.path, msg.force)
+				});
+				break;
+			case 'pruneWorktrees':
+				this.sendMessage({
+					command: 'pruneWorktrees',
+					error: await this.dataSource.pruneWorktrees(msg.repo)
+				});
+				break;
+			case 'openWorktree':
+				this.sendMessage({
+					command: 'openWorktree',
+					error: await openFolderInNewWindow(msg.path)
+				});
+				break;
 			case 'undo':
 				this.sendMessage({
 					command: 'undo',
@@ -798,6 +830,7 @@ export class GitGraphView extends Disposable {
 					<span id="branchControl"><div id="branchDropdown" class="dropdown" data-label="${t('Branches')}" data-icon="branches"></div></span>
 					<span id="authorControl"><div id="authorDropdown" class="dropdown" data-label="${t('Authors')}" data-icon="person"></div></span>
 					<div id="stashBtn" class="controlPill hidden"></div>
+					<div id="worktreeBtn" class="controlPill hidden"></div>
 					<label id="showRemoteBranchesControl"><input type="checkbox" id="showRemoteBranchesCheckbox" tabindex="-1"><span class="customCheckbox"></span>${t('Show Remote Branches')}</label>
 					<div id="controlsSpacer"></div>
 					<div id="scrollToHeadBtn" class="controlPill" title="${t('Scroll to HEAD')}"></div>

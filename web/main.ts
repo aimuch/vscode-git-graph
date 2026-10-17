@@ -67,6 +67,7 @@ class GitGraphView {
 	public readonly cdvFileView: CdvFileView;
 	public readonly tableColumns: TableColumns;
 	public readonly stashList: StashList;
+	public readonly worktreeList: WorktreeList;
 	private readonly rowActions: RowActions;
 	private readonly findWidget: FindWidget;
 	private readonly settingsWidget: SettingsWidget;
@@ -96,6 +97,7 @@ class GitGraphView {
 		this.viewElem = viewElem;
 		this.actions = new ViewActions(this);
 		this.rowActions = new RowActions(this);
+		this.worktreeList = new WorktreeList(this);
 		this.cdvFileView = new CdvFileView(this);
 		this.tableColumns = new TableColumns(this);
 		this.stashList = new StashList(this);
@@ -316,6 +318,7 @@ class GitGraphView {
 		this.fileHistoryData = null;
 		this.renderFileHistoryBar();
 		if (repo !== this.currentRepo) this.minimap.resetZoom();
+		this.worktreeList.clear();
 		this.lastUndoId = -1;
 		this.hideUndoToast();
 		this.selectedCommits = new Set();
@@ -660,6 +663,7 @@ class GitGraphView {
 			if (refreshState.inProgress && refreshState.loadRepoInfoRefreshId === msg.refreshId) {
 				this.loadRepoInfo(msg.branches, msg.head, msg.remotes, msg.stashes, msg.upstreams, msg.isRepo);
 				this.renderUndo(msg.undo);
+				this.worktreeList.requestWorktrees();
 			}
 		} else {
 			this.displayLoadDataError(t('Unable to load Repository Info'), msg.error);
@@ -1248,6 +1252,7 @@ class GitGraphView {
 			: '';
 		document.body.style.setProperty('--git-graph-colHeadersHeight', document.getElementById('tableColHeaders')!.offsetHeight + 'px');
 		this.renderCommitSelection();
+		this.renderBranchesInWorktrees();
 		this.tableColumns.makeTableResizable();
 		this.tableColumns.makeRefsColumnResizable();
 		this.tableColumns.updateTruncatedRefLabels();
@@ -1317,6 +1322,28 @@ class GitGraphView {
 		}
 		this.requestCommitStats(true);
 	}
+
+	/**
+	 * Mark the labels of the branches that are checked out in other worktrees (with the worktree in their tooltip).
+	 */
+	public renderBranchesInWorktrees() {
+		this.tableElem.querySelectorAll<HTMLElement>('.gitRef.head').forEach((refElem) => {
+			const worktree = this.worktreeList.getOtherWorktreeOfBranch(unescapeHtml(refElem.dataset.name!));
+			const markerElem = refElem.querySelector('.gitRefWorktree');
+			alterClass(refElem, 'inWorktree', worktree !== null);
+			if (worktree !== null) {
+				refElem.title = t('Checked out in the worktree {0}', worktree.path);
+				if (markerElem === null) {
+					const nameElem = refElem.querySelector('.gitRefName');
+					if (nameElem !== null) nameElem.insertAdjacentHTML('afterend', '<span class="gitRefWorktree">' + WORKTREE_ICON + '</span>');
+				}
+			} else if (markerElem !== null) {
+				markerElem.remove();
+				refElem.removeAttribute('title');
+			}
+		});
+	}
+
 
 	/* Undo */
 
@@ -1871,6 +1898,9 @@ class GitGraphView {
 			} else if (e.key === 'Escape') {
 				if (this.selectedCommits.size > 0) {
 					this.clearCommitSelection();
+					handledEvent(e);
+				} else if (this.worktreeList.isListOpen()) {
+					this.worktreeList.closeList();
 					handledEvent(e);
 				} else if (this.stashList.isStashListOpen()) {
 					this.stashList.closeStashList();

@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -2082,6 +2082,71 @@ export class DataSource extends Disposable {
 	 * @param repo The repository to run the command in.
 	 * @returns The returned ErrorInfo (suitable for being sent to the Git Map View).
 	 */
+	/* Worktrees */
+
+	/**
+	 * Get the worktrees of a repository.
+	 * @param repo The path of the repository (or one of its worktrees).
+	 * @returns The worktrees, and the ErrorInfo of getting them.
+	 */
+	public getWorktrees(repo: string): Promise<{ worktrees: GitWorktree[], error: ErrorInfo }> {
+		return this.spawnGit(['worktree', 'list', '--porcelain'], repo, (stdout) => {
+			const current = getPathFromStr(path.resolve(repo)), worktrees: GitWorktree[] = [];
+			// Each worktree is a block of lines ("worktree <path>", "HEAD <hash>", "branch <ref>" or "detached", "locked", "prunable", "bare")
+			stdout.split(/\r?\n\r?\n/).forEach((block) => {
+				const lines = block.split(/\r?\n/).filter((line) => line !== ''), attribute = (name: string) => {
+					const line = lines.find((line) => line === name || line.startsWith(name + ' '));
+					return typeof line === 'string' ? line.substring(name.length + 1) : null;
+				};
+				const worktreePath = attribute('worktree');
+				if (worktreePath === null || attribute('bare') !== null) return;
+				const branch = attribute('branch'), normalisedPath = getPathFromStr(path.resolve(worktreePath));
+				worktrees.push({
+					path: normalisedPath,
+					head: attribute('HEAD'),
+					branch: branch !== null ? branch.replace(/^refs\/heads\//, '') : null,
+					isMain: worktrees.length === 0,
+					isCurrent: normalisedPath === current,
+					locked: attribute('locked') !== null,
+					prunable: attribute('prunable') !== null
+				});
+			});
+			return { worktrees: worktrees, error: null };
+		}).catch((errorMessage: string) => ({ worktrees: [], error: errorMessage }));
+	}
+
+	/**
+	 * Add a worktree to a repository.
+	 * @param repo The path of the repository.
+	 * @param worktreePath The path of the new worktree.
+	 * @param ref The branch to check out in the worktree, or the commit to create it at (with a detached HEAD, unless `newBranch` is given).
+	 * @param newBranch The name of a new branch to create at `ref` (and check out in the worktree), or NULL.
+	 * @returns The ErrorInfo from the executed command.
+	 */
+	public addWorktree(repo: string, worktreePath: string, ref: string, newBranch: string | null) {
+		return this.runGitCommand(['worktree', 'add'].concat(newBranch !== null ? ['-b', newBranch] : [], ['--', worktreePath, ref]), repo);
+	}
+
+	/**
+	 * Remove a worktree of a repository.
+	 * @param repo The path of the repository.
+	 * @param worktreePath The path of the worktree.
+	 * @param force Remove the worktree even if it has uncommitted changes or untracked files.
+	 * @returns The ErrorInfo from the executed command.
+	 */
+	public removeWorktree(repo: string, worktreePath: string, force: boolean) {
+		return this.runGitCommand(['worktree', 'remove'].concat(force ? ['--force'] : [], ['--', worktreePath]), repo);
+	}
+
+	/**
+	 * Prune the worktrees of a repository whose directories no longer exist.
+	 * @param repo The path of the repository.
+	 * @returns The ErrorInfo from the executed command.
+	 */
+	public pruneWorktrees(repo: string) {
+		return this.runGitCommand(['worktree', 'prune'], repo);
+	}
+
 	/**
 	 * Run a Git command, resolving with its output (or rejecting with its error message). Used to inspect & restore the state of a
 	 * repository when an action is undone (see UndoManager).

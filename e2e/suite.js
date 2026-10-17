@@ -599,6 +599,57 @@ async function run() {
 		return 'Restored ' + git(repo, 'stash', 'list');
 	});
 
+	await check('worktrees', '[GitLens] The worktrees of a repository are listed, and can be added (for a branch, or at a commit), removed (only forced if they have changes) & pruned', async () => {
+		const view = await getView();
+		const respond = async (msg, command) => {
+			const count = record.responses.filter((response) => response.command === command).length;
+			await view.respondToMessage(msg);
+			return waitFor('the ' + command + ' response', () => record.responses.filter((response) => response.command === command)[count]);
+		};
+		const list = async (repo) => {
+			const response = await respond({ command: 'loadWorktrees', repo: repo }, 'loadWorktrees');
+			assert(response.error === null, 'Loading the worktrees failed: ' + response.error);
+			return response.worktrees;
+		};
+
+		// The worktrees of the main repository of the workspace
+		const mainWorktrees = await list(main);
+		assert(mainWorktrees.length === 2 && mainWorktrees[0].isMain && mainWorktrees[0].isCurrent && mainWorktrees[0].branch === 'main' && realpath(mainWorktrees[1].path) === wt && mainWorktrees[1].branch === 'wt-branch' && !mainWorktrees[1].isCurrent, 'Unexpected worktrees: ' + JSON.stringify(mainWorktrees));
+
+		const repo = createScratchRepo('worktrees', { 'a.txt': 'a\n' }), first = git(repo, 'rev-parse', 'HEAD');
+		const second = commitFile(repo, 'b.txt', 'b\n', 'Add b');
+		const worktreePath = (name) => path.join(path.dirname(repo), 'worktrees-' + name).replace(/\\/g, '/');
+
+		// A branch that's checked out (in the main worktree) can't be checked out in another worktree
+		const checkedOut = await respond({ command: 'addWorktree', repo: repo, path: worktreePath('main'), ref: 'main', newBranch: null, open: false }, 'addWorktree');
+		assert(checkedOut.errors[0] !== null && !fs.existsSync(worktreePath('main')), 'A checked out branch was added as a worktree');
+
+		// A new branch, and a commit (detached HEAD)
+		let added = await respond({ command: 'addWorktree', repo: repo, path: worktreePath('feature'), ref: 'main', newBranch: 'feature-wt', open: false }, 'addWorktree');
+		assert(added.errors.length === 1 && added.errors[0] === null, 'Adding the worktree of a new branch failed: ' + JSON.stringify(added.errors));
+		added = await respond({ command: 'addWorktree', repo: repo, path: worktreePath('detached'), ref: first, newBranch: null, open: false }, 'addWorktree');
+		assert(added.errors[0] === null, 'Adding the worktree at a commit failed: ' + JSON.stringify(added.errors));
+		let worktrees = await list(repo);
+		const feature = worktrees.find((worktree) => worktree.branch === 'feature-wt'), detached = worktrees.find((worktree) => worktree.head === first);
+		assert(worktrees.length === 3 && feature && feature.head === second && detached && detached.branch === null, 'Unexpected worktrees: ' + JSON.stringify(worktrees));
+
+		// A worktree with uncommitted changes is only removed when forced
+		fs.writeFileSync(path.join(worktreePath('feature'), 'a.txt'), 'a (changed)\n');
+		const refused = await respond({ command: 'removeWorktree', repo: repo, path: worktreePath('feature'), force: false }, 'removeWorktree');
+		assert(refused.error !== null && fs.existsSync(worktreePath('feature')), 'A worktree with uncommitted changes was removed without being forced');
+		const forced = await respond({ command: 'removeWorktree', repo: repo, path: worktreePath('feature'), force: true }, 'removeWorktree');
+		assert(forced.error === null && !fs.existsSync(worktreePath('feature')) && git(repo, 'rev-parse', 'feature-wt') === second, 'Forcing the removal failed (or the branch was removed): ' + forced.error);
+
+		// A worktree whose directory was deleted is pruned
+		fs.rmSync(worktreePath('detached'), { recursive: true, force: true });
+		worktrees = await list(repo);
+		assert(worktrees.length === 2 && worktrees[1].prunable, 'The deleted worktree isn\'t prunable: ' + JSON.stringify(worktrees));
+		const pruned = await respond({ command: 'pruneWorktrees', repo: repo }, 'pruneWorktrees');
+		worktrees = await list(repo);
+		assert(pruned.error === null && worktrees.length === 1 && worktrees[0].isCurrent, 'The worktree wasn\'t pruned: ' + JSON.stringify(worktrees));
+		return 'Workspace: ' + mainWorktrees.map((worktree) => worktree.branch).join(', ') + '; refused a checked out branch: "' + checkedOut.errors[0].trim().split('\n')[0] + '"; removal refused without force: "' + refused.error.trim().split('\n')[0] + '"; pruned';
+	});
+
 	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
 		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');

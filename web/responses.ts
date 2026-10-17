@@ -39,6 +39,21 @@ function observeResponseMessages(gitGraph: GitGraphView, imageResizer: ImageResi
 			case 'undo':
 				refreshOrDisplayError(msg.error, t('Unable to Undo'));
 				break;
+			case 'loadWorktrees':
+				gitGraph.worktreeList.processLoadWorktreesResponse(msg);
+				break;
+			case 'addWorktree':
+				refreshAndDisplayErrors(msg.errors, t('Unable to Create Worktree'));
+				break;
+			case 'removeWorktree':
+				refreshOrDisplayError(msg.error, t('Unable to Remove Worktree'));
+				break;
+			case 'pruneWorktrees':
+				refreshOrDisplayError(msg.error, t('Unable to Prune Worktrees'));
+				break;
+			case 'openWorktree':
+				finishOrDisplayError(msg.error, t('Unable to Open Worktree'), true);
+				break;
 			case 'cleanUntrackedFiles':
 				refreshOrDisplayError(msg.error, t('Unable to Clean Untracked Files'));
 				break;

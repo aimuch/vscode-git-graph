@@ -208,6 +208,10 @@
 									"type": "boolean",
 									"title": "%config.contextMenuActionsVisibility.branch.createArchive.title%"
 								},
+								"createWorktree": {
+									"type": "boolean",
+									"title": "%config.contextMenuActionsVisibility.branch.createWorktree.title%"
+								},
 								"selectInBranchesDropdown": {
 									"type": "boolean",
 									"title": "%config.contextMenuActionsVisibility.branch.selectInBranchesDropdown.title%"
@@ -232,6 +236,10 @@
 								"createBranch": {
 									"type": "boolean",
 									"title": "%config.contextMenuActionsVisibility.commit.createBranch.title%"
+								},
+								"createWorktree": {
+									"type": "boolean",
+									"title": "%config.contextMenuActionsVisibility.commit.createWorktree.title%"
 								},
 								"checkout": {
 									"type": "boolean",
