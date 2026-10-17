@@ -8,7 +8,7 @@ import { CodeReviewData, CodeReviews, ExtensionState } from './extensionState';
 import { GitGraphView } from './gitGraphView';
 import { Logger } from './logger';
 import { RepoManager } from './repoManager';
-import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, VsCodeVersionRequirement, abbrevCommit, abbrevText, copyToClipboard, doesVersionMeetRequirement, getExtensionVersion, getPathFromUri, getRelativeTimeDiff, getRepoName, getSortedRepositoryPaths, isPathInWorkspace, openFile, resolveToSymbolicPath, showErrorMessage, showInformationMessage } from './utils';
+import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, VsCodeVersionRequirement, abbrevCommit, abbrevText, copyToClipboard, doesVersionMeetRequirement, getExtensionVersion, getPathFromUri, getRelativeTimeDiff, getRepoName, getSelectedLines, getSortedRepositoryPaths, isPathInWorkspace, openFile, resolveToSymbolicPath, showErrorMessage, showInformationMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
 import { t } from './l10n';
@@ -59,7 +59,7 @@ export class CommandManager extends Disposable {
 		this.registerCommand('git-map.selectGraphColourPreset', () => this.selectGraphColourPreset());
 		this.registerCommand('git-map.openFile', (arg) => this.openFile(arg));
 		this.registerCommand('git-map.viewFileHistory', (arg) => this.viewFileHistory(arg));
-		this.registerCommand('git-map.viewLineHistory', () => this.viewLineHistory());
+		this.registerCommand('git-map.viewLineHistoryInGitMap', (arg) => this.viewLineHistoryInGitMap(arg));
 		this.registerCommand('git-map.viewCommitInGitMap', (repo, hash) => this.viewCommitInGitMap(repo, hash));
 		this.registerCommand('git-map.toggleLineBlame', () => this.toggleLineBlame());
 
@@ -148,10 +148,15 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-map.viewLineHistory` command is invoked: open the Git Map View showing the history of the selected
-	 * lines (or the line the cursor is on) in the active text editor.
+	 * The method run when the `git-map.viewLineHistoryInGitMap` command is invoked: open the Git Map View showing the history of the
+	 * selected lines (or the line the cursor is on) in the active text editor, or of the lines given by the Line History drawer.
+	 * @param arg The repository, file & lines in HEAD (from the Line History drawer), or undefined to use the active text editor.
 	 */
-	private async viewLineHistory() {
+	private async viewLineHistoryInGitMap(arg: any) {
+		if (typeof arg === 'object' && arg !== null && typeof arg.repo === 'string' && typeof arg.filePath === 'string' && typeof arg.lineRange === 'object' && arg.lineRange !== null) {
+			GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: arg.repo, fileHistory: arg.filePath, lineRange: { start: arg.lineRange.start, end: arg.lineRange.end } });
+			return;
+		}
 		const editor = vscode.window.activeTextEditor;
 		if (typeof editor === 'undefined' || editor.document.uri.scheme !== 'file') {
 			showErrorMessage(t('Unable to View Line History: {0}', t('Open a file in an editor, and select the lines.')));
@@ -162,10 +167,13 @@ export class CommandManager extends Disposable {
 			showErrorMessage(t('Unable to View Line History: {0}', t('The file {0} isn\'t in a repository known by Git Map.', getPathFromUri(editor.document.uri))));
 			return;
 		}
-		// A selection ending at the start of a line doesn't include that line
-		const selection = editor.selection, start = selection.start.line + 1;
-		const end = Math.max(start, selection.end.line + (selection.end.character === 0 && selection.end.line > selection.start.line ? 0 : 1));
-		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, lineRange: { start: start, end: end } });
+		// The selected lines of the editor (which may have uncommitted changes) are mapped to the same lines in HEAD
+		const lineRange = await this.dataSource.getLinesInHead(file.repo, file.path, getSelectedLines(editor.selection), editor.document.getText());
+		if (lineRange === null) {
+			showErrorMessage(t('Unable to View Line History: {0}', t('The selected lines haven\'t been committed yet.')));
+			return;
+		}
+		GitGraphView.createOrShow(this.context.extensionPath, this.dataSource, this.extensionState, this.avatarManager, this.repoManager, this.logger, { repo: file.repo, fileHistory: file.path, lineRange: lineRange });
 	}
 
 	/**

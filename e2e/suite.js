@@ -732,7 +732,7 @@ async function run() {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(0, 0, 0, 2);
 		const since = record.requests.length;
-		await vscode.commands.executeCommand('git-map.viewLineHistory');
+		await vscode.commands.executeCommand('git-map.viewLineHistoryInGitMap');
 		const request = await waitFor('the Webview to request the line history', () => record.requests.slice(since).find((msg) => msg.command === 'loadCommits' && msg.filePath === 'file.txt' && msg.lineRange))
 			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.command === 'loadCommits' ? ' ' + msg.repo + ' ' + msg.filePath + ' ' + JSON.stringify(msg.lineRange) : '')).join(', ') + '; HTML loadViewTo: ' + (record.html.length > 0 ? (record.html[record.html.length - 1].match(/"loadViewTo":(\{[^}]*\}[^,]*)/) || [])[1] : '') + ')'); });
 		assert(request.repo === main && request.lineRange.start === 1 && request.lineRange.end === 1, 'Unexpected request: ' + JSON.stringify(request));
@@ -763,6 +763,142 @@ async function run() {
 		const details = await waitFor('the details of the commit to be requested', () => record.requests.slice(since).find((msg) => msg.command === 'commitDetails' && msg.commitHash === fixtures.firstCommit))
 			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.repo ? ' ' + msg.repo : '')).join(', ') + ')'); });
 		return 'Blame: ' + text + '; the link requested the details of ' + details.commitHash.substring(0, 8);
+	});
+
+	// The history of lines in the drawer & the inline window. The ways it could go wrong, which these checks assert don't happen: the history
+	// is of the wrong lines (the editor has uncommitted changes above them, or the selected line itself is changed), the uncommitted changes
+	// are missing, commits that don't change the lines are included (or ones that do are missing, e.g. before the file was renamed), the diff
+	// of a change isn't how it changed the lines, the drawer or the inline window doesn't show the history (or the inline window can be
+	// replied to, or lacks the authors, dates & avatars, or isn't closed), the actions open the wrong revision or don't select the lines, the
+	// remote link is to the wrong commit or lines, and the drawer doesn't follow the cursor (or follows it when it shouldn't).
+	await check('line-history-drawer', '[GitLens] The history of lines (right-click > Git Map > View Line History) is shown in a drawer on the right, or an inline window below the lines: the uncommitted changes & each commit that changed them, with its author, date & avatar', async () => {
+		const view = await getView();
+		const { LineHistory } = require(path.join(extension.extensionPath, 'out', 'lineHistory.js'));
+		const { getLineHistoryPage } = require(path.join(extension.extensionPath, 'out', 'lineHistoryDrawer.js'));
+		const lineHistory = LineHistory.getInstance();
+		assert(lineHistory !== null, 'The Line History isn\'t created');
+		const lines = (changes) => Array.from({ length: 12 }, (_, i) => (changes[i + 1] || 'line ' + (i + 1)) + '\n').join('');
+		const repo = createScratchRepo('line-history-drawer', { 'app.ts': lines({}) });
+		const created = git(repo, 'rev-parse', 'HEAD');
+		const commitAs = (file, contents, message, name, email) => {
+			fs.writeFileSync(path.join(repo, file), contents);
+			git(repo, 'add', '-A');
+			cp.execFileSync('git', ['commit', '-q', '-m', message], { cwd: repo, env: Object.assign({}, GIT_ENV, { GIT_AUTHOR_NAME: name, GIT_AUTHOR_EMAIL: email }) });
+			return git(repo, 'rev-parse', 'HEAD');
+		};
+		const bySecond = commitAs('app.ts', lines({ 4: 'line 4 (second)' }), 'Change line 4', 'Second Author', 'second@example.com');
+		commitFile(repo, 'app.ts', lines({ 4: 'line 4 (second)', 9: 'line 9 (changed)' }), 'Change line 9');
+		git(repo, 'mv', 'app.ts', 'src.ts');
+		git(repo, 'commit', '-q', '-m', 'Rename app.ts to src.ts');
+		const latest = commitFile(repo, 'src.ts', lines({ 4: 'line 4 (latest)', 9: 'line 9 (changed)' }), 'Change line 4 again');
+		git(repo, 'remote', 'add', 'origin', 'git@github.com:e2e-owner/e2e-repo.git');
+		await view.repoManager.registerRepo(repo, false);
+		const config = () => vscode.workspace.getConfiguration('git-map');
+		const shown = () => lineHistory.getShown();
+		const waitForHistory = (description, condition) => waitFor(description, () => shown() !== null && condition(shown()) ? shown() : null)
+			.catch((err) => { throw new Error(err.message + ' (shown: ' + JSON.stringify(shown() !== null ? { range: shown().target.range, headRange: shown().history.headRange, entries: shown().history.entries.map((entry) => entry.subject || entry.hash) } : null) + ')'); });
+
+		// Two uncommitted lines are added at the top (unsaved), so lines 6-7 of the editor are lines 4-5 in HEAD
+		const document = await vscode.workspace.openTextDocument(path.join(repo, 'src.ts'));
+		const editor = await vscode.window.showTextDocument(document);
+		await editor.edit((builder) => builder.insert(new vscode.Position(0, 0), 'new 1\nnew 2\n'));
+		editor.selection = new vscode.Selection(5, 0, 6, 3);
+		await vscode.commands.executeCommand('git-map.viewLineHistory');
+		let history = (await waitForHistory('the history of lines 6-7', (value) => value.target.range.start === 6 && value.target.range.end === 7)).history;
+		assert(JSON.stringify(history.headRange) === JSON.stringify({ start: 4, end: 5 }), 'The lines weren\'t mapped to HEAD: ' + JSON.stringify(history.headRange));
+		assert(JSON.stringify(history.entries.map((entry) => entry.hash)) === JSON.stringify([latest, bySecond, created]), 'Unexpected changes: ' + history.entries.map((entry) => entry.subject).join(', '));
+		const latestEntry = history.entries[0], secondEntry = history.entries[1];
+		assert(latestEntry.diff.includes('-line 4 (second)') && latestEntry.diff.includes('+line 4 (latest)') && latestEntry.filePath === 'src.ts' && JSON.stringify(latestEntry.newRange) === JSON.stringify({ start: 4, end: 5 }), 'Unexpected diff of the latest change: ' + JSON.stringify(latestEntry));
+		assert(secondEntry.author === 'Second Author' && secondEntry.filePath === 'app.ts' && secondEntry.diff.includes('+line 4 (second)'), 'Unexpected change before the rename: ' + JSON.stringify(secondEntry));
+		assert(history.entries[2].fileAdded && history.entries[2].oldRange === null, 'The commit that added the lines isn\'t recognised');
+		const drawer = lineHistory.getDrawer();
+		await waitFor('the drawer to be shown', () => drawer.isVisible() && drawer.getContent().kind === 'history');
+
+		// The selected line itself is changed (not committed): its history is its previous version's, after the uncommitted change
+		await editor.edit((builder) => builder.replace(new vscode.Range(5, 0, 5, 15), 'line 4 (uncommitted)'));
+		editor.selection = new vscode.Selection(5, 0, 6, 3);
+		await vscode.commands.executeCommand('git-map.viewLineHistory');
+		history = (await waitForHistory('the history including the uncommitted change', (value) => value.history.entries.length > 0 && value.history.entries[0].hash === '*')).history;
+		const uncommitted = history.entries[0];
+		assert(JSON.stringify(history.headRange) === JSON.stringify({ start: 4, end: 5 }) && JSON.stringify(uncommitted.diff) === JSON.stringify(['-line 4 (latest)', '+line 4 (uncommitted)', ' line 5']) && history.entries[1].hash === latest, 'Unexpected uncommitted change: ' + JSON.stringify(uncommitted) + ', head range ' + JSON.stringify(history.headRange));
+
+		// The inline window below the lines: a comment for each change, which can't be replied to
+		await vscode.commands.executeCommand('git-map.lineHistory.switchToInline');
+		const thread = await waitFor('the inline window', () => lineHistory.getInline().getThread());
+		const comments = thread.comments;
+		assert(config().get('lineHistory.location') === 'Inline Window' && thread.canReply === false && thread.range.start.line === 5 && thread.range.end.line === 6 && thread.uri.toString() === document.uri.toString(), 'Unexpected inline window: ' + JSON.stringify({ canReply: thread.canReply, range: thread.range }));
+		assert(comments.length === history.entries.length && comments[0].author.name === 'You' && comments[2].author.name === 'Second Author' && comments[2].timestamp instanceof Date && comments[2].author.iconPath.scheme === 'data' && comments[1].label === latest.substring(0, 8), 'Unexpected comments: ' + JSON.stringify(comments.map((comment) => ({ author: comment.author.name, label: comment.label }))));
+		assert(comments[1].body.value.includes('```diff') && comments[1].body.value.includes('+line 4 (latest)') && comments[1].body.value.includes('command:git-map.lineHistory.openChanges'), 'Unexpected comment: ' + comments[1].body.value);
+		await vscode.commands.executeCommand('git-map.lineHistory.close');
+		assert(lineHistory.getInline().getThread() === null, 'The inline window wasn\'t closed');
+		await vscode.commands.executeCommand('git-map.lineHistory.switchToDrawer');
+		assert(config().get('lineHistory.location') === 'Drawer', 'The drawer wasn\'t chosen');
+
+		// The actions: the changes of a commit (selecting the lines), and the lines before it
+		await vscode.commands.executeCommand('git-map.lineHistory.openChanges', latest);
+		const diffTab = await waitFor('the diff', () => {
+			const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+			return tab && tab.input instanceof vscode.TabInputTextDiff && tab.input.modified.scheme === 'git-map' ? tab : null;
+		});
+		const diffSelection = vscode.window.activeTextEditor.selection.start.line;
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+		await vscode.commands.executeCommand('git-map.lineHistory.openBefore', latest);
+		const before = await waitFor('the lines before the change', () => vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.uri.scheme === 'git-map' && vscode.window.activeTextEditor.document.getText().includes('line 4 (second)') ? vscode.window.activeTextEditor : null);
+		assert(diffSelection === 3 && before.selection.start.line === 3, 'The lines weren\'t selected: ' + diffSelection + ', ' + before.selection.start.line);
+		await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+		// The link to the lines on the remote's web page, at the commit
+		await vscode.env.clipboard.writeText('');
+		await vscode.commands.executeCommand('git-map.lineHistory.copyRemoteLink', latest);
+		const link = await waitFor('the link to be copied', async () => (await vscode.env.clipboard.readText()) || null);
+		assert(link === 'https://github.com/e2e-owner/e2e-repo/blob/' + latest + '/src.ts#L4-L5', 'Unexpected link: ' + link);
+
+		// The drawer follows the cursor (only while following it is chosen)
+		await vscode.window.showTextDocument(document);
+		await config().update('lineHistory.followCursor', true, vscode.ConfigurationTarget.Global);
+		try {
+			vscode.window.activeTextEditor.selection = new vscode.Selection(11, 0, 11, 0);
+			await waitForHistory('the drawer to follow the cursor', (value) => value.target.range.start === 12 && value.target.range.end === 12);
+			await config().update('lineHistory.followCursor', false, vscode.ConfigurationTarget.Global);
+			vscode.window.activeTextEditor.selection = new vscode.Selection(9, 0, 9, 0);
+			await sleep(1500);
+			assert(shown().target.range.start === 12, 'The drawer followed the cursor after following it was stopped');
+		} finally {
+			await config().update('lineHistory.followCursor', undefined, vscode.ConfigurationTarget.Global);
+			await config().update('lineHistory.location', undefined, vscode.ConfigurationTarget.Global);
+		}
+
+		// The page of the drawer (for screenshots), showing the history of lines 6-7
+		editor.selection = new vscode.Selection(5, 0, 6, 3);
+		await vscode.window.showTextDocument(document, { selection: new vscode.Selection(5, 0, 6, 3) });
+		await vscode.commands.executeCommand('git-map.viewLineHistory');
+		await waitForHistory('the history of lines 6-7 again', (value) => value.target.range.start === 6 && value.history.entries.length === 4);
+		fs.writeFileSync(path.join(path.dirname(fixtures.workspace), 'line-history-drawer.html'), getLineHistoryPage(drawer.getContent(), ''));
+		await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+		return 'Lines 6-7 of the editor = lines 4-5 in HEAD: ' + history.entries.map((entry) => entry.hash === '*' ? 'uncommitted' : entry.subject + ' (' + entry.author + ')').join(' ← ') + '; inline window: ' + comments.length + ' comments; link: ' + link;
+	});
+
+	await check('remote-links', '[GitLens] Links to lines & commits on the web pages of remote repositories (GitHub, GitLab, Bitbucket, Gitea / Forgejo, Azure DevOps)', async () => {
+		const { getRemoteWebRepo, getRemoteFileUrl, getRemoteCommitUrl } = require(path.join(extension.extensionPath, 'out', 'remoteLinks.js'));
+		const hash = 'a'.repeat(40), range = { start: 3, end: 5 }, line = { start: 7, end: 7 };
+		const cases = [
+			['git@github.com:owner/repo.git', 'dir/a b.ts', range, 'https://github.com/owner/repo/blob/' + hash + '/dir/a%20b.ts#L3-L5', 'https://github.com/owner/repo/commit/' + hash],
+			['https://github.com/owner/repo', 'a.ts', line, 'https://github.com/owner/repo/blob/' + hash + '/a.ts#L7', null],
+			['https://user@gitlab.com/group/sub/repo.git', 'a.ts', range, 'https://gitlab.com/group/sub/repo/-/blob/' + hash + '/a.ts#L3-5', 'https://gitlab.com/group/sub/repo/-/commit/' + hash],
+			['git@bitbucket.org:owner/repo.git', 'a.ts', range, 'https://bitbucket.org/owner/repo/src/' + hash + '/a.ts#lines-3:5', 'https://bitbucket.org/owner/repo/commits/' + hash],
+			['https://codeberg.org/owner/repo.git', 'a.ts', range, 'https://codeberg.org/owner/repo/src/commit/' + hash + '/a.ts#L3-L5', null],
+			['git@ssh.dev.azure.com:v3/org/project/repo', 'src/a.ts', range, 'https://dev.azure.com/org/project/_git/repo?path=%2Fsrc%2Fa.ts&version=GC' + hash + '&line=3&lineEnd=6&lineStartColumn=1&lineEndColumn=1&lineStyle=plain&_a=contents', 'https://dev.azure.com/org/project/_git/repo/commit/' + hash],
+			['ssh://git@git.example.com:2222/team/repo.git', 'a.ts', range, 'https://git.example.com/team/repo/blob/' + hash + '/a.ts#L3-L5', null]
+		];
+		const failures = cases.filter(([remote, file, lines, fileUrl, commitUrl]) => {
+			const repo = getRemoteWebRepo(remote);
+			return repo === null || getRemoteFileUrl(repo, hash, file, lines) !== fileUrl || (commitUrl !== null && getRemoteCommitUrl(repo, hash) !== commitUrl);
+		}).map(([remote, file, lines]) => {
+			const repo = getRemoteWebRepo(remote);
+			return remote + ' -> ' + (repo !== null ? getRemoteFileUrl(repo, hash, file, lines) + ' / ' + getRemoteCommitUrl(repo, hash) : 'null');
+		});
+		assert(failures.length === 0 && getRemoteWebRepo('not a url') === null, 'Unexpected links: ' + failures.join('; '));
+		return cases.length + ' remotes: ' + cases.map(([remote]) => remote.replace(/^.*?(github|gitlab|bitbucket|codeberg|azure|example).*$/, '$1')).join(', ');
 	});
 
 	await check('rebase-editor', '[GitLens] An interactive rebase runs the todo list chosen in the Rebase Editor (pick, reword, squash, fixup, drop & reorder) without opening an editor or running names / messages in a shell, and a rebase that stops can be continued or aborted', async () => {

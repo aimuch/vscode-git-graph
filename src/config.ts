@@ -21,6 +21,7 @@ import {
 	GraphStyle,
 	GraphUncommittedChangesStyle,
 	KeybindingConfig,
+	LineHistoryLocation,
 	MuteCommitsConfig,
 	OnRepoLoadConfig,
 	RefLabelAlignment,
@@ -416,6 +417,27 @@ class Config {
 	 */
 	get blameCurrentLine() {
 		return !!this.config.get('blame.currentLine', true);
+	}
+
+	/**
+	 * Get the value of the `git-map.codeLens.enabled` Extension Setting.
+	 */
+	get codeLensEnabled() {
+		return !!this.config.get('codeLens.enabled', false);
+	}
+
+	/**
+	 * Get the value of the `git-map.lineHistory.location` Extension Setting.
+	 */
+	get lineHistoryLocation() {
+		return this.config.get<string>('lineHistory.location', 'Drawer') === 'Inline Window' ? LineHistoryLocation.InlineWindow : LineHistoryLocation.Drawer;
+	}
+
+	/**
+	 * Get the value of the `git-map.lineHistory.followCursor` Extension Setting.
+	 */
+	get lineHistoryFollowCursor() {
+		return !!this.config.get('lineHistory.followCursor', false);
 	}
 
 	/**

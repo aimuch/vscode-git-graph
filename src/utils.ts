@@ -6,7 +6,7 @@ import { GRAPH_COLOUR_PRESET_NAMES, getConfig } from './config';
 import { DataSource } from './dataSource';
 import { DiffSide, encodeDiffDocUri } from './diffDocProvider';
 import { ExtensionState } from './extensionState';
-import { ErrorInfo, GitFileStatus, GitRepoSet, PullRequestConfig, PullRequestProvider, RepoDropdownOrder } from './types';
+import { ErrorInfo, GitFileStatus, GitLineRange, GitRepoSet, PullRequestConfig, PullRequestProvider, RepoDropdownOrder } from './types';
 import { t } from './l10n';
 
 export const UNCOMMITTED = '*';
@@ -442,9 +442,10 @@ export async function openFile(repo: string, filePath: string, hash: string | nu
  * @param oldFilePath The relative path of the left-side file within the repository.
  * @param newFilePath The relative path of the right-side file within the repository.
  * @param type The Git file status of the change.
+ * @param lines The lines (of the right-side file) to select, or NULL.
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
-export function viewDiff(repo: string, fromHash: string, toHash: string, oldFilePath: string, newFilePath: string, type: GitFileStatus) {
+export function viewDiff(repo: string, fromHash: string, toHash: string, oldFilePath: string, newFilePath: string, type: GitFileStatus, lines: GitLineRange | null = null) {
 	if (type !== GitFileStatus.Untracked) {
 		let abbrevFromHash = abbrevCommit(fromHash), abbrevToHash = toHash !== UNCOMMITTED ? abbrevCommit(toHash) : t('Present'), pathComponents = newFilePath.split('/');
 		let desc = fromHash === toHash
@@ -457,7 +458,8 @@ export function viewDiff(repo: string, fromHash: string, toHash: string, oldFile
 
 		return vscode.commands.executeCommand('vscode.diff', encodeDiffDocUri(repo, oldFilePath, fromHash === toHash ? fromHash + '^' : fromHash, type, DiffSide.Old), encodeDiffDocUri(repo, newFilePath, toHash, type, DiffSide.New), title, {
 			preview: true,
-			viewColumn: getConfig().openNewTabEditorGroup
+			viewColumn: getConfig().openNewTabEditorGroup,
+			...getLinesSelection(lines)
 		}).then(
 			() => null,
 			() => t('Visual Studio Code was unable to load the diff editor for {0}.', newFilePath)
@@ -500,19 +502,41 @@ export async function viewDiffWithWorkingFile(repo: string, hash: string, filePa
  * @param repo The repository the file is contained in.
  * @param hash The revision of the file.
  * @param filePath The relative path of the file within the repository.
+ * @param lines The lines to select, or NULL.
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
-export function viewFileAtRevision(repo: string, hash: string, filePath: string) {
+export function viewFileAtRevision(repo: string, hash: string, filePath: string, lines: GitLineRange | null = null) {
 	const pathComponents = filePath.split('/');
 	const title = abbrevCommit(hash) + ': ' + pathComponents[pathComponents.length - 1];
 
 	return vscode.commands.executeCommand('vscode.open', encodeDiffDocUri(repo, filePath, hash, GitFileStatus.Modified, DiffSide.New).with({ path: title }), {
 		preview: true,
-		viewColumn: getConfig().openNewTabEditorGroup
+		viewColumn: getConfig().openNewTabEditorGroup,
+		...getLinesSelection(lines)
 	}).then(
 		() => null,
 		() => t('Visual Studio Code was unable to open {0} at commit {1}.', filePath, abbrevCommit(hash))
 	);
+}
+
+/**
+ * Get the lines of a selection in an editor (the line the cursor is on, if nothing is selected). A selection ending at the start of a line
+ * doesn't include that line.
+ * @param selection The selection.
+ * @returns The lines (1-based).
+ */
+export function getSelectedLines(selection: vscode.Selection): GitLineRange {
+	const start = selection.start.line + 1;
+	return { start: start, end: Math.max(start, selection.end.line + (selection.end.character === 0 && selection.end.line > selection.start.line ? 0 : 1)) };
+}
+
+/**
+ * Get the options of an editor that select lines.
+ * @param lines The lines (1-based), or NULL.
+ * @returns The options (none if no lines are selected).
+ */
+function getLinesSelection(lines: GitLineRange | null): { selection?: vscode.Range } {
+	return lines !== null ? { selection: new vscode.Range(lines.start - 1, 0, lines.end - 1, 0) } : {};
 }
 
 /**

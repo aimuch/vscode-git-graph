@@ -137,6 +137,78 @@
 				"category": "Git Map",
 				"command": "git-map.toggleLineBlame",
 				"title": "%command.toggleLineBlame.title%"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.viewLineHistoryInGitMap",
+				"title": "%command.viewLineHistoryInGitMap.title%",
+				"icon": "$(git-merge)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.switchToDrawer",
+				"title": "%command.lineHistory.switchToDrawer.title%",
+				"icon": "$(layout-sidebar-right)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.switchToInline",
+				"title": "%command.lineHistory.switchToInline.title%",
+				"icon": "$(comment)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.followCursor",
+				"title": "%command.lineHistory.followCursor.title%",
+				"icon": "$(eye)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.stopFollowingCursor",
+				"title": "%command.lineHistory.stopFollowingCursor.title%",
+				"icon": "$(pinned)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.openInGitMap",
+				"title": "%command.lineHistory.openInGitMap.title%",
+				"icon": "$(git-merge)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.refresh",
+				"title": "%command.lineHistory.refresh.title%",
+				"icon": "$(refresh)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.close",
+				"title": "%command.lineHistory.close.title%",
+				"icon": "$(close)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.openChanges",
+				"title": "%command.lineHistory.openChanges.title%",
+				"icon": "$(diff)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.openBefore",
+				"title": "%command.lineHistory.openBefore.title%",
+				"icon": "$(history)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.viewCommit",
+				"title": "%command.lineHistory.viewCommit.title%",
+				"icon": "$(git-commit)"
+			},
+			{
+				"category": "Git Map",
+				"command": "git-map.lineHistory.copyRemoteLink",
+				"title": "%command.lineHistory.copyRemoteLink.title%",
+				"icon": "$(link)"
 			}
 		],
 		"configuration": {
@@ -1045,6 +1117,24 @@
 					"default": "Auto",
 					"description": "%config.language.description%"
 				},
+				"git-map.lineHistory.followCursor": {
+					"type": "boolean",
+					"default": false,
+					"description": "%config.lineHistory.followCursor.description%"
+				},
+				"git-map.lineHistory.location": {
+					"type": "string",
+					"enum": [
+						"Drawer",
+						"Inline Window"
+					],
+					"enumDescriptions": [
+						"%config.lineHistory.location.drawer%",
+						"%config.lineHistory.location.inlineWindow%"
+					],
+					"default": "Drawer",
+					"description": "%config.lineHistory.location.description%"
+				},
 				"git-map.markdown": {
 					"type": "boolean",
 					"default": true,
@@ -1650,11 +1740,35 @@
 				{
 					"command": "git-map.viewCommitInGitMap",
 					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.close",
+					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.openChanges",
+					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.openBefore",
+					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.viewCommit",
+					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.copyRemoteLink",
+					"when": "false"
+				},
+				{
+					"command": "git-map.lineHistory.openInGitMap",
+					"when": "false"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "git-map.viewLineHistory",
+					"submenu": "git-map.editorContext",
 					"group": "gitMap@1",
 					"when": "resourceScheme == file"
 				}
@@ -1702,6 +1816,95 @@
 					"when": "scmProvider == git && config.git-map.sourceCodeProviderIntegrationLocation == 'More Actions'",
 					"command": "git-map.view",
 					"group": "navigation"
+				}
+			],
+			"view/title": [
+				{
+					"command": "git-map.lineHistory.followCursor",
+					"when": "view == git-map.lineHistory && !git-map:lineHistoryFollowCursor",
+					"group": "navigation@1"
+				},
+				{
+					"command": "git-map.lineHistory.stopFollowingCursor",
+					"when": "view == git-map.lineHistory && git-map:lineHistoryFollowCursor",
+					"group": "navigation@1"
+				},
+				{
+					"command": "git-map.lineHistory.switchToInline",
+					"when": "view == git-map.lineHistory",
+					"group": "navigation@2"
+				},
+				{
+					"command": "git-map.lineHistory.openInGitMap",
+					"when": "view == git-map.lineHistory",
+					"group": "navigation@3"
+				},
+				{
+					"command": "git-map.lineHistory.refresh",
+					"when": "view == git-map.lineHistory",
+					"group": "navigation@4"
+				}
+			],
+			"comments/commentThread/title": [
+				{
+					"command": "git-map.lineHistory.switchToDrawer",
+					"when": "commentController == git-map.lineHistory",
+					"group": "inline@1"
+				},
+				{
+					"command": "git-map.lineHistory.close",
+					"when": "commentController == git-map.lineHistory",
+					"group": "inline@2"
+				}
+			],
+			"comments/comment/title": [
+				{
+					"command": "git-map.lineHistory.openChanges",
+					"when": "commentController == git-map.lineHistory && comment =~ /^gitMapLineHistory(Commit|Uncommitted)$/",
+					"group": "inline@1"
+				},
+				{
+					"command": "git-map.lineHistory.viewCommit",
+					"when": "commentController == git-map.lineHistory && comment == gitMapLineHistoryCommit",
+					"group": "inline@2"
+				}
+			],
+			"git-map.editorContext": [
+				{
+					"command": "git-map.viewLineHistory",
+					"group": "1_history@1"
+				},
+				{
+					"command": "git-map.viewLineHistoryInGitMap",
+					"group": "1_history@2"
+				},
+				{
+					"command": "git-map.viewFileHistory",
+					"group": "1_history@3"
+				}
+			]
+		},
+		"submenus": [
+			{
+				"id": "git-map.editorContext",
+				"label": "%submenu.editorContext.label%"
+			}
+		],
+		"viewsContainers": {
+			"secondarySidebar": [
+				{
+					"id": "gitMapLineHistory",
+					"title": "%view.lineHistory.containerTitle%",
+					"icon": "resources/line-history.svg"
+				}
+			]
+		},
+		"views": {
+			"gitMapLineHistory": [
+				{
+					"type": "webview",
+					"id": "git-map.lineHistory",
+					"name": "%view.lineHistory.name%"
 				}
 			]
 		}

@@ -6,8 +6,9 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
+import { getBaseRange, getRangeDiff, mapLines } from './lineMapping';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineRange, GitOperation, GitPushBranchMode, GitRebaseCommit, GitRebaseTodoItem, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineHistory, GitLineHistoryEntry, GitLineRange, GitOperation, GitPushBranchMode, GitRebaseCommit, GitRebaseTodoItem, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -16,6 +17,11 @@ import { t } from './l10n';
 const DRIVE_LETTER_PATH_REGEX = /^[a-z]:\//;
 const EOL_REGEX = /\r\n|\r|\n/g;
 const LF_REGEX = /\r?\n/g;
+
+/**
+ * The maximum number of lines of the diff of each commit in the history of a range of lines.
+ */
+const MAX_LINE_HISTORY_DIFF_LINES = 500;
 const COMMIT_HASH_REGEXP = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
 const EXTENDED_REGEXP_SPECIAL_CHARACTERS = /[.*+?^${}()|[\]\\]/g;
 const INVALID_BRANCH_REGEXP = /^\(.* .*\)$/;
@@ -592,6 +598,30 @@ export class DataSource extends Disposable {
 		return this.spawnGit(['config', '--get', 'remote.' + remote + '.url'], repo, (stdout) => {
 			return stdout.split(EOL_REGEX)[0];
 		}).then((url) => url, () => null);
+	}
+
+	/**
+	 * Get the remote used to link to a repository on the web: "origin", or the first remote if there isn't an "origin" remote.
+	 * @param repo The path of the repository.
+	 * @returns The name & URL of the remote, or NULL if the repository doesn't have a remote with a URL.
+	 */
+	public getDefaultRemote(repo: string): Promise<{ name: string, url: string } | null> {
+		return this.spawnGit(['remote'], repo, (stdout) => stdout.split(LF_REGEX).filter((name) => name !== '')).then(async (names) => {
+			const name = names.includes('origin') ? 'origin' : names.length > 0 ? names[0] : null;
+			const url = name !== null ? await this.getRemoteUrl(repo, name) : null;
+			return name !== null && url !== null && url !== '' ? { name: name, url: url } : null;
+		}, () => null);
+	}
+
+	/**
+	 * Is a commit on a remote: is it contained by one of the remote's remote-tracking branches (as last fetched)?
+	 * @param repo The path of the repository.
+	 * @param hash The hash of the commit.
+	 * @param remote The name of the remote.
+	 * @returns TRUE => The commit is on the remote, FALSE => It isn't (or it couldn't be determined).
+	 */
+	public isCommitOnRemote(repo: string, hash: string, remote: string): Promise<boolean> {
+		return this.spawnGit(['branch', '-r', '--contains', hash, '--list', remote + '/*'], repo, (stdout) => stdout.trim() !== '').catch(() => false);
 	}
 
 	/**
@@ -1872,6 +1902,74 @@ export class DataSource extends Disposable {
 	}
 
 	/**
+	 * Get the lines in HEAD that are the same as lines of the current contents of a file (e.g. in an editor, with uncommitted changes).
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param range The lines (1-based) in the current contents of the file.
+	 * @param contents The current contents of the file.
+	 * @returns The first & last of the lines in HEAD, or NULL if none of the lines are in HEAD (they're all uncommitted).
+	 */
+	public async getLinesInHead(repo: string, filePath: string, range: GitLineRange, contents: string): Promise<GitLineRange | null> {
+		const base = await this.spawnGit(['-c', 'core.quotepath=false', 'show', 'HEAD:' + filePath], repo, (stdout) => stdout).catch(() => null);
+		if (base === null) return null;
+		const baseLines = base.split(LF_REGEX), current = contents.split(LF_REGEX), map = mapLines(baseLines, current);
+		const first = Math.max(Math.min(range.start, current.length), 1) - 1, last = Math.max(Math.min(range.end, current.length), first + 1) - 1;
+		const baseRange = getBaseRange(map, baseLines.length, first, last);
+		return baseRange !== null ? { start: baseRange.start + 1, end: baseRange.end + 1 } : null;
+	}
+
+	/**
+	 * Get the history of a range of lines of a file: how the uncommitted changes (if any) and each commit in the history of HEAD change them
+	 * (following the lines as they move, and the file through renames). The lines are in the current contents of the file (e.g. in an
+	 * editor, with uncommitted changes), which are compared with the file in HEAD to find the same lines in HEAD.
+	 * @param repo The path of the repository.
+	 * @param filePath The path of the file (relative to the repository).
+	 * @param range The lines (1-based) in the current contents of the file.
+	 * @param contents The current contents of the file.
+	 * @param maxCommits The maximum number of commits to return.
+	 * @returns The history of the lines.
+	 */
+	public async getLineHistory(repo: string, filePath: string, range: GitLineRange, contents: string, maxCommits: number): Promise<GitLineHistory> {
+		const base = await this.spawnGit(['-c', 'core.quotepath=false', 'show', 'HEAD:' + filePath], repo, (stdout) => stdout).catch(() => null);
+		const current = contents.split(LF_REGEX), baseLines = base !== null ? base.split(LF_REGEX) : [];
+		const map = mapLines(baseLines, current);
+		const first = Math.max(Math.min(range.start, current.length), 1) - 1, last = Math.max(Math.min(range.end, current.length), first + 1) - 1;
+
+		// The same lines in HEAD, and the uncommitted changes to the lines
+		const baseRange = base !== null ? getBaseRange(map, baseLines.length, first, last) : null;
+		const diff = getRangeDiff(map, baseLines, current, first, last, baseRange);
+		const headRange = baseRange !== null ? { start: baseRange.start + 1, end: baseRange.end + 1 } : null;
+		const entries: GitLineHistoryEntry[] = [];
+		const additions = diff.filter((line) => line.startsWith('+')).length, deletions = diff.filter((line) => line.startsWith('-')).length;
+		if (additions > 0 || deletions > 0) {
+			entries.push({
+				hash: UNCOMMITTED, parents: base !== null ? ['HEAD'] : [], author: '', authorEmail: '', authorDate: Math.round(Date.now() / 1000), subject: '', body: '',
+				filePath: filePath, oldFilePath: null, fileAdded: base === null, oldRange: headRange, newRange: { start: first + 1, end: last + 1 }, diff: diff, additions: additions, deletions: deletions
+			});
+		}
+		if (headRange === null) {
+			return { repo: repo, filePath: filePath, range: range, headRange: null, entries: entries, moreAvailable: false, error: null };
+		}
+
+		const args = ['-c', 'core.quotepath=false', '-c', 'log.showSignature=false', 'log', '--max-count=' + (maxCommits + 1), '--format=' + GIT_LOG_SEPARATOR + '%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%b%x1e', '-L', headRange.start + ',' + headRange.end + ':' + filePath, 'HEAD', '--'];
+		return this.spawnGit(args, repo, (stdout) => {
+			stdout.split(GIT_LOG_SEPARATOR).slice(1).forEach((record) => {
+				const headerEnd = record.indexOf('\x1e');
+				if (headerEnd === -1) return;
+				const fields = record.substring(0, headerEnd).split('\x1f');
+				const entry = parseLineHistoryDiff(record.substring(headerEnd + 1), filePath);
+				entries.push({
+					hash: fields[0], parents: fields[1] !== '' ? fields[1].split(' ') : [], author: fields[2], authorEmail: fields[3], authorDate: parseInt(fields[4]) || 0,
+					subject: fields[5], body: (fields[6] || '').trim(), ...entry
+				});
+			});
+			const numCommits = entries.filter((entry) => entry.hash !== UNCOMMITTED).length;
+			if (numCommits > maxCommits) entries.pop();
+			return { repo: repo, filePath: filePath, range: range, headRange: headRange, entries: entries, moreAvailable: numCommits > maxCommits, error: null };
+		}).catch((errorMessage: string) => ({ repo: repo, filePath: filePath, range: range, headRange: headRange, entries: entries, moreAvailable: false, error: errorMessage }));
+	}
+
+	/**
 	 * Get the changes made to a file by a commit, as a unified diff.
 	 * @param repo The path of the repository.
 	 * @param commitHash The hash of the commit.
@@ -2606,4 +2704,45 @@ interface GitTagDetailsData {
 interface GpgStatusCodeParsingDetails {
 	readonly status: GitSignatureStatus,
 	readonly uid: boolean
+}
+
+/**
+ * Parse the diff of a range of lines output by `git log -L` for a commit.
+ * @param diff The diff.
+ * @param filePath The current path of the file (used if the diff doesn't include the path).
+ * @returns The path of the file in the commit (and before it, if it was renamed), the lines before & after the commit, and the diff of the lines.
+ */
+export function parseLineHistoryDiff(diff: string, filePath: string) {
+	let newPath = filePath, oldPath: string | null = null, fileAdded = false, oldRange: GitLineRange | null = null, newRange: GitLineRange | null = null, inHunk = false, additions = 0, deletions = 0;
+	const lines: string[] = [];
+	diff.split(LF_REGEX).forEach((line) => {
+		let match: RegExpMatchArray | null;
+		if (line.startsWith('diff --git ')) {
+			inHunk = false;
+		} else if (!inHunk && line.startsWith('--- ')) {
+			if (line === '--- /dev/null') fileAdded = true; else oldPath = line.substring(line.startsWith('--- a/') ? 6 : 4);
+		} else if (!inHunk && line.startsWith('+++ ')) {
+			if (line !== '+++ /dev/null') newPath = line.substring(line.startsWith('+++ b/') ? 6 : 4);
+		} else if ((match = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/)) !== null) {
+			// The range of the first hunk is the range of the lines (`git log -L` outputs one hunk for a range of lines)
+			if (!inHunk && oldRange === null && newRange === null) {
+				const oldStart = parseInt(match[1]), oldLines = typeof match[2] === 'string' ? parseInt(match[2]) : 1;
+				const newStart = parseInt(match[3]), newLines = typeof match[4] === 'string' ? parseInt(match[4]) : 1;
+				oldRange = oldLines > 0 ? { start: oldStart, end: oldStart + oldLines - 1 } : null;
+				newRange = newLines > 0 ? { start: newStart, end: newStart + newLines - 1 } : null;
+			}
+			inHunk = true;
+		} else if (inHunk && (line.startsWith(' ') || line.startsWith('+') || line.startsWith('-'))) {
+			if (line.startsWith('+')) additions++;
+			if (line.startsWith('-')) deletions++;
+			if (lines.length < MAX_LINE_HISTORY_DIFF_LINES) lines.push(line);
+		}
+	});
+	return {
+		filePath: newPath,
+		oldFilePath: oldPath !== null && oldPath !== newPath ? oldPath : null,
+		fileAdded: fileAdded,
+		oldRange: oldRange, newRange: newRange,
+		diff: lines, additions: additions, deletions: deletions
+	};
 }

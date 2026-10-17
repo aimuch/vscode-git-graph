@@ -208,6 +208,40 @@ export interface GitLineBlame {
 	readonly summary: string;
 }
 
+/**
+ * How a commit (or the uncommitted changes) changed a range of lines of a file.
+ */
+export interface GitLineHistoryEntry {
+	readonly hash: string; // UNCOMMITTED for the uncommitted changes
+	readonly parents: ReadonlyArray<string>;
+	readonly author: string;
+	readonly authorEmail: string;
+	readonly authorDate: number;
+	readonly subject: string;
+	readonly body: string;
+	readonly filePath: string; // The path of the file in the commit
+	readonly oldFilePath: string | null; // The path of the file before the commit, if the commit renamed it
+	readonly fileAdded: boolean; // Did the commit add the file
+	readonly oldRange: GitLineRange | null; // The lines before the change (NULL if the lines were added by it)
+	readonly newRange: GitLineRange | null; // The lines after the change (NULL if the lines were deleted by it)
+	readonly diff: ReadonlyArray<string>; // The diff of the lines (each line starts with ' ', '+' or '-')
+	readonly additions: number;
+	readonly deletions: number;
+}
+
+/**
+ * The history of a range of lines of a file.
+ */
+export interface GitLineHistory {
+	readonly repo: string;
+	readonly filePath: string; // The path of the file (relative to the repository)
+	readonly range: GitLineRange; // The lines in the current contents of the file
+	readonly headRange: GitLineRange | null; // The same lines in HEAD (NULL if they're all uncommitted)
+	readonly entries: ReadonlyArray<GitLineHistoryEntry>; // The uncommitted changes (if any), then the commits (newest first)
+	readonly moreAvailable: boolean;
+	readonly error: ErrorInfo;
+}
+
 export interface GitFileHistoryCommit {
 	readonly filePath: string; // The path of the file in the commit
 	readonly oldFilePath: string | null; // The path of the file before the commit, if the commit renamed it
@@ -664,6 +698,11 @@ export const enum FileViewType {
 export const enum GraphStyle {
 	Rounded,
 	Angular
+}
+
+export const enum LineHistoryLocation {
+	Drawer,
+	InlineWindow
 }
 
 export const enum GraphDensity {
