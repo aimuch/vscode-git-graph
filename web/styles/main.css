@@ -1441,6 +1441,17 @@ svg.openFolderIcon, svg.closedFolderIcon, svg.fileIcon{
 	opacity:1;
 }
 
+/* When there are many commits, only the rows near the view are rendered: the other rows are replaced by spacers of the same height, and
+   the rows with the widest date & author are rendered collapsed (so that the widths of the columns don't change as the view is scrolled) */
+#commitTable tr.virtualSpacer td{
+	padding:0;
+	border:none;
+	line-height:0;
+}
+#commitTable tr.virtualSizer{
+	visibility:collapse;
+}
+
 /* The uncommitted changes */
 #commitTable tr.commit#uncommittedChanges span.description .text{
 	color:var(--vscode-descriptionForeground);
@@ -2507,10 +2518,12 @@ body.tagLabelsRightAligned .gitRef.tag{
 	cursor:default;
 	background-color:transparent;
 }
+/* The chart is a layout boundary, so that updating the box of the commits in view (as the view is scrolled) doesn't lay out the commits */
 .minimapChart{
 	position:relative;
 	flex:1 1 auto;
 	min-width:0;
+	contain:strict;
 }
 .minimapChart.zoomedIn{
 	cursor:grab;

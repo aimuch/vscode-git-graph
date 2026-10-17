@@ -677,8 +677,10 @@ class ScrollMarkers {
 	 * @param vertexColours The colour index of each commit's vertex on the graph.
 	 * @param colours The colours of the graph.
 	 * @param findMatches The hashes of the commits that match the Find Widget's criteria.
+	 * @param getVirtualRowCentre Get the position of the centre of the row of a commit (in the content of the view) when the rows are
+	 * virtualised (as they aren't all rendered), or NULL when all rows are rendered.
 	 */
-	public render(commits: ReadonlyArray<GG.GitCommit>, commitHead: string | null, vertexColours: ReadonlyArray<number>, colours: ReadonlyArray<string>, findMatches: ReadonlyArray<string>) {
+	public render(commits: ReadonlyArray<GG.GitCommit>, commitHead: string | null, vertexColours: ReadonlyArray<number>, colours: ReadonlyArray<string>, findMatches: ReadonlyArray<string>, getVirtualRowCentre: (index: number) => number | null) {
 		const viewRect = this.viewElem.getBoundingClientRect(), scrollHeight = this.viewElem.scrollHeight;
 		this.elem.style.top = viewRect.top + 'px';
 		this.elem.style.height = viewRect.height + 'px';
@@ -701,11 +703,15 @@ class ScrollMarkers {
 			if (commit.tags.length > 0) kinds.push({ kind: 'tag', colour: 'var(--vscode-descriptionForeground)' });
 			if (kinds.length === 0) continue;
 
-			const idStr = i.toString();
-			while (j < commitElems.length && commitElems[j].dataset.id !== idStr) j++;
-			if (j === commitElems.length) break;
-			const rowRect = commitElems[j].getBoundingClientRect();
-			const top = ((rowRect.top + rowRect.height / 2 - viewTop) / scrollHeight * 100).toFixed(3) + '%';
+			let centre = getVirtualRowCentre(i);
+			if (centre === null) {
+				const idStr = i.toString();
+				while (j < commitElems.length && commitElems[j].dataset.id !== idStr) j++;
+				if (j === commitElems.length) break;
+				const rowRect = commitElems[j].getBoundingClientRect();
+				centre = rowRect.top + rowRect.height / 2 - viewTop;
+			}
+			const top = (centre / scrollHeight * 100).toFixed(3) + '%';
 			html += kinds.map((marker) => '<span class="scrollMarker ' + marker.kind + '" style="top:' + top + ';background-color:' + escapeHtml(marker.colour) + '"></span>').join('');
 		}
 		this.elem.innerHTML = html;

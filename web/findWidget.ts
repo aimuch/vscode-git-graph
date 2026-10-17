@@ -44,7 +44,8 @@ class FindWidget {
 	private readonly view: GitGraphView;
 	private chips: string[] = [];
 	private text: string = '';
-	private matches: { hash: string, elem: HTMLElement }[] = [];
+	private matches: { hash: string }[] = [];
+	private highlight: { pattern: RegExp, findPattern: RegExp | null, commitPatternUsed: boolean, colVisibility: { date: boolean, author: boolean, commit: boolean } } | null = null; // How the matches are highlighted
 	private position: number = -1;
 	private visible: boolean = false;
 	private mode: FindMode = FindMode.Highlight;
@@ -226,6 +227,7 @@ class FindWidget {
 		this.chips = [];
 		this.text = '';
 		this.matches = [];
+		this.highlight = null;
 		this.position = -1;
 		this.searchKey = null;
 		this.searchHashes = null;
@@ -532,76 +534,20 @@ class FindWidget {
 		this.clearMatches();
 		this.matches = [];
 		this.position = -1;
+		this.highlight = null;
 
 		const query = FindWidget.parseQuery(this.text);
 		const searching = (query.file.length > 0 || query.change.length > 0) && this.searchHashes === null;
 		if (this.text !== '') {
 			const matcher = this.getMatcher(query);
 			if (matcher !== null) {
-				const findGlobalPattern = matcher.highlight, colVisibility = this.view.getColumnVisibility(), commitPatternUsed = query.commit.length > 0;
-				let commitElems = getCommitElems(), j = 0, zeroLengthMatch = false;
-
-				// Search the commit data itself to detect commits that match, so that dom tree traversal is performed on matching commit rows (for performance)
+				// The commit data is searched for the matching commits (which aren't all rendered when the rows of the commits are virtualised)
 				const commits = this.view.getCommits();
 				for (let i = 0; i < commits.length; i++) {
-					const commit = commits[i];
-					if (!matcher.matches(commit)) continue;
-
-					let idStr = i.toString();
-					while (j < commitElems.length && commitElems[j].dataset.id !== idStr) j++;
-					if (j === commitElems.length) continue;
-
-					this.matches.push({ hash: commit.hash, elem: commitElems[j] });
-					commitElems[j].classList.add(CLASS_FIND_MATCH_ROW);
-
-					// Highlight matches
-					let textElems = getChildNodesWithTextContent(commitElems[j]), textElem;
-					for (let k = 0; k < textElems.length; k++) {
-						textElem = textElems[k];
-						let matchStart = 0, matchEnd = 0, text = textElem.textContent!, match: RegExpExecArray | null;
-						findGlobalPattern.lastIndex = 0;
-						while (match = findGlobalPattern.exec(text)) {
-							if (match[0].length === 0) {
-								zeroLengthMatch = true;
-								break;
-							}
-							if (matchEnd !== match.index) {
-								// This match isn't immediately after the previous match, or isn't at the beginning of the text
-								if (matchStart !== matchEnd) {
-									// There was a previous match, insert it in a text node
-									textElem.parentNode!.insertBefore(FindWidget.createMatchElem(text.substring(matchStart, matchEnd)), textElem);
-								}
-								// Insert a text node containing the text between the last match and the current match
-								textElem.parentNode!.insertBefore(document.createTextNode(text.substring(matchEnd, match.index)), textElem);
-								matchStart = match.index;
-							}
-							matchEnd = findGlobalPattern.lastIndex;
-						}
-						if (matchEnd > 0) {
-							// There were one or more matches
-							if (matchStart !== matchEnd) {
-								// There was a match, insert it in a text node
-								textElem.parentNode!.insertBefore(FindWidget.createMatchElem(text.substring(matchStart, matchEnd)), textElem);
-							}
-							if (matchEnd !== text.length) {
-								// There was some text after last match, update the textElem (the last node of it's parent) to contain the remaining text.
-								textElem.textContent = text.substring(matchEnd);
-							} else {
-								// The last match was at the end of the text, the textElem is no longer required, so delete it
-								textElem.parentNode!.removeChild(textElem);
-							}
-						}
-						if (zeroLengthMatch) break;
-					}
-					const findPattern = matcher.findPattern;
-					if (colVisibility.commit && ((findPattern !== null && commit.hash.search(findPattern) === 0 && !findPattern.test(abbrevCommit(commit.hash))) || commitPatternUsed) && textElems.length > 0) {
-						// The commit matches on more than the abbreviated commit, so the commit should be highlighted
-						let commitNode = textElems[textElems.length - 1]; // Commit is always the last column if it is visible
-						commitNode.parentNode!.replaceChild(FindWidget.createMatchElem(commitNode.textContent!), commitNode);
-					}
-					if (zeroLengthMatch) break;
+					if (matcher.matches(commits[i])) this.matches.push({ hash: commits[i].hash });
 				}
-				if (zeroLengthMatch) {
+				this.highlight = { pattern: matcher.highlight, findPattern: matcher.findPattern, commitPatternUsed: query.commit.length > 0, colVisibility: this.view.getColumnVisibility() };
+				if (!this.highlightRenderedMatches()) {
 					this.widgetElem.setAttribute(ATTR_ERROR, t('Cannot use a regular expression which has zero length matches'));
 					this.clearMatches();
 					this.matches = [];
@@ -633,15 +579,75 @@ class FindWidget {
 	}
 
 	/**
-	 * Clear all of the highlighted find matches in the view.
+	 * Highlight the find matches in the rows of the commits that are rendered (all of the rows, unless they are virtualised, in which case
+	 * this is also called when the rows that are rendered change).
+	 * @returns FALSE if the find pattern has zero length matches (which can't be highlighted), otherwise TRUE.
+	 */
+	public highlightRenderedMatches() {
+		this.clearMatches();
+		const highlight = this.highlight;
+		if (highlight === null || this.matches.length === 0) return true;
+		const matching = new Set(this.matches.map((match) => match.hash)), currentHash = this.getCurrentHash(), commitElems = getCommitElems();
+		for (let j = 0; j < commitElems.length; j++) {
+			const commit = this.view.getCommitOfElem(commitElems[j]);
+			if (commit === null || !matching.has(commit.hash)) continue;
+			commitElems[j].classList.add(CLASS_FIND_MATCH_ROW);
+			if (commit.hash === currentHash) commitElems[j].classList.add(CLASS_FIND_CURRENT_COMMIT);
+
+			// Highlight matches
+			const textElems = getChildNodesWithTextContent(commitElems[j]);
+			for (let k = 0; k < textElems.length; k++) {
+				const textElem = textElems[k], text = textElem.textContent!;
+				let matchStart = 0, matchEnd = 0, match: RegExpExecArray | null;
+				highlight.pattern.lastIndex = 0;
+				while (match = highlight.pattern.exec(text)) {
+					if (match[0].length === 0) return false;
+					if (matchEnd !== match.index) {
+						// This match isn't immediately after the previous match, or isn't at the beginning of the text
+						if (matchStart !== matchEnd) {
+							// There was a previous match, insert it in a text node
+							textElem.parentNode!.insertBefore(FindWidget.createMatchElem(text.substring(matchStart, matchEnd)), textElem);
+						}
+						// Insert a text node containing the text between the last match and the current match
+						textElem.parentNode!.insertBefore(document.createTextNode(text.substring(matchEnd, match.index)), textElem);
+						matchStart = match.index;
+					}
+					matchEnd = highlight.pattern.lastIndex;
+				}
+				if (matchEnd > 0) {
+					// There were one or more matches
+					if (matchStart !== matchEnd) {
+						// There was a match, insert it in a text node
+						textElem.parentNode!.insertBefore(FindWidget.createMatchElem(text.substring(matchStart, matchEnd)), textElem);
+					}
+					if (matchEnd !== text.length) {
+						// There was some text after last match, update the textElem (the last node of it's parent) to contain the remaining text.
+						textElem.textContent = text.substring(matchEnd);
+					} else {
+						// The last match was at the end of the text, the textElem is no longer required, so delete it
+						textElem.parentNode!.removeChild(textElem);
+					}
+				}
+			}
+			const findPattern = highlight.findPattern;
+			if (highlight.colVisibility.commit && ((findPattern !== null && commit.hash.search(findPattern) === 0 && !findPattern.test(abbrevCommit(commit.hash))) || highlight.commitPatternUsed) && textElems.length > 0) {
+				// The commit matches on more than the abbreviated commit, so the commit should be highlighted
+				const commitNode = textElems[textElems.length - 1]; // Commit is always the last column if it is visible
+				commitNode.parentNode!.replaceChild(FindWidget.createMatchElem(commitNode.textContent!), commitNode);
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Clear all of the highlighted find matches in the rows of the commits that are rendered.
 	 */
 	private clearMatches() {
-		for (let i = 0; i < this.matches.length; i++) {
-			if (i === this.position) this.matches[i].elem.classList.remove(CLASS_FIND_CURRENT_COMMIT);
-			this.matches[i].elem.classList.remove(CLASS_FIND_MATCH_ROW);
-			let matchElems = getChildrenWithClassName(this.matches[i].elem, CLASS_FIND_MATCH), matchElem;
+		document.querySelectorAll<HTMLElement>('#commitTable tr.' + CLASS_FIND_MATCH_ROW + ', #commitTable tr.' + CLASS_FIND_CURRENT_COMMIT).forEach((rowElem) => {
+			rowElem.classList.remove(CLASS_FIND_MATCH_ROW, CLASS_FIND_CURRENT_COMMIT);
+			const matchElems = getChildrenWithClassName(rowElem, CLASS_FIND_MATCH);
 			for (let j = 0; j < matchElems.length; j++) {
-				matchElem = matchElems[j];
+				const matchElem = matchElems[j];
 				let text = matchElem.childNodes[0].textContent!;
 
 				// Combine current text with the text from previous sibling text nodes
@@ -663,7 +669,7 @@ class FindWidget {
 
 				matchElem.parentNode!.replaceChild(document.createTextNode(text), matchElem);
 			}
-		}
+		});
 	}
 
 	/**
@@ -672,11 +678,13 @@ class FindWidget {
 	 * @param scrollToCommit After updating the user's position in the set of find matches, should the current match be scrolled to (so it's visible in the view).
 	 */
 	private updatePosition(position: number, scrollToCommit: boolean) {
-		if (this.position > -1) this.matches[this.position].elem.classList.remove(CLASS_FIND_CURRENT_COMMIT);
+		document.querySelectorAll('#commitTable tr.' + CLASS_FIND_CURRENT_COMMIT).forEach((rowElem) => rowElem.classList.remove(CLASS_FIND_CURRENT_COMMIT));
 		this.position = position;
 		if (this.position > -1) {
-			this.matches[this.position].elem.classList.add(CLASS_FIND_CURRENT_COMMIT);
-			if (scrollToCommit) this.view.scrollToCommit(this.matches[position].hash, false);
+			const hash = this.matches[position].hash;
+			if (scrollToCommit) this.view.scrollToCommit(hash, false);
+			const commitElem = findCommitElemWithId(getCommitElems(), this.view.getCommitId(hash));
+			if (commitElem !== null) commitElem.classList.add(CLASS_FIND_CURRENT_COMMIT);
 		}
 		this.positionElem.innerHTML = this.matches.length > 0 ? t('{0} of {1}', this.position + 1, this.matches.length) : (this.text !== '' ? t('No Results') : '');
 		this.view.saveState();
@@ -707,7 +715,7 @@ class FindWidget {
 		if (workspaceState.findOpenCommitDetailsView) {
 			const commitHash = this.getCurrentHash();
 			if (commitHash !== null && !this.view.isCdvOpen(commitHash, null)) {
-				const commitElem = findCommitElemWithId(getCommitElems(), this.view.getCommitId(commitHash));
+				const commitElem = this.view.getCommitElem(this.view.getCommitId(commitHash));
 				if (commitElem !== null) {
 					this.view.loadCommitDetails(commitElem);
 				}

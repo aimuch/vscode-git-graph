@@ -1,4 +1,21 @@
 /**
+ * What's needed to render the rows of the commits (computed when the table is rendered, and reused when the rows that are rendered
+ * change as the view is scrolled).
+ */
+interface RowRenderContext {
+	readonly colVisibility: { readonly date: boolean, readonly author: boolean, readonly commit: boolean };
+	readonly currentHash: string | null;
+	readonly vertexColours: ReadonlyArray<number>;
+	readonly widthsAtVertices: ReadonlyArray<number>;
+	readonly mutedCommits: ReadonlyArray<boolean>;
+	readonly textFormatter: TextFormatter;
+	readonly fileHistory: { readonly [hash: string]: GG.GitFileHistoryCommit } | null;
+	readonly maxLinesChanged: number;
+	readonly refsInColumn: boolean;
+	readonly showChanges: boolean;
+}
+
+/**
  * Implements the Git Map View. Its parts are implemented in their own files: the context menus & actions (ViewActions), the columns of
  * the commits (TableColumns), the list of stashes (StashList), the files in the Commit Details View (CdvFileView), and the processing
  * of the messages from the extension (responses.ts). The public members of the view are the state those parts use.
@@ -53,6 +70,11 @@ class GitGraphView {
 	private scrollToStashPending: { stash: GG.GitStash, attempts: number } | null = null;
 	public stashStats: { [hash: string]: GG.GitStashStats } = {};
 	public expandedCommit: ExpandedCommit | null = null;
+	private rowContext: RowRenderContext | null = null;
+	private renderedRows: { start: number, end: number } | null = null; // The rows rendered when they're virtualised (NULL => all rows are rendered)
+	private readonly pinnedRows: Set<number> = new Set(); // Rows rendered outside of the rendered range (e.g. to open the details of a commit)
+	private rowHeight: number | null = null; // The height of the rows of the commits (as rendered)
+	private flashingHash: string | null = null; // The commit that's flashing (after being scrolled to)
 	private selectedCommits: Set<string> = new Set(); // The commits selected with Shift (+ Ctrl / Cmd) + click
 	private selectionAnchor: string | null = null; // The commit that a range of commits is selected from
 	private maxCommits: number;
@@ -626,9 +648,8 @@ class GitGraphView {
 			if (this.loadViewTo.commitDetails && (this.expandedCommit === null || this.expandedCommit.commitHash !== this.loadViewTo.commitDetails.commitHash || this.expandedCommit.compareWithHash !== this.loadViewTo.commitDetails.compareWithHash)) {
 				const commitIndex = this.getCommitId(this.loadViewTo.commitDetails.commitHash);
 				const compareWithIndex = this.loadViewTo.commitDetails.compareWithHash !== null ? this.getCommitId(this.loadViewTo.commitDetails.compareWithHash) : null;
-				const commitElems = getCommitElems();
-				const commitElem = findCommitElemWithId(commitElems, commitIndex);
-				const compareWithElem = findCommitElemWithId(commitElems, compareWithIndex);
+				const commitElem = this.getCommitElem(commitIndex);
+				const compareWithElem = this.getCommitElem(compareWithIndex);
 
 				if (commitElem !== null && (this.loadViewTo.commitDetails.compareWithHash === null || compareWithElem !== null)) {
 					if (compareWithElem !== null) {
@@ -1078,7 +1099,7 @@ class GitGraphView {
 	 */
 	public renderScrollMarkers() {
 		this.minimap.setFindMatches(this.findWidget.getMatchHashes());
-		this.scrollMarkers.render(this.commits, this.commitHead, this.graph.getVertexColours(), this.config.graph.colours, this.findWidget.getMatchHashes());
+		this.scrollMarkers.render(this.commits, this.commitHead, this.graph.getVertexColours(), this.config.graph.colours, this.findWidget.getMatchHashes(), (index) => this.getVirtualRowCentre(index));
 	}
 
 	/**
@@ -1123,6 +1144,7 @@ class GitGraphView {
 			if (viewportFrame !== null) return;
 			viewportFrame = requestAnimationFrame(() => {
 				viewportFrame = null;
+				this.updateRenderedRows();
 				this.updateMinimapViewport();
 			});
 		});
@@ -1131,6 +1153,7 @@ class GitGraphView {
 			if (markersFrame !== null) return;
 			markersFrame = requestAnimationFrame(() => {
 				markersFrame = null;
+				this.updateRenderedRows();
 				this.updateMinimapViewport();
 				this.renderScrollMarkers();
 			});
@@ -1156,9 +1179,11 @@ class GitGraphView {
 		this.config.graph.grid.expandY = expandedCommitElem !== null
 			? expandedCommitElem.getBoundingClientRect().height
 			: cdvHeight;
-		this.config.graph.grid.y = this.commits.length > 0 && this.tableElem.children.length > 0
-			? (this.tableElem.children[0].clientHeight - headerHeight - (expandedCommit !== null ? cdvHeight : 0)) / this.commits.length
-			: this.config.graph.grid.y;
+		this.config.graph.grid.y = this.renderedRows !== null
+			? this.getRowHeight() // The rows are virtualised, so they (and the spacers replacing them) all have the measured height
+			: this.commits.length > 0 && this.tableElem.children.length > 0
+				? (this.tableElem.children[0].clientHeight - headerHeight - (expandedCommit !== null ? cdvHeight : 0)) / this.commits.length
+				: this.config.graph.grid.y;
 		this.config.graph.grid.offsetY = headerHeight + this.config.graph.grid.y / 2;
 
 		this.graph.render(expandedCommit);
@@ -1202,67 +1227,9 @@ class GitGraphView {
 		headers[headers.length - 1] = headers[headers.length - 1].replace(/^(<th[^>]*>)(.*)<\/th>$/, '$1<span class="lastColHeaderName">$2</span><span id="columnSettingsBtn" title="' + t('Choose the columns that are shown') + '">' + SVG_ICONS.columns + '</span></th>');
 		let html = '<tr id="tableColHeaders">' + headers.join('') + '</tr>';
 
-		for (let i = 0; i < this.commits.length; i++) {
-			let commit = this.commits[i];
-			const fileChange = fileHistory !== null ? fileHistory[commit.hash] : undefined;
-			let message = (typeof fileChange !== 'undefined' && fileChange.oldFilePath !== null ? '<span class="fileHistoryRenamed" title="' + escapeHtml(fileChange.oldFilePath + ' \u2192 ' + fileChange.filePath) + '">\u21aa ' + t('Renamed from {0}', escapeHtml(fileChange.oldFilePath)) + '</span>' : '') + '<span class="text">' + textFormatter.format(commit.message) + '</span>';
-			let date = formatShortDate(commit.date);
-			let branchLabels = getBranchLabels(commit.heads, commit.remotes);
-			let refBranches = '', refTags = '', j, k, refName, remoteName, refActive, refHtml, branchCheckedOutAtCommit: string | null = null;
-
-			for (j = 0; j < branchLabels.heads.length; j++) {
-				refName = escapeHtml(branchLabels.heads[j].name);
-				refActive = branchLabels.heads[j].name === this.gitBranchHead;
-				refHtml = '<span class="gitRef head' + (refActive ? ' active' : '') + '" data-name="' + refName + '">' + (refActive && refsInColumn ? SVG_ICONS.check : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span>';
-				for (k = 0; k < branchLabels.heads[j].remotes.length; k++) {
-					remoteName = escapeHtml(branchLabels.heads[j].remotes[k]);
-					const remoteFullRef = escapeHtml(branchLabels.heads[j].remotes[k] + '/' + branchLabels.heads[j].name);
-					refHtml += refsInColumn
-						? '<span class="gitRefHeadRemote icon" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '" title="' + t('{0} is at this commit', remoteFullRef) + '">' + SVG_ICONS.cloud + '</span>'
-						: '<span class="gitRefHeadRemote" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '">' + remoteName + '</span>';
-				}
-				refHtml += generateTrackingHtml(this.gitUpstreams[branchLabels.heads[j].name]) + '</span>';
-				refBranches = refActive ? refHtml + refBranches : refBranches + refHtml;
-				if (refActive) branchCheckedOutAtCommit = this.gitBranchHead;
-			}
-			for (j = 0; j < branchLabels.remotes.length; j++) {
-				refName = escapeHtml(branchLabels.remotes[j].name);
-				refBranches += '<span class="gitRef remote" data-name="' + refName + '" data-remote="' + (branchLabels.remotes[j].remote !== null ? escapeHtml(branchLabels.remotes[j].remote!) : '') + '">' + (refsInColumn ? SVG_ICONS.cloud : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
-			}
-
-			for (j = 0; j < commit.tags.length; j++) {
-				refName = escapeHtml(commit.tags[j].name);
-				refTags += '<span class="gitRef tag" data-name="' + refName + '" data-tagtype="' + (commit.tags[j].annotated ? 'annotated' : 'lightweight') + '">' + SVG_ICONS.tag + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
-			}
-
-			if (commit.stash !== null) {
-				refName = escapeHtml(commit.stash.selector);
-				refBranches = '<span class="gitRef stash" data-name="' + refName + '">' + SVG_ICONS.stash + '<span class="gitRefName" data-fullref="' + refName + '">' + escapeHtml(commit.stash.selector.substring(5)) + '</span></span>' + refBranches;
-			}
-
-			const commitDot = commit.hash === this.commitHead
-				? '<span class="commitHeadDot" title="' + (branchCheckedOutAtCommit !== null
-					? t('The branch {0} is currently checked out at this commit', escapeHtml('"' + branchCheckedOutAtCommit + '"'))
-					: t('This commit is currently checked out')
-				) + '."></span>'
-				: '';
-
-			html += '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + (this.selectedCommits.has(commit.hash) ? ' multiSelected' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
-				(refsInColumn
-					? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels" style="--git-graph-refs:' + (branchLabels.heads.length + branchLabels.remotes.length + commit.tags.length + (commit.stash !== null ? 1 : 0)) + '">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
-					: this.config.referenceLabels.branchLabelsAlignedToGraph
-						? '<td class="graphCol">' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td class="descriptionCol"><span class="description">' + commitDot + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)
-						: '<td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + refBranches + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)) + '</span></td>' +
-				(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
-				(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
-				(fileHistory !== null ? '<td class="fileChangesCol">' + (typeof fileChange !== 'undefined'
-					? (fileChange.additions !== null && fileChange.deletions !== null
-						? generateChangeBarHtml(fileChange.additions, fileChange.deletions, Math.round(8 + 52 * (fileChange.additions + fileChange.deletions) / maxLinesChanged)) + '<span class="fileTreeFileAdd">+' + fileChange.additions + '</span><span class="fileTreeFileDel">\u2212' + fileChange.deletions + '</span>'
-						: '<span class="fileChangesBinary">' + t('Binary') + '</span>')
-					: '') + '</td>' : showChanges ? '<td class="changesCol">' + (commit.stash === null && typeof this.commitStats[commit.hash] !== 'undefined' ? generateCommitStatsHtml(this.commitStats[commit.hash]) : '') + '</td>' : '') +
-				(colVisibility.commit ? '<td class="hashCol text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
-				'</tr>';
-		}
+		const ctx: RowRenderContext = { colVisibility: colVisibility, currentHash: currentHash, vertexColours: vertexColours, widthsAtVertices: widthsAtVertices, mutedCommits: mutedCommits, textFormatter: textFormatter, fileHistory: fileHistory, maxLinesChanged: maxLinesChanged, refsInColumn: refsInColumn, showChanges: showChanges };
+		this.rowContext = ctx;
+		html += this.getRowsHtml(ctx);
 		this.tableElem.innerHTML = '<table>' + html + '</table>';
 		const countCommits = (commits: ReadonlyArray<GG.GitCommit>) => commits.filter((commit) => commit.hash !== UNCOMMITTED && commit.stash === null).length;
 		const loaded = countCommits(this.loadedCommits), shown = countCommits(this.commits);
@@ -1277,6 +1244,7 @@ class GitGraphView {
 		this.tableColumns.makeTableResizable();
 		this.tableColumns.makeRefsColumnResizable();
 		this.tableColumns.updateTruncatedRefLabels();
+		this.measureRowHeight();
 		const columnSettingsBtn = document.getElementById('columnSettingsBtn');
 		if (columnSettingsBtn !== null) {
 			columnSettingsBtn.addEventListener('click', (e) => {
@@ -1330,6 +1298,255 @@ class GitGraphView {
 				}
 			}
 		}
+	}
+
+	/* Virtualised Rows */
+
+	/**
+	 * Are the rows of the commits virtualised: when there are many commits, only the rows near the view are rendered (unless the Commit
+	 * Details View is inline, as it's inside the table).
+	 * @returns TRUE => The rows are virtualised, FALSE => All rows are rendered.
+	 */
+	private isVirtualised() {
+		return this.commits.length > VIRTUAL_ROWS_THRESHOLD && (this.expandedCommit === null || this.isCdvDocked());
+	}
+
+	/**
+	 * Get the HTML of the rows of the commits. When the rows are virtualised, only the rows near the view (and the rows of the commits whose
+	 * details are open) are rendered, the other rows are replaced by spacers of the same height, and the rows of the commits with the
+	 * longest date & author are rendered collapsed, so that the widths of the columns don't change as the view is scrolled.
+	 * @param ctx What's needed to render the rows.
+	 * @returns The HTML.
+	 */
+	private getRowsHtml(ctx: RowRenderContext) {
+		const numCommits = this.commits.length;
+		let html = '';
+		if (!this.isVirtualised()) {
+			this.renderedRows = null;
+			this.pinnedRows.clear();
+			for (let i = 0; i < numCommits; i++) html += this.getCommitRowHtml(i, ctx);
+			return html;
+		}
+
+		const inView = this.getRowsInView(), start = Math.max(inView.first - VIRTUAL_ROWS_BUFFER, 0), end = Math.min(inView.last + VIRTUAL_ROWS_BUFFER + 1, numCommits);
+		this.renderedRows = { start: start, end: end };
+		const pinned = new Set(this.pinnedRows);
+		if (this.expandedCommit !== null) {
+			[this.expandedCommit.commitHash, this.expandedCommit.compareWithHash].forEach((hash) => {
+				const index = hash !== null ? this.getCommitId(hash) : null;
+				if (index !== null) pinned.add(index);
+			});
+		}
+		const indexes: number[] = [];
+		for (let i = start; i < end; i++) indexes.push(i);
+		pinned.forEach((index) => {
+			if (index >= 0 && index < numCommits && (index < start || index >= end)) indexes.push(index);
+		});
+		indexes.sort((a, b) => a - b);
+
+		const rowHeight = this.getRowHeight(), numColumns = this.getNumColumns();
+		const spacer = (rows: number) => '<tr class="virtualSpacer" style="height:' + (rows * rowHeight) + 'px"><td colspan="' + numColumns + '"></td></tr>';
+		html = this.getSizerRowsHtml(ctx);
+		let next = 0;
+		indexes.forEach((index) => {
+			if (index > next) html += spacer(index - next);
+			html += this.getCommitRowHtml(index, ctx);
+			next = index + 1;
+		});
+		if (next < numCommits) html += spacer(numCommits - next);
+		return html;
+	}
+
+	/**
+	 * Get the HTML of the collapsed rows of the commits with the longest date & author (which determine the widths of their columns).
+	 * @param ctx What's needed to render the rows.
+	 * @returns The HTML.
+	 */
+	private getSizerRowsHtml(ctx: RowRenderContext) {
+		let longestDate = -1, longestAuthor = -1, dateLength = 0, authorLength = 0;
+		for (let i = 0; i < this.commits.length; i++) {
+			const commit = this.commits[i];
+			if (commit.hash === UNCOMMITTED) continue;
+			if (ctx.colVisibility.date) {
+				const length = formatShortDate(commit.date).formatted.length;
+				if (length > dateLength) {
+					dateLength = length;
+					longestDate = i;
+				}
+			}
+			if (commit.author.length > authorLength) {
+				authorLength = commit.author.length;
+				longestAuthor = i;
+			}
+		}
+		return Array.from(new Set([longestDate, longestAuthor])).filter((index) => index > -1)
+			.map((index) => this.getCommitRowHtml(index, ctx).replace(/^<tr [^>]*>/, '<tr class="virtualSizer" aria-hidden="true">')).join('');
+	}
+
+	/**
+	 * Get the rows of the commits that are in view.
+	 * @returns The indexes of the first & last rows in view.
+	 */
+	private getRowsInView() {
+		const rowHeight = this.getRowHeight(), headersElem = document.getElementById('tableColHeaders'), lastIndex = Math.max(this.commits.length - 1, 0);
+		const rowsTop = this.controlsElem.offsetHeight + (headersElem !== null ? headersElem.offsetHeight : 31);
+		const top = this.viewElem.scrollTop + this.getCoveredTopHeight() - rowsTop, bottom = this.viewElem.scrollTop + this.viewElem.clientHeight - rowsTop;
+		return {
+			first: Math.min(Math.max(Math.floor(top / rowHeight), 0), lastIndex),
+			last: Math.min(Math.max(Math.floor(bottom / rowHeight), 0), lastIndex)
+		};
+	}
+
+	/**
+	 * Get the height of the rows of the commits (as rendered, or the row height of the git-graph.graph.density Extension Setting).
+	 * @returns The height (in pixels).
+	 */
+	private getRowHeight() {
+		if (this.rowHeight !== null) return this.rowHeight;
+		const height = parseFloat(getComputedStyle(document.body).getPropertyValue('--git-graph-rowHeight'));
+		return isNaN(height) || height <= 0 ? 32 : height;
+	}
+
+	/**
+	 * Render the rows near the view again, if the view has been scrolled (or resized) so that rows that aren't rendered will soon be in view.
+	 */
+	private updateRenderedRows() {
+		if (this.renderedRows === null || this.rowContext === null) return;
+		const inView = this.getRowsInView(), margin = Math.floor(VIRTUAL_ROWS_BUFFER / 4);
+		if ((inView.first - margin < this.renderedRows.start && this.renderedRows.start > 0) || (inView.last + margin >= this.renderedRows.end && this.renderedRows.end < this.commits.length)) {
+			this.pinnedRows.clear();
+			this.renderRows();
+		}
+	}
+
+	/**
+	 * Render the rows of the commits again (keeping the column headers), when the rows that are rendered change.
+	 */
+	private renderRows() {
+		const headersElem = document.getElementById('tableColHeaders');
+		if (headersElem === null || this.rowContext === null) return;
+		while (headersElem.nextElementSibling !== null) headersElem.nextElementSibling.remove();
+		headersElem.insertAdjacentHTML('afterend', this.getRowsHtml(this.rowContext));
+		this.renderBranchesInWorktrees();
+		this.tableColumns.updateTruncatedRefLabels();
+		this.findWidget.highlightRenderedMatches();
+		if (this.expandedCommit !== null) {
+			const elems = getCommitElems();
+			this.expandedCommit.commitElem = findCommitElemWithId(elems, this.getCommitId(this.expandedCommit.commitHash));
+			this.expandedCommit.compareWithElem = this.expandedCommit.compareWithHash !== null ? findCommitElemWithId(elems, this.getCommitId(this.expandedCommit.compareWithHash)) : null;
+		}
+		this.measureRowHeight();
+	}
+
+	/**
+	 * Measure the height of the rendered rows of the commits (used for the spacers that replace the rows that aren't rendered). If it's
+	 * different to the height that was used, the rows are rendered again.
+	 */
+	private measureRowHeight() {
+		if (this.renderedRows === null) return;
+		const elems = getCommitElems();
+		if (elems.length === 0) return;
+		const height = elems[0].getBoundingClientRect().height;
+		if (height > 0 && Math.abs(height - this.getRowHeight()) > 0.01) {
+			this.rowHeight = height;
+			this.renderRows();
+		}
+	}
+
+	/**
+	 * Get the element of the row of a commit, rendering the row if it isn't rendered (when the rows are virtualised).
+	 * @param index The index of the commit.
+	 * @returns The element, or NULL if there isn't a commit with the index.
+	 */
+	public getCommitElem(index: number | null) {
+		if (index === null || index < 0 || index >= this.commits.length) return null;
+		let elem = findCommitElemWithId(getCommitElems(), index);
+		if (elem === null && this.renderedRows !== null) {
+			this.pinnedRows.add(index);
+			this.renderRows();
+			elem = findCommitElemWithId(getCommitElems(), index);
+		}
+		return elem;
+	}
+
+	/**
+	 * Get the vertical position of the centre of the row of a commit (in the content of the view), when the rows are virtualised.
+	 * @param index The index of the commit.
+	 * @returns The position, or NULL if the rows aren't virtualised.
+	 */
+	public getVirtualRowCentre(index: number) {
+		if (this.renderedRows === null) return null;
+		const headersElem = document.getElementById('tableColHeaders'), rowHeight = this.getRowHeight();
+		return this.controlsElem.offsetHeight + (headersElem !== null ? headersElem.offsetHeight : 31) + (index + 0.5) * rowHeight;
+	}
+
+	/**
+	 * Get the HTML of the row of a commit.
+	 * @param i The index of the commit.
+	 * @param ctx What's needed to render the rows (computed when the table is rendered).
+	 * @returns The HTML.
+	 */
+	private getCommitRowHtml(i: number, ctx: RowRenderContext) {
+		const { colVisibility, currentHash, vertexColours, widthsAtVertices, mutedCommits, textFormatter, fileHistory, maxLinesChanged, refsInColumn, showChanges } = ctx;
+		let commit = this.commits[i];
+		const fileChange = fileHistory !== null ? fileHistory[commit.hash] : undefined;
+		let message = (typeof fileChange !== 'undefined' && fileChange.oldFilePath !== null ? '<span class="fileHistoryRenamed" title="' + escapeHtml(fileChange.oldFilePath + ' \u2192 ' + fileChange.filePath) + '">\u21aa ' + t('Renamed from {0}', escapeHtml(fileChange.oldFilePath)) + '</span>' : '') + '<span class="text">' + textFormatter.format(commit.message) + '</span>';
+		let date = formatShortDate(commit.date);
+		let branchLabels = getBranchLabels(commit.heads, commit.remotes);
+		let refBranches = '', refTags = '', j, k, refName, remoteName, refActive, refHtml, branchCheckedOutAtCommit: string | null = null;
+
+		for (j = 0; j < branchLabels.heads.length; j++) {
+			refName = escapeHtml(branchLabels.heads[j].name);
+			refActive = branchLabels.heads[j].name === this.gitBranchHead;
+			refHtml = '<span class="gitRef head' + (refActive ? ' active' : '') + '" data-name="' + refName + '">' + (refActive && refsInColumn ? SVG_ICONS.check : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span>';
+			for (k = 0; k < branchLabels.heads[j].remotes.length; k++) {
+				remoteName = escapeHtml(branchLabels.heads[j].remotes[k]);
+				const remoteFullRef = escapeHtml(branchLabels.heads[j].remotes[k] + '/' + branchLabels.heads[j].name);
+				refHtml += refsInColumn
+					? '<span class="gitRefHeadRemote icon" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '" title="' + t('{0} is at this commit', remoteFullRef) + '">' + SVG_ICONS.cloud + '</span>'
+					: '<span class="gitRefHeadRemote" data-remote="' + remoteName + '" data-fullref="' + remoteFullRef + '">' + remoteName + '</span>';
+			}
+			refHtml += generateTrackingHtml(this.gitUpstreams[branchLabels.heads[j].name]) + '</span>';
+			refBranches = refActive ? refHtml + refBranches : refBranches + refHtml;
+			if (refActive) branchCheckedOutAtCommit = this.gitBranchHead;
+		}
+		for (j = 0; j < branchLabels.remotes.length; j++) {
+			refName = escapeHtml(branchLabels.remotes[j].name);
+			refBranches += '<span class="gitRef remote" data-name="' + refName + '" data-remote="' + (branchLabels.remotes[j].remote !== null ? escapeHtml(branchLabels.remotes[j].remote!) : '') + '">' + (refsInColumn ? SVG_ICONS.cloud : SVG_ICONS.branch) + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
+		}
+
+		for (j = 0; j < commit.tags.length; j++) {
+			refName = escapeHtml(commit.tags[j].name);
+			refTags += '<span class="gitRef tag" data-name="' + refName + '" data-tagtype="' + (commit.tags[j].annotated ? 'annotated' : 'lightweight') + '">' + SVG_ICONS.tag + '<span class="gitRefName" data-fullref="' + refName + '">' + refName + '</span></span>';
+		}
+
+		if (commit.stash !== null) {
+			refName = escapeHtml(commit.stash.selector);
+			refBranches = '<span class="gitRef stash" data-name="' + refName + '">' + SVG_ICONS.stash + '<span class="gitRefName" data-fullref="' + refName + '">' + escapeHtml(commit.stash.selector.substring(5)) + '</span></span>' + refBranches;
+		}
+
+		const commitDot = commit.hash === this.commitHead
+			? '<span class="commitHeadDot" title="' + (branchCheckedOutAtCommit !== null
+				? t('The branch {0} is currently checked out at this commit', escapeHtml('"' + branchCheckedOutAtCommit + '"'))
+				: t('This commit is currently checked out')
+			) + '."></span>'
+			: '';
+
+		return '<tr class="commit' + (commit.hash === currentHash ? ' current' : '') + (mutedCommits[i] ? ' mute' : '') + (this.selectedCommits.has(commit.hash) ? ' multiSelected' : '') + (this.expandedCommit !== null && (this.expandedCommit.commitHash === commit.hash || this.expandedCommit.compareWithHash === commit.hash) ? ' ' + CLASS_COMMIT_DETAILS_OPEN : '') + (commit.hash === this.flashingHash ? ' flash' : '') + '"' + (commit.hash !== UNCOMMITTED ? '' : ' id="uncommittedChanges"') + ' data-id="' + i + '" data-color="' + vertexColours[i] + '">' +
+			(refsInColumn
+				? '<td class="refsCol">' + (refBranches !== '' || refTags !== '' ? '<span class="refsColLabels" style="--git-graph-refs:' + (branchLabels.heads.length + branchLabels.remotes.length + commit.tags.length + (commit.stash !== null ? 1 : 0)) + '">' + refBranches + refTags + '</span>' : '') + '</td><td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + message
+				: this.config.referenceLabels.branchLabelsAlignedToGraph
+					? '<td class="graphCol">' + (refBranches !== '' ? '<span style="margin-left:' + (widthsAtVertices[i] - 4) + 'px"' + refBranches.substring(5) : '') + '</td><td class="descriptionCol"><span class="description">' + commitDot + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)
+					: '<td class="graphCol"></td><td class="descriptionCol"><span class="description">' + commitDot + refBranches + (this.config.referenceLabels.tagLabelsOnRight ? message + refTags : refTags + message)) + '</span></td>' +
+			(colVisibility.date ? '<td class="dateCol text" title="' + date.title + '">' + date.formatted + '</td>' : '') +
+			(colVisibility.author ? '<td class="authorCol text" title="' + escapeHtml(commit.author + ' <' + commit.email + '>') + '">' + (this.config.fetchAvatars ? '<span class="avatar" data-email="' + escapeHtml(commit.email) + '">' + (typeof this.avatars[commit.email] === 'string' ? '<img class="avatarImg" src="' + this.avatars[commit.email] + '">' : '') + '</span>' : generateAuthorInitialHtml(commit.author)) + escapeHtml(commit.author) + '</td>' : '') +
+			(fileHistory !== null ? '<td class="fileChangesCol">' + (typeof fileChange !== 'undefined'
+				? (fileChange.additions !== null && fileChange.deletions !== null
+					? generateChangeBarHtml(fileChange.additions, fileChange.deletions, Math.round(8 + 52 * (fileChange.additions + fileChange.deletions) / maxLinesChanged)) + '<span class="fileTreeFileAdd">+' + fileChange.additions + '</span><span class="fileTreeFileDel">\u2212' + fileChange.deletions + '</span>'
+					: '<span class="fileChangesBinary">' + t('Binary') + '</span>')
+				: '') + '</td>' : showChanges ? '<td class="changesCol">' + (commit.stash === null && typeof this.commitStats[commit.hash] !== 'undefined' ? generateCommitStatsHtml(this.commitStats[commit.hash]) : '') + '</td>' : '') +
+			(colVisibility.commit ? '<td class="hashCol text" title="' + escapeHtml(commit.hash) + '">' + abbrevCommit(commit.hash) + '</td>' : '') +
+			'</tr>';
 	}
 
 	private renderUncommittedChanges() {
@@ -1587,7 +1804,7 @@ class GitGraphView {
 	 * @param stash The stash.
 	 */
 	public goToStash(stash: GG.GitStash) {
-		const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(stash.hash));
+		const elem = this.getCommitElem(this.getCommitId(stash.hash));
 		const attempts = this.scrollToStashPending !== null && this.scrollToStashPending.stash.hash === stash.hash ? this.scrollToStashPending.attempts : 0;
 		if (elem !== null) {
 			this.scrollToStashPending = null;
@@ -1698,7 +1915,7 @@ class GitGraphView {
 	 * @param flash Should the commit flash after it has been scrolled to.
 	 */
 	public scrollToCommit(hash: string, alwaysCenterCommit: boolean, flash: boolean = false) {
-		const elem = findCommitElemWithId(getCommitElems(), this.getCommitId(hash));
+		const elem = this.getCommitElem(this.getCommitId(hash));
 		if (elem === null) return;
 
 		// The controls are sticky (always visible at the top of the view), so commits are only visible below them (and the frozen column
@@ -1708,10 +1925,14 @@ class GitGraphView {
 			this.viewElem.scroll(0, elemTop + 12 - (visibleBottom + coveredTop) / 2);
 		}
 
-		if (flash && !elem.classList.contains('flash')) {
+		if (flash && this.flashingHash !== hash) {
+			// The row is rendered with the flash while the commit is flashing (its row can be rendered again as the view is scrolled)
+			this.flashingHash = hash;
 			elem.classList.add('flash');
 			setTimeout(() => {
-				elem.classList.remove('flash');
+				if (this.flashingHash === hash) this.flashingHash = null;
+				const commitElem = findCommitElemWithId(getCommitElems(), this.getCommitId(hash));
+				if (commitElem !== null) commitElem.classList.remove('flash');
 			}, 850);
 		}
 	}
@@ -1901,7 +2122,7 @@ class GitGraphView {
 
 				if (newHashIndex > -1) {
 					handledEvent(e);
-					const elem = findCommitElemWithId(getCommitElems(), newHashIndex);
+					const elem = this.getCommitElem(newHashIndex);
 					if (elem !== null) this.loadCommitDetails(elem);
 				}
 			} else if (e.key && (e.ctrlKey || e.metaKey)) {
@@ -1986,7 +2207,7 @@ class GitGraphView {
 				switch ((<HTMLElement>e.target).dataset.type!) {
 					case 'commit':
 						if (typeof this.commitLookup[value] === 'number' && (this.expandedCommit === null || this.expandedCommit.commitHash !== value || this.expandedCommit.compareWithHash !== null)) {
-							const elem = findCommitElemWithId(getCommitElems(), this.commitLookup[value]);
+							const elem = this.getCommitElem(this.commitLookup[value]);
 							if (elem !== null) this.loadCommitDetails(elem);
 						}
 						break;
@@ -2313,6 +2534,8 @@ class GitGraphView {
 		if (saveAndRender) {
 			this.saveState();
 			if (!isDocked) {
+				// Only the rows near the view are rendered again (if there are many commits), now that the Commit Details View isn't inline
+				if (this.renderedRows === null && this.isVirtualised()) this.renderRows();
 				this.renderGraph();
 			}
 		}
@@ -2453,6 +2676,10 @@ class GitGraphView {
 		const externalDiffPossible = !expandedCommit.loading && (expandedCommit.compareWithHash !== null || this.commits[this.commitLookup[expandedCommit.commitHash]].parents.length > 0);
 
 		if (elem === null) {
+			if (!isDocked && this.renderedRows !== null) {
+				// All of the rows are rendered while the Commit Details View is inline, as it's in the table
+				this.renderRows();
+			}
 			elem = document.createElement(isDocked ? 'div' : 'tr');
 			elem.id = 'cdv';
 			elem.className = isDocked ? (this.isCdvDockedRight() ? 'docked right' : 'docked') : 'inline';
@@ -2921,7 +3148,7 @@ class GitGraphView {
 		if (expandedCommit === null) return;
 		const navigate = (offset: number) => {
 			if (this.expandedCommit === null || this.expandedCommit.compareWithHash !== null) return;
-			const elem = findCommitElemWithId(getCommitElems(), this.commitLookup[this.expandedCommit.commitHash] + offset);
+			const elem = this.getCommitElem(this.commitLookup[this.expandedCommit.commitHash] + offset);
 			if (elem !== null) this.loadCommitDetails(elem);
 		};
 		const prevElem = document.getElementById('cdvPrev'), nextElem = document.getElementById('cdvNext');

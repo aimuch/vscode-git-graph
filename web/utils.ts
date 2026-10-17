@@ -86,6 +86,8 @@ const COLUMN_AUTO = -101;
 
 const COLUMN_MIN_WIDTH = 40;
 const COLUMN_LEFT_RIGHT_PADDING = 24;
+const VIRTUAL_ROWS_THRESHOLD = 2000; // Above this number of commits, only the rows near the view are rendered
+const VIRTUAL_ROWS_BUFFER = 80; // The number of rows rendered above & below the rows in view (when they're virtualised)
 const REFS_COLUMN_DEFAULT_WIDTH = 172;
 const REFS_COLUMN_MIN_WIDTH = 60;
 

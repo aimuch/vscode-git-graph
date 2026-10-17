@@ -42,6 +42,7 @@
 	let undoInfo = null; // The action that the extension says can be undone
 	let worktreesFixture = []; // The worktrees of the repository
 	let operationFixture = null; // The operation in progress in the repository
+	let commitCountFixture = null; // The number of commits loaded (instead of 10 or 25)
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
@@ -94,6 +95,9 @@
 					const commits = {};
 					history.forEach((commit, i) => commits[commit.hash] = { filePath: 'src/new-name.ts', oldFilePath: i === history.length - 1 ? 'src/old-name.ts' : null, additions: i + 1, deletions: i });
 					return { command: 'loadCommits', refreshId: msg.refreshId, commits: history, head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, fileHistory: { filePath: msg.filePath, paths: ['src/new-name.ts', 'src/old-name.ts'], commits: commits }, error: null };
+				}
+				if (commitCountFixture !== null) {
+					return { command: 'loadCommits', refreshId: msg.refreshId, commits: makeCommits(commitCountFixture), head: hash(HEAD_INDEX + 1), tags: [], moreCommitsAvailable: false, onlyFollowFirstParent: msg.onlyFollowFirstParent, error: null };
 				}
 				// HEAD is the 20th commit, which isn't included in the first load of 10 commits
 				return msg.maxCommits <= 10
@@ -1377,6 +1381,87 @@
 			await waitFor('all of the commits to be shown again', () => rows() === total && !document.querySelector('.findWidget').classList.contains('active'));
 			assert(document.querySelectorAll('#findChips .findChip').length === 0, 'The chips weren\'t cleared');
 			return expected + ' commit(s) by Second Author (' + columns.size + ' graph column), ' + both + ' also changing README, of ' + total;
+		});
+
+		await check('ui-virtual-rows', '[Performance] When thousands of commits are loaded, only the rows near the view are rendered (the others are replaced by spacers of the same height), and scrolling, finding, the scrollbar markers & the Commit Details View work on all of the commits', async () => {
+			const COUNT = 5000, FAR = COUNT - 3, view = document.getElementById('view');
+			const config = initialState.config, initialLocation = config.commitDetailsView.location; // The config of the Git Map View
+			const rendered = () => document.querySelectorAll('#commitTable tr.commit').length;
+			const spacers = () => document.querySelectorAll('#commitTable tr.virtualSpacer').length;
+			const inView = (elem) => {
+				const bounds = elem.getBoundingClientRect(), viewBounds = view.getBoundingClientRect();
+				return bounds.top >= viewBounds.top && bounds.bottom <= viewBounds.bottom;
+			};
+			// The row at the centre of the view (NULL if there isn't a row there, i.e. the rows near the view aren't rendered)
+			const rowAtCentre = () => {
+				const bounds = view.getBoundingClientRect(), elem = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+				return elem !== null ? elem.closest('tr.commit') : null;
+			};
+			// The distance between the centre of a commit's row and its vertex on the graph (which are in line if the spacers have the same height as the rows they replace)
+			const offset = (index) => {
+				const row = commitRow(index), circle = document.querySelector('#commitGraph svg circle[data-id="' + index + '"]');
+				if (row === null || circle === null) return null;
+				const rowBounds = row.getBoundingClientRect(), circleBounds = circle.getBoundingClientRect();
+				return Math.abs(rowBounds.top + rowBounds.height / 2 - (circleBounds.top + circleBounds.height / 2));
+			};
+			commitCountFixture = COUNT;
+			try {
+				const start = performance.now();
+				mouse(document.getElementById('refreshBtn'), 'click');
+				await waitFor('the commits to be loaded', () => spacers() > 0 && commitRow(0) !== null, 15000);
+				const loadMs = Math.round(performance.now() - start), rows = rendered(), nodes = document.getElementsByTagName('*').length;
+				assert(rows < 400 && commitRow(COUNT - 1) === null && document.querySelectorAll('#commitTable tr.virtualSizer').length > 0, 'Unexpected rows: ' + rows + ' of ' + COUNT + ' rendered');
+				const rowHeight = commitRow(0).getBoundingClientRect().height, headersHeight = document.getElementById('tableColHeaders').getBoundingClientRect().height;
+				const tableHeight = commitRow(0).closest('table').getBoundingClientRect().height;
+				assert(Math.abs(tableHeight - headersHeight - COUNT * rowHeight) < 2, 'The table is ' + tableHeight + 'px high, not ' + (headersHeight + COUNT * rowHeight) + 'px');
+
+				// Scrolling to the middle & the end renders the rows there, in line with the graph (as the first row is)
+				const firstOffset = offset(0), drifts = [];
+				for (const index of [Math.floor(COUNT / 2), COUNT - 1]) {
+					view.scrollTop = index === COUNT - 1 ? view.scrollHeight : index * rowHeight;
+					await waitFor('the rows near commit ' + index + ' to be rendered', () => offset(index) !== null && rowAtCentre() !== null);
+					drifts.push(Math.abs(offset(index) - firstOffset));
+					assert(drifts[drifts.length - 1] < 0.5 && rendered() < 400, 'Commit ' + index + ' is ' + offset(index) + 'px from its vertex, the first commit ' + firstOffset + 'px (' + rendered() + ' rows rendered)');
+				}
+
+				// Finding a commit that isn't rendered scrolls to it, and marks it on the scrollbar
+				view.scrollTop = 0;
+				await waitFor('the first rows to be rendered', () => commitRow(0) !== null && commitRow(COUNT - 1) === null);
+				document.getElementById('findBtn').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+				await waitFor('the Find Widget to open', () => document.querySelector('.findWidget').classList.contains('active'));
+				mouse(document.querySelector('.findMode[data-mode="highlight"]'), 'click');
+				const input = document.getElementById('findInput');
+				input.value = 'Commit ' + FAR;
+				input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'a' }));
+				const found = await waitFor('the commit to be found', () => document.getElementById('findPosition').textContent === '1 of 1' && commitRow(FAR) !== null && commitRow(FAR).classList.contains('findMatchRow') && inView(commitRow(FAR)) ? commitRow(FAR) : null);
+				const marker = await waitFor('the scrollbar marker of the match', () => document.querySelector('#scrollMarkers .scrollMarker.findMatch'));
+				const tagMarker = document.querySelector('#scrollMarkers .scrollMarker.tag');
+				assert(parseFloat(marker.style.top) > 99 && tagMarker !== null && parseFloat(tagMarker.style.top) < 1, 'Unexpected markers: match at ' + marker.style.top + ', tag at ' + (tagMarker !== null ? tagMarker.style.top : 'none'));
+
+				// Opening the details of the commit: docked (only the rows near the view are rendered), and inline (all of the rows are rendered, as
+				// the Commit Details View is in the table)
+				const rowsWithCdv = [];
+				for (const cdvLocation of [2, 0]) {
+					config.commitDetailsView.location = cdvLocation;
+					mouse(commitRow(FAR), 'click');
+					const cdv = await waitFor('the Commit Details View to open', () => document.getElementById('cdv'));
+					assert(cdv.classList.contains('inline') === (cdvLocation === 0), 'Unexpected Commit Details View: ' + cdv.className);
+					await waitFor('the rows to be rendered', () => cdvLocation === 0 ? rendered() === COUNT && spacers() === 0 && document.getElementById('cdv') !== null && document.getElementById('cdv').previousElementSibling === commitRow(FAR) : rendered() < 400 && commitRow(FAR).classList.contains('commitDetailsOpen'), 10000)
+						.catch((err) => { throw new Error(err.message + ' (location ' + cdvLocation + ': ' + rendered() + ' rows, ' + spacers() + ' spacers, commit ' + FAR + (commitRow(FAR) !== null ? ': ' + commitRow(FAR).className : ' isn\'t rendered') + ')'); });
+					assert(inView(commitRow(FAR)), 'The commit isn\'t in view');
+					rowsWithCdv.push(rendered());
+					mouse(document.getElementById('cdvClose'), 'click');
+					await waitFor('the Commit Details View to close', () => document.getElementById('cdv') === null && spacers() > 0 && rendered() < 400, 10000);
+				}
+				mouse(document.getElementById('findClear'), 'click');
+				await waitFor('the Find Widget to close', () => !document.querySelector('.findWidget').classList.contains('active'));
+				return 'Loaded ' + COUNT + ' commits in ' + loadMs + 'ms: ' + rows + ' rows rendered (' + nodes + ' DOM nodes), table ' + Math.round(tableHeight) + 'px high; rows in line with the graph at commits ' + Math.floor(COUNT / 2) + ' & ' + (COUNT - 1) + ' (drift ' + Math.max.apply(null, drifts).toFixed(2) + 'px); found commit ' + FAR + ' (scrollbar marker at ' + marker.style.top + '); Commit Details View docked: ' + rowsWithCdv[0] + ' rows rendered, inline: ' + rowsWithCdv[1];
+			} finally {
+				config.commitDetailsView.location = initialLocation;
+				commitCountFixture = null;
+				mouse(document.getElementById('refreshBtn'), 'click');
+				await waitFor('the commits to be loaded again', () => spacers() === 0 && rendered() > 0 && rendered() <= 25, 15000);
+			}
 		});
 	};
 
