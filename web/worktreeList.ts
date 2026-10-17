@@ -126,8 +126,8 @@ class WorktreeList {
 		const name = (worktree: GG.GitWorktree) => worktree.path.substring(worktree.path.lastIndexOf('/') + 1);
 		listElem.innerHTML = '<div class="stashListHeader"><b>' + t('Worktrees') + ' · ' + this.worktrees.length + '</b><span>' + t('Click on a worktree to go to the commit checked out in it') + '</span></div>' +
 			'<div class="stashListItems">' + this.worktrees.map((worktree, index) => {
-				const canRemove = !worktree.isMain && !worktree.isCurrent;
-				return '<div class="stashListItem worktreeListItem" data-index="' + index + '"><span class="stashListSelector">' + escapeHtml(worktree.branch !== null ? worktree.branch : (worktree.head !== null ? abbrevCommit(worktree.head) : '')) + '</span>' +
+			const canRemove = !worktree.isMain && !worktree.isCurrent;
+			return '<div class="stashListItem worktreeListItem" data-index="' + index + '"><span class="stashListSelector">' + escapeHtml(worktree.branch !== null ? worktree.branch : (worktree.head !== null ? abbrevCommit(worktree.head) : '')) + '</span>' +
 					'<span class="stashListMessage" title="' + escapeHtml(worktree.path) + '">' + escapeHtml(name(worktree)) + '</span>' +
 					'<span class="stashListActions"><button type="button" class="stashListAction primary' + (worktree.isCurrent || worktree.prunable ? ' ' + CLASS_DISABLED : '') + '" data-action="open" tabindex="-1">' + t('Open in New Window') + '</button>' +
 					'<button type="button" class="stashListAction danger' + (canRemove ? '' : ' ' + CLASS_DISABLED) + '" data-action="remove" tabindex="-1" title="' + (canRemove ? '' : worktree.isMain ? t('The main worktree can\'t be removed') : t('The worktree shown in the Git Map View can\'t be removed')) + '">' + t('Remove') + ELLIPSIS + '</button></span>' +
@@ -138,7 +138,7 @@ class WorktreeList {
 					(worktree.locked ? '<span class="worktreeListBadge">' + t('Locked') + '</span>' : '') +
 					(worktree.prunable ? '<span class="stashListNotLoaded">' + t('The folder no longer exists') + '</span>' : '') +
 					'</span></div>';
-			}).join('') + '</div>' +
+		}).join('') + '</div>' +
 			'<div class="stashListFooter">' + (this.worktrees.some((worktree) => worktree.prunable) ? '<button type="button" id="worktreeListPrune" class="stashListAction" tabindex="-1">' + t('Prune') + ELLIPSIS + '</button>' : '') +
 			'<span class="stashListSpacer"></span><span>' + t('Create a worktree from the context menu of a branch or commit') + '</span></div>';
 	}
