@@ -1907,6 +1907,238 @@ body.tagLabelsRightAligned .gitRef.tag{
 	opacity:0.5;
 	cursor:default;
 }
+/* The Rebase Editor of an interactive rebase */
+#rebaseEditor{
+	position:fixed;
+	inset:0;
+	z-index:40;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	background-color:rgba(0,0,0,0.35);
+}
+.rebaseEditorPanel{
+	display:flex;
+	flex-direction:column;
+	width:min(820px, calc(100vw - 32px));
+	max-height:calc(100vh - 48px);
+	box-sizing:border-box;
+	border:1px solid var(--vscode-widget-border, rgba(128,128,128,0.35));
+	border-radius:8px;
+	background-color:var(--vscode-editorWidget-background, var(--vscode-editor-background));
+	color:var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+	box-shadow:0 10px 28px var(--vscode-widget-shadow, rgba(0,0,0,0.5));
+	font-size:13px;
+	overflow:hidden;
+}
+.rebaseEditorHeader{
+	display:flex;
+	align-items:baseline;
+	gap:12px;
+	padding:14px 16px 4px;
+}
+.rebaseEditorHeader h3{
+	margin:0;
+	font-size:14px;
+}
+.rebaseEditorHeader span, .rebaseEditorHint{
+	color:var(--vscode-descriptionForeground);
+}
+.rebaseEditorHint{
+	padding:0 16px 10px;
+	font-size:12px;
+}
+.rebaseEditorItems{
+	flex:1 1 auto;
+	overflow-y:auto;
+	border-top:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+}
+.rebaseEditorItem{
+	display:grid;
+	grid-template-columns:16px 96px 72px minmax(0,1fr) auto auto;
+	align-items:center;
+	gap:10px;
+	padding:6px 16px 6px 10px;
+	border-bottom:1px solid var(--vscode-panel-border, rgba(128,128,128,0.15));
+	-webkit-user-select:none;
+	user-select:none;
+}
+.rebaseEditorItem:last-child{
+	border-bottom:none;
+}
+.rebaseEditorItem:hover{
+	background-color:var(--vscode-list-hoverBackground, rgba(128,128,128,0.1));
+}
+.rebaseEditorItem.combined{
+	padding-left:30px;
+	grid-template-columns:16px 96px 72px minmax(0,1fr) auto auto;
+}
+.rebaseEditorItem.dropped .rebaseEditorHash, .rebaseEditorItem.dropped .rebaseEditorSubject, .rebaseEditorItem.dropped .rebaseEditorMeta{
+	text-decoration:line-through;
+	opacity:0.55;
+}
+.rebaseEditorItem.dragging{
+	opacity:0.4;
+}
+.rebaseEditorItem.dropBefore{
+	box-shadow:inset 0 2px 0 var(--vscode-focusBorder);
+}
+.rebaseEditorItem.dropAfter{
+	box-shadow:inset 0 -2px 0 var(--vscode-focusBorder);
+}
+.rebaseEditorGrip{
+	display:inline-flex;
+	color:var(--vscode-descriptionForeground);
+	cursor:grab;
+}
+.rebaseEditorAction{
+	height:24px;
+	padding:0 4px;
+	border:1px solid var(--vscode-dropdown-border, var(--vscode-input-border, rgba(128,128,128,0.35)));
+	border-radius:4px;
+	background-color:var(--vscode-dropdown-background, var(--vscode-input-background));
+	color:var(--vscode-dropdown-foreground, var(--vscode-foreground));
+	font:inherit;
+	font-size:12px;
+}
+.rebaseEditorHash{
+	color:var(--vscode-descriptionForeground);
+	font-family:var(--vscode-editor-font-family);
+	font-size:12px;
+}
+.rebaseEditorSubject{
+	overflow:hidden;
+	text-overflow:ellipsis;
+	white-space:nowrap;
+}
+.rebaseEditorMessageInput{
+	min-width:0;
+	padding:4px 6px;
+	border:1px solid var(--vscode-focusBorder);
+	border-radius:4px;
+	background-color:var(--vscode-input-background);
+	color:var(--vscode-input-foreground);
+	font:inherit;
+	resize:vertical;
+	-webkit-user-select:text;
+	user-select:text;
+}
+.rebaseEditorMeta{
+	color:var(--vscode-descriptionForeground);
+	font-size:12px;
+	white-space:nowrap;
+}
+.rebaseEditorMove{
+	display:inline-flex;
+	gap:2px;
+}
+.rebaseEditorMoveBtn{
+	display:inline-flex;
+	padding:2px;
+	border-radius:4px;
+	cursor:pointer;
+}
+.rebaseEditorMoveBtn:hover{
+	background-color:var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+}
+.rebaseEditorMoveBtn.disabled{
+	opacity:0.3;
+	cursor:default;
+	background-color:transparent;
+}
+.rebaseEditorMoveBtn svg{
+	width:12px;
+	height:12px;
+	fill:currentColor;
+}
+.rebaseEditorMessage{
+	display:flex;
+	align-items:center;
+	gap:8px;
+	padding:24px 16px;
+	color:var(--vscode-descriptionForeground);
+}
+.rebaseEditorMessage.error{
+	color:var(--vscode-errorForeground);
+}
+.rebaseEditorFooter{
+	display:flex;
+	align-items:center;
+	gap:10px;
+	padding:10px 16px;
+}
+.rebaseEditorLink{
+	color:var(--vscode-textLink-foreground);
+	font-size:12px;
+	cursor:pointer;
+}
+.rebaseEditorProblem{
+	flex:1 1 auto;
+	color:var(--vscode-errorForeground);
+	font-size:12px;
+	text-align:right;
+}
+.rebaseEditorBtn{
+	height:26px;
+	padding:0 14px;
+	border:1px solid var(--vscode-button-border, transparent);
+	border-radius:4px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.2));
+	color:var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+	font:inherit;
+	cursor:pointer;
+}
+.rebaseEditorBtn.primary{
+	background-color:var(--vscode-button-background);
+	color:var(--vscode-button-foreground);
+}
+.rebaseEditorBtn.disabled{
+	opacity:0.5;
+	cursor:default;
+}
+
+/* The bar shown while an operation is in progress (e.g. a rebase that stopped because of conflicts) */
+#operationBar{
+	display:none;
+	flex:1 0 100%;
+	align-items:center;
+	gap:10px;
+	padding:6px 10px;
+	box-sizing:border-box;
+	border:1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+	border-radius:6px;
+	background-color:color-mix(in srgb, var(--vscode-inputValidation-warningBorder, #b89500) 14%, transparent);
+	font-size:12.5px;
+}
+#operationBar.active{
+	display:flex;
+}
+#operationBar > svg{
+	flex:0 0 auto;
+	width:16px;
+	height:16px;
+	fill:var(--vscode-inputValidation-warningBorder, #b89500);
+}
+.operationBarSpacer{
+	flex:1 1 auto;
+}
+.operationBarBtn{
+	flex:0 0 auto;
+	padding:3px 10px;
+	border-radius:4px;
+	background-color:var(--vscode-button-secondaryBackground, rgba(128,128,128,0.2));
+	color:var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+	cursor:pointer;
+}
+.operationBarBtn.primary{
+	background-color:var(--vscode-button-background);
+	color:var(--vscode-button-foreground);
+}
+.operationBarBtn.danger{
+	color:var(--vscode-errorForeground);
+}
+
 /* The worktrees (in the list of the Worktrees button). The start of a long path is truncated (its end is the folder's name). */
 .worktreeListItem .stashListMeta{
 	flex-wrap:nowrap;

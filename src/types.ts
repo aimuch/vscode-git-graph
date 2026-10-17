@@ -1181,6 +1181,69 @@ export interface ResponseOpenWorktree extends ResponseWithErrorInfo {
 	readonly command: 'openWorktree';
 }
 
+/**
+ * A commit that's rebased by an interactive rebase.
+ */
+export interface GitRebaseCommit {
+	readonly hash: string;
+	readonly subject: string;
+	readonly message: string; // The full commit message
+	readonly author: string;
+	readonly date: number;
+}
+
+/**
+ * How a commit is rebased by an interactive rebase.
+ */
+export interface GitRebaseTodoItem {
+	readonly action: 'pick' | 'reword' | 'squash' | 'fixup' | 'drop';
+	readonly hash: string;
+	readonly message: string | null; // The new commit message (for reword)
+}
+
+/**
+ * An operation that's in progress in a repository (e.g. a rebase that stopped because of conflicts).
+ */
+export type GitOperation = 'rebase' | 'merge' | 'cherry-pick' | 'revert';
+
+export interface RequestLoadRebaseCommits extends RepoRequest {
+	readonly command: 'loadRebaseCommits';
+	readonly base: string;
+}
+export interface ResponseLoadRebaseCommits extends ResponseWithErrorInfo {
+	readonly command: 'loadRebaseCommits';
+	readonly base: string;
+	readonly commits: ReadonlyArray<GitRebaseCommit>; // Oldest first
+}
+
+export interface RequestRebaseInteractive extends RepoRequest {
+	readonly command: 'rebaseInteractive';
+	readonly base: string;
+	readonly todo: ReadonlyArray<GitRebaseTodoItem>; // In the order the commits are rebased
+}
+export interface ResponseRebaseInteractive extends ResponseWithErrorInfo {
+	readonly command: 'rebaseInteractive';
+}
+
+export interface RequestLoadOperationInProgress extends RepoRequest {
+	readonly command: 'loadOperationInProgress';
+}
+export interface ResponseLoadOperationInProgress extends BaseMessage {
+	readonly command: 'loadOperationInProgress';
+	readonly repo: string;
+	readonly operation: GitOperation | null;
+}
+
+export interface RequestControlOperation extends RepoRequest {
+	readonly command: 'controlOperation';
+	readonly operation: GitOperation;
+	readonly action: 'continue' | 'skip' | 'abort';
+}
+export interface ResponseControlOperation extends ResponseWithErrorInfo {
+	readonly command: 'controlOperation';
+	readonly action: 'continue' | 'skip' | 'abort';
+}
+
 export interface RequestUndo extends RepoRequest {
 	readonly command: 'undo';
 }
@@ -1565,6 +1628,10 @@ export type RequestMessage =
 	| RequestCherrypickCommit
 	| RequestCherrypickCommits
 	| RequestUndo
+	| RequestLoadRebaseCommits
+	| RequestRebaseInteractive
+	| RequestLoadOperationInProgress
+	| RequestControlOperation
 	| RequestLoadWorktrees
 	| RequestAddWorktree
 	| RequestRemoveWorktree
@@ -1643,6 +1710,10 @@ export type ResponseMessage =
 	| ResponseCherrypickCommit
 	| ResponseCherrypickCommits
 	| ResponseUndo
+	| ResponseLoadRebaseCommits
+	| ResponseRebaseInteractive
+	| ResponseLoadOperationInProgress
+	| ResponseControlOperation
 	| ResponseLoadWorktrees
 	| ResponseAddWorktree
 	| ResponseRemoveWorktree

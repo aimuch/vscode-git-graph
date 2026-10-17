@@ -718,6 +718,33 @@ export class GitGraphView extends Disposable {
 					error: await openFolderInNewWindow(msg.path)
 				});
 				break;
+			case 'loadRebaseCommits':
+				this.sendMessage({
+					command: 'loadRebaseCommits',
+					base: msg.base,
+					...await this.dataSource.getRebaseCommits(msg.repo, msg.base)
+				});
+				break;
+			case 'rebaseInteractive':
+				this.sendMessage({
+					command: 'rebaseInteractive',
+					error: await this.undoManager.trackHead(msg.repo, t('Rebase on "{0}"', /^[0-9a-f]{40,64}$/.test(msg.base) ? abbrevCommit(msg.base) : msg.base), () => this.dataSource.rebaseInteractive(msg.repo, msg.base, msg.todo), (error) => error === null)
+				});
+				break;
+			case 'loadOperationInProgress':
+				this.sendMessage({
+					command: 'loadOperationInProgress',
+					repo: msg.repo,
+					operation: await this.dataSource.getOperationInProgress(msg.repo)
+				});
+				break;
+			case 'controlOperation':
+				this.sendMessage({
+					command: 'controlOperation',
+					action: msg.action,
+					error: await this.dataSource.controlOperation(msg.repo, msg.operation, msg.action)
+				});
+				break;
 			case 'undo':
 				this.sendMessage({
 					command: 'undo',
@@ -840,6 +867,7 @@ export class GitGraphView extends Disposable {
 					<div id="terminalBtn" class="controlBtn" title="${t('Open a Terminal for this Repository')}"></div>
 					<div id="settingsBtn" class="controlBtn" title="${t('Repository Settings')}"></div>
 					<div id="fileHistoryBar"></div>
+					<div id="operationBar"></div>
 					<div id="minimap"></div>
 				</div>
 				<div id="content">

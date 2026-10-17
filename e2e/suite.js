@@ -710,6 +710,60 @@ async function run() {
 		return 'Blame: ' + text + '; the link requested the details of ' + details.commitHash.substring(0, 8);
 	});
 
+	await check('rebase-editor', '[GitLens] An interactive rebase runs the todo list chosen in the Rebase Editor (pick, reword, squash, fixup, drop & reorder) without opening an editor or running names / messages in a shell, and a rebase that stops can be continued or aborted', async () => {
+		const view = await getView(), dataSource = view.dataSource;
+		const repo = createScratchRepo('rebase-editor', { 'base.txt': 'base\n' }), base = git(repo, 'rev-parse', 'HEAD');
+		const injection = 'pwn$(>rebase-injection-marker)', marker = path.join(repo, 'rebase-injection-marker');
+		git(repo, 'branch', injection, base);
+		git(repo, 'checkout', '-q', '-b', 'feature');
+		const a = commitFile(repo, 'a.txt', 'a\n', 'Add a'), b = commitFile(repo, 'b.txt', 'b\n', 'Add b');
+		const c = commitFile(repo, 'c.txt', 'c\n', 'Add c'), d = commitFile(repo, 'd.txt', 'd\n', 'Add d');
+		const original = git(repo, 'rev-parse', 'HEAD');
+
+		// The commits that are rebased (oldest first)
+		const listed = await dataSource.getRebaseCommits(repo, injection);
+		assert(listed.error === null && JSON.stringify(listed.commits.map((commit) => commit.hash)) === JSON.stringify([a, b, c, d]) && listed.commits[1].subject === 'Add b' && listed.commits[1].author === 'E2E Author', 'Unexpected commits: ' + JSON.stringify(listed));
+
+		// Reorder, reword (with a message containing shell syntax), squash & drop
+		const message = 'B reworded $(>rebase-message-marker)\n\nWith a body';
+		const error = await dataSource.rebaseInteractive(repo, injection, [
+			{ action: 'pick', hash: b, message: null },
+			{ action: 'reword', hash: a, message: message },
+			{ action: 'squash', hash: c, message: null },
+			{ action: 'drop', hash: d, message: null }
+		]);
+		assert(error === null, 'The rebase failed: ' + error);
+		const subjects = git(repo, 'log', '--format=%s', base + '..HEAD').split('\n');
+		assert(JSON.stringify(subjects) === JSON.stringify(['B reworded $(>rebase-message-marker)', 'Add b']), 'Unexpected commits: ' + JSON.stringify(subjects));
+		const squashed = git(repo, 'log', '-1', '--format=%B');
+		assert(squashed.startsWith(message) && squashed.includes('Add c') && !squashed.includes('#'), 'Unexpected message of the squashed commit: ' + JSON.stringify(squashed));
+		assert(fs.existsSync(path.join(repo, 'c.txt')) && !fs.existsSync(path.join(repo, 'd.txt')), 'The squashed / dropped commits are wrong');
+		assert(!fs.existsSync(marker) && !fs.existsSync(path.join(repo, 'rebase-message-marker')), 'The branch name or message was run by the shell');
+		assert(await dataSource.getOperationInProgress(repo) === null, 'The rebase is still in progress');
+
+		// A rebase that stops because of a conflict can be aborted (and continued)
+		git(repo, 'reset', '-q', '--hard', original);
+		git(repo, 'checkout', '-q', '-b', 'conflicting', base);
+		const conflicting = commitFile(repo, 'a.txt', 'a (conflict)\n', 'Conflicting a');
+		git(repo, 'checkout', '-q', 'feature');
+		const stopped = await dataSource.rebaseInteractive(repo, conflicting, [{ action: 'pick', hash: a, message: null }, { action: 'pick', hash: b, message: null }]);
+		assert(stopped !== null && await dataSource.getOperationInProgress(repo) === 'rebase', 'The rebase didn\'t stop at the conflict: ' + stopped);
+		const response = await (async () => {
+			const count = record.responses.filter((msg) => msg.command === 'loadOperationInProgress').length;
+			await view.respondToMessage({ command: 'loadOperationInProgress', repo: repo });
+			return waitFor('the operation in progress', () => record.responses.filter((msg) => msg.command === 'loadOperationInProgress')[count]);
+		})();
+		assert(response.operation === 'rebase', 'Unexpected operation: ' + JSON.stringify(response));
+		const aborted = await dataSource.controlOperation(repo, 'rebase', 'abort');
+		assert(aborted === null && git(repo, 'rev-parse', 'HEAD') === original && await dataSource.getOperationInProgress(repo) === null, 'Aborting the rebase failed: ' + aborted);
+		await dataSource.rebaseInteractive(repo, conflicting, [{ action: 'pick', hash: a, message: null }]);
+		fs.writeFileSync(path.join(repo, 'a.txt'), 'a (resolved)\n');
+		git(repo, 'add', 'a.txt');
+		const continued = await dataSource.controlOperation(repo, 'rebase', 'continue');
+		assert(continued === null && await dataSource.getOperationInProgress(repo) === null && git(repo, 'log', '-1', '--format=%s') === 'Add a', 'Continuing the rebase failed: ' + continued);
+		return 'Rebased: ' + subjects.join(' ← ') + '; stopped at a conflict: aborted, then continued after resolving it';
+	});
+
 	await check('#932', 'An externally configured GIT_ASKPASS is used for authentication instead of Git Map\'s', async () => {
 		const result = await withTimeout((await getView()).dataSource.fetch(main, 'httpauth', false, false), 30000, 'fetching from the remote requiring authentication (Git Map\'s own Askpass prompt would wait for input)');
 		assert(result !== null, 'The fetch unexpectedly succeeded');

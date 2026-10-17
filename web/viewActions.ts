@@ -867,11 +867,14 @@ class ViewActions {
 
 	private rebaseAction(obj: string, name: string, actionOn: GG.RebaseActionOn, target: DialogTarget & (CommitTarget | RefTarget)) {
 		dialog.showForm(t('Are you sure you want to rebase {0} on {1} <b><i>{2}</i></b>?', (this.view.gitBranchHead !== null ? t('<b><i>{0}</i></b> (the current branch)', escapeHtml(this.view.gitBranchHead)) : t('the current branch')), actionOn.toLowerCase(), escapeHtml(name)), [
-			{ type: DialogInputType.Checkbox, name: t('Launch Interactive Rebase in new Terminal'), value: this.view.config.dialogDefaults.rebase.interactive },
+			{ type: DialogInputType.Checkbox, name: t('Interactive Rebase'), value: this.view.config.dialogDefaults.rebase.interactive, info: t('Choose how each commit is rebased (reorder, reword, squash or drop commits) in the Rebase Editor.') },
 			{ type: DialogInputType.Checkbox, name: t('Ignore Date'), value: this.view.config.dialogDefaults.rebase.ignoreDate, info: t('Only applicable to a non-interactive rebase.') }
 		], t('Yes, rebase'), (values) => {
-			let interactive = <boolean>values[0];
-			runAction({ command: 'rebase', repo: this.view.currentRepo, obj: obj, actionOn: actionOn, ignoreDate: <boolean>values[1], interactive: interactive }, interactive ? t('Launching Interactive Rebase') : t('Rebasing on {0}', t(actionOn)));
+			if (<boolean>values[0]) {
+				this.view.rebaseEditor.show(obj, name);
+			} else {
+				runAction({ command: 'rebase', repo: this.view.currentRepo, obj: obj, actionOn: actionOn, ignoreDate: <boolean>values[1], interactive: false }, t('Rebasing on {0}', t(actionOn)));
+			}
 		}, target);
 	}
 }

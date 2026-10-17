@@ -71,7 +71,7 @@
 	"config.dialog.pullBranch.squashMessageFormat.enumDescriptions.0": "使用 Git Map 生成的压缩提交说明。",
 	"config.dialog.pullBranch.squashMessageFormat.enumDescriptions.1": "使用 Git 生成的详细压缩提交说明（存储在 .git/SQUASH_MSG 中）。",
 	"config.dialog.rebase.ignoreDate.description": "“忽略日期（仅非交互式变基）”复选框的默认状态。",
-	"config.dialog.rebase.launchInteractiveRebase.description": "“在新终端中启动交互式变基”复选框的默认状态。",
+	"config.dialog.rebase.launchInteractiveRebase.description": "“交互式变基”复选框（打开变基编辑器）的默认状态。",
 	"config.dialog.resetCurrentBranchToCommit.mode.description": "重置操作默认使用的模式。",
 	"config.dialog.resetCurrentBranchToCommit.mode.enumDescriptions.0": "Soft - 保留所有更改，仅重置 HEAD",
 	"config.dialog.resetCurrentBranchToCommit.mode.enumDescriptions.1": "Mixed - 保留工作区，重置暂存区",

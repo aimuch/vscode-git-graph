@@ -1,12 +1,13 @@
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import { decode, encodingExists } from 'iconv-lite';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { AskpassEnvironment, AskpassManager } from './askpass/askpassManager';
 import { getConfig } from './config';
 import { Logger } from './logger';
-import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineRange, GitPushBranchMode, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
+import { CommitOrdering, DateType, DeepWriteable, ErrorInfo, ErrorInfoExtensionPrefix, GitBranchUpstream, GitBranchUpstreams, GitCommit, GitCommitDetails, GitCommitStash, GitCommitStats, GitConfigLocation, GitFileChange, GitFileHistory, GitFileHistoryCommit, GitFileStatus, GitLineBlame, GitLineRange, GitOperation, GitPushBranchMode, GitRebaseCommit, GitRebaseTodoItem, GitRepoConfig, GitRepoConfigBranches, GitResetMode, GitSignature, GitSignatureStatus, GitStash, GitStashStats, GitTagDetails, GitWorktree, MergeActionOn, RebaseActionOn, SquashMessageFormat, TagType, Writeable } from './types';
 import { GitExecutable, GitVersionRequirement, UNABLE_TO_FIND_GIT_MSG, UNCOMMITTED, abbrevCommit, constructIncompatibleGitVersionMessage, doesVersionMeetRequirement, getPathFromStr, getPathFromUri, openGitTerminal, pathWithTrailingSlash, realpath, resolveSpawnOutput, showErrorMessage } from './utils';
 import { Disposable } from './utils/disposable';
 import { Event } from './utils/event';
@@ -2165,6 +2166,90 @@ export class DataSource extends Disposable {
 	 * @param repo The repository to run the command in.
 	 * @returns The returned ErrorInfo (suitable for being sent to the Git Map View).
 	 */
+	/* Interactive Rebase & Operations in Progress */
+
+	/**
+	 * Get the commits that an interactive rebase of the current branch on a base rebases (the commits on the current branch since it
+	 * diverged from the base, except merge commits).
+	 * @param repo The path of the repository.
+	 * @param base The commit or branch the current branch is rebased on.
+	 * @returns The commits (oldest first), and the ErrorInfo of getting them.
+	 */
+	public getRebaseCommits(repo: string, base: string): Promise<{ commits: GitRebaseCommit[], error: ErrorInfo }> {
+		return this.resolveCommitHash(repo, base).then((baseHash) => this.spawnGit(['-c', 'log.showSignature=false', 'log', '--reverse', '--no-merges', '--format=' + GIT_LOG_SEPARATOR + '%H' + GIT_LOG_SEPARATOR + '%an' + GIT_LOG_SEPARATOR + '%at' + GIT_LOG_SEPARATOR + '%B', baseHash + '..HEAD', '--'], repo, (stdout) => {
+			const commits: GitRebaseCommit[] = [];
+			const records = stdout.split(GIT_LOG_SEPARATOR);
+			// Each commit is: "", hash, author, date, message (the message can contain new lines)
+			for (let i = 1; i + 3 < records.length; i += 4) {
+				const message = records[i + 3].replace(/\s+$/, '');
+				commits.push({ hash: records[i], author: records[i + 1], date: parseInt(records[i + 2]), message: message, subject: message.split(/\r?\n/)[0] });
+			}
+			return { commits: commits, error: null };
+		})).catch((errorMessage: string) => ({ commits: [], error: errorMessage }));
+	}
+
+	/**
+	 * Rebase the current branch of a repository interactively, as chosen in the Rebase Editor of the Git Map View: the commits are rebased
+	 * in the order of the todo list (picked, reworded with a new message, squashed or fixed up into the previous commit, or dropped). No
+	 * editor is opened by Git: the todo list is written by the sequence editor, and the messages of squashed commits are combined.
+	 * @param repo The path of the repository.
+	 * @param base The commit or branch the current branch is rebased on.
+	 * @param todo How each commit is rebased.
+	 * @returns The ErrorInfo of the rebase (e.g. if it stopped because of conflicts, in which case the rebase is in progress).
+	 */
+	public rebaseInteractive(repo: string, base: string, todo: ReadonlyArray<GitRebaseTodoItem>): Promise<ErrorInfo> {
+		// The base is resolved to a commit hash, so that the branch name is never included in the commands run by the shell (see #940)
+		return this.resolveCommitHash(repo, base).then((baseHash) => {
+			const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'git-map-rebase-')), lines: string[] = [];
+			todo.forEach((item, index) => {
+				if (!/^[0-9a-f]{7,64}$/.test(item.hash)) throw new Error('Invalid commit hash: ' + item.hash);
+				lines.push((item.action === 'reword' ? 'pick' : item.action) + ' ' + item.hash);
+				if (item.action === 'reword' && item.message !== null) {
+					// The new message is read from a file, so that it's never included in the command run by the shell
+					const messageFile = path.join(directory, 'message-' + index + '.txt').replace(/\\/g, '/');
+					fs.writeFileSync(messageFile, item.message);
+					lines.push('exec git commit --amend --allow-empty --cleanup=strip -F "' + messageFile + '"');
+				}
+			});
+			const todoFile = path.join(directory, 'git-rebase-todo').replace(/\\/g, '/');
+			fs.writeFileSync(todoFile, lines.join('\n') + '\n');
+			const args = ['rebase', '--interactive'];
+			if (getConfig().signCommits) args.push('-S');
+			args.push(baseHash);
+			// The sequence editor replaces the todo list written by Git with the chosen one (Git runs it with sh, including on Windows), and
+			// the editor ":" isn't run by Git (so the combined messages of squashed commits are used)
+			return this._spawnGit(args, repo, () => null, false, null, { GIT_SEQUENCE_EDITOR: 'cp "' + todoFile + '"', GIT_EDITOR: ':' });
+		}).catch((errorMessage: string | Error) => errorMessage instanceof Error ? errorMessage.message : errorMessage);
+	}
+
+	/**
+	 * Get the operation that's in progress in a repository (e.g. a rebase or merge that stopped because of conflicts).
+	 * @param repo The path of the repository.
+	 * @returns The operation, or NULL if no operation is in progress.
+	 */
+	public async getOperationInProgress(repo: string): Promise<GitOperation | null> {
+		const operations: [string, GitOperation][] = [['rebase-merge', 'rebase'], ['rebase-apply', 'rebase'], ['MERGE_HEAD', 'merge'], ['CHERRY_PICK_HEAD', 'cherry-pick'], ['REVERT_HEAD', 'revert']];
+		for (const [file, operation] of operations) {
+			const gitPath = await this.spawnGit(['rev-parse', '--git-path', file], repo, (stdout) => stdout.trim()).catch(() => '');
+			if (gitPath !== '' && fs.existsSync(path.resolve(repo, gitPath))) return operation;
+		}
+		return null;
+	}
+
+	/**
+	 * Continue, skip or abort an operation that's in progress in a repository. Continuing doesn't open an editor (the prepared commit
+	 * message is used).
+	 * @param repo The path of the repository.
+	 * @param operation The operation.
+	 * @param action The action.
+	 * @returns The ErrorInfo from the executed command.
+	 */
+	public controlOperation(repo: string, operation: GitOperation, action: 'continue' | 'skip' | 'abort') {
+		const args = operation === 'merge' && action === 'continue' ? ['commit', '--no-edit'] : [operation, '--' + action];
+		return this._spawnGit(args, repo, () => null, false, null, { GIT_EDITOR: ':' }).catch((errorMessage: string) => errorMessage);
+	}
+
+
 	/* Worktrees */
 
 	/**
@@ -2262,7 +2347,7 @@ export class DataSource extends Disposable {
 	 * @param resolveValue A callback invoked to resolve the data from `stdout` and `stderr`.
 	 * @param ignoreExitCode Ignore the exit code returned by Git (default: `FALSE`).
 	 */
-	private _spawnGit<T>(args: string[], repo: string, resolveValue: { (stdout: Buffer, stderr: string): T }, ignoreExitCode: boolean = false, input: string | null = null) {
+	private _spawnGit<T>(args: string[], repo: string, resolveValue: { (stdout: Buffer, stderr: string): T }, ignoreExitCode: boolean = false, input: string | null = null, env: { [name: string]: string } | null = null) {
 		return new Promise<T>((resolve, reject) => {
 			if (this.gitExecutable === null) {
 				return reject(UNABLE_TO_FIND_GIT_MSG);
@@ -2270,7 +2355,7 @@ export class DataSource extends Disposable {
 
 			const gitProcess = cp.spawn(this.gitExecutable.path, args, {
 				cwd: repo,
-				env: Object.assign({}, process.env, this.askpassEnv)
+				env: Object.assign({}, process.env, this.askpassEnv, env)
 			});
 			if (input !== null && gitProcess.stdin) {
 				// The input is written to the standard input of Git (if Git exits before reading it, the error is ignored)

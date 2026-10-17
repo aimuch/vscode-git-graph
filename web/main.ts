@@ -69,6 +69,8 @@ class GitGraphView {
 	public readonly tableColumns: TableColumns;
 	public readonly stashList: StashList;
 	public readonly worktreeList: WorktreeList;
+	public readonly rebaseEditor: RebaseEditor;
+	private readonly operationBar: OperationBar;
 	private readonly rowActions: RowActions;
 	private readonly findWidget: FindWidget;
 	private readonly settingsWidget: SettingsWidget;
@@ -99,6 +101,8 @@ class GitGraphView {
 		this.actions = new ViewActions(this);
 		this.rowActions = new RowActions(this);
 		this.worktreeList = new WorktreeList(this);
+		this.rebaseEditor = new RebaseEditor(this);
+		this.operationBar = new OperationBar(this);
 		this.cdvFileView = new CdvFileView(this);
 		this.tableColumns = new TableColumns(this);
 		this.stashList = new StashList(this);
@@ -326,6 +330,8 @@ class GitGraphView {
 		this.renderFileHistoryBar();
 		if (repo !== this.currentRepo) this.minimap.resetZoom();
 		this.worktreeList.clear();
+		this.rebaseEditor.close();
+		this.operationBar.render(null);
 		this.lastUndoId = -1;
 		this.hideUndoToast();
 		this.selectedCommits = new Set();
@@ -676,6 +682,7 @@ class GitGraphView {
 				this.loadRepoInfo(msg.branches, msg.head, msg.remotes, msg.stashes, msg.upstreams, msg.isRepo);
 				this.renderUndo(msg.undo);
 				this.worktreeList.requestWorktrees();
+				this.operationBar.requestOperation();
 			}
 		} else {
 			this.displayLoadDataError(t('Unable to load Repository Info'), msg.error);
@@ -1359,6 +1366,15 @@ class GitGraphView {
 	}
 
 
+	/**
+	 * Process the operation in progress in the repository (e.g. a rebase that stopped because of conflicts), loaded by the extension.
+	 * @param msg The message containing the operation.
+	 */
+	public processLoadOperationInProgressResponse(msg: GG.ResponseLoadOperationInProgress) {
+		this.operationBar.processLoadOperationInProgressResponse(msg);
+	}
+
+
 	/* Undo */
 
 	/**
@@ -1910,7 +1926,10 @@ class GitGraphView {
 					possibleChordStart = Date.now();
 				}
 			} else if (e.key === 'Escape') {
-				if (this.selectedCommits.size > 0) {
+				if (this.rebaseEditor.isOpen()) {
+					this.rebaseEditor.close();
+					handledEvent(e);
+				} else if (this.selectedCommits.size > 0) {
 					this.clearCommitSelection();
 					handledEvent(e);
 				} else if (this.worktreeList.isListOpen()) {

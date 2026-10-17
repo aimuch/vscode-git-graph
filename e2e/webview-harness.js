@@ -41,6 +41,7 @@
 
 	let undoInfo = null; // The action that the extension says can be undone
 	let worktreesFixture = []; // The worktrees of the repository
+	let operationFixture = null; // The operation in progress in the repository
 	const respond = (msg) => {
 		switch (msg.command) {
 			case 'loadRepoInfo':
@@ -50,6 +51,16 @@
 				return { command: 'undo', error: null };
 			case 'loadWorktrees':
 				return { command: 'loadWorktrees', repo: msg.repo, worktrees: worktreesFixture, error: null };
+			case 'loadRebaseCommits':
+				return { command: 'loadRebaseCommits', base: msg.base, error: null, commits: [5, 4, 3, 2].map((i) => makeCommits(6)[i - 1]).map((commit) => ({ hash: commit.hash, subject: commit.message, message: commit.message + '\n\nThe body of ' + commit.message, author: commit.author, date: commit.date })) };
+			case 'rebaseInteractive':
+				return { command: 'rebaseInteractive', error: null };
+			case 'rebase':
+				return { command: 'rebase', actionOn: msg.actionOn, interactive: msg.interactive, error: null };
+			case 'loadOperationInProgress':
+				return { command: 'loadOperationInProgress', repo: msg.repo, operation: operationFixture };
+			case 'controlOperation':
+				return { command: 'controlOperation', action: msg.action, error: null };
 			case 'addWorktree':
 				return { command: 'addWorktree', errors: [null] };
 			case 'removeWorktree':
@@ -1258,6 +1269,84 @@
 			mouse(document.getElementById('fileHistoryExit'), 'click');
 			await waitFor('all of the commits to be loaded', () => requestsOf('loadCommits').slice(-1)[0].filePath === null && requestsOf('loadCommits').slice(-1)[0].lineRange === null && rows().length === 10);
 			return bar.replace(/\s+/g, ' ').trim() + '; changes: ' + changes.join(', ');
+		});
+
+		await check('ui-rebase-editor', '[GitLens] An interactive rebase opens the Rebase Editor (reordering commits by dragging them, and choosing to pick, reword, squash, fixup or drop each one), and an operation in progress can be continued or aborted', async () => {
+			// Open the Rebase Editor from the Rebase dialog
+			mouse(commitRow(5), 'contextmenu', { button: 2 });
+			const menu = await waitFor('the context menu', () => document.querySelector('.contextMenu'));
+			mouse(Array.from(menu.querySelectorAll('.contextMenuItem')).find((item) => item.textContent.startsWith('Rebase current branch on this Commit')), 'click');
+			await waitFor('the dialog to open', () => document.querySelector('.dialog'));
+			const interactive = document.getElementById('dialogInput0');
+			interactive.checked = true;
+			mouse(document.getElementById('dialogAction'), 'click');
+			const editor = await waitFor('the Rebase Editor to load', () => document.querySelectorAll('#rebaseEditor .rebaseEditorItem').length === 4 ? document.getElementById('rebaseEditor') : null);
+			assert(requestsOf('loadRebaseCommits').slice(-1)[0].base === hash(6) && editor.textContent.includes('Rebase main on 00000000'), 'Unexpected Rebase Editor: ' + editor.textContent.substring(0, 120));
+			const items = () => Array.from(document.querySelectorAll('#rebaseEditor .rebaseEditorItem'));
+			const order = () => items().map((item) => item.querySelector('.rebaseEditorSubject, .rebaseEditorMessageInput').value || item.querySelector('.rebaseEditorSubject, .rebaseEditorMessageInput').textContent);
+			const setAction = (index, action) => {
+				const select = items()[index].querySelector('select');
+				select.value = action;
+				select.dispatchEvent(new Event('change', { bubbles: true }));
+			};
+			const start = () => document.getElementById('rebaseEditorStart');
+			assert(JSON.stringify(order()) === JSON.stringify(['Resolve #104', 'Commit 3', 'Resolve #102', 'Commit 1']) && !start().classList.contains('disabled'), 'Unexpected commits: ' + JSON.stringify(order()));
+
+			// The first commit can't be squashed
+			setAction(0, 'squash');
+			assert(start().classList.contains('disabled') && editor.querySelector('.rebaseEditorProblem').textContent.includes('can\'t be squashed'), 'Squashing the first commit wasn\'t refused');
+			setAction(0, 'pick');
+
+			// Reword, fixup & drop, and reorder (with the buttons, and by dragging)
+			setAction(1, 'reword');
+			const messageInput = items()[1].querySelector('textarea');
+			assert(messageInput.value === 'Commit 3\n\nThe body of Commit 3', 'The message to reword isn\'t the full message: ' + JSON.stringify(messageInput.value));
+			messageInput.value = 'Reworded commit 3';
+			messageInput.dispatchEvent(new Event('input', { bubbles: true }));
+			setAction(2, 'fixup');
+			setAction(3, 'drop');
+			mouse(items()[3].querySelector('.rebaseEditorMoveBtn[data-move="-1"]'), 'click');
+			assert(JSON.stringify(order()) === JSON.stringify(['Resolve #104', 'Reworded commit 3', 'Commit 1', 'Resolve #102']), 'Moving a commit up failed: ' + JSON.stringify(order()));
+			const dataTransfer = new DataTransfer(), dragged = items()[0], target = items()[2], targetBounds = target.getBoundingClientRect();
+			dragged.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dataTransfer }));
+			target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dataTransfer, clientY: targetBounds.bottom - 2 }));
+			target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dataTransfer, clientY: targetBounds.bottom - 2 }));
+			dragged.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+			assert(JSON.stringify(order()) === JSON.stringify(['Reworded commit 3', 'Commit 1', 'Resolve #104', 'Resolve #102']), 'Dragging a commit failed: ' + JSON.stringify(order()));
+
+			mouse(start(), 'click');
+			const request = await waitFor('the rebase to be started', () => requestsOf('rebaseInteractive').slice(-1)[0]);
+			assert(JSON.stringify(request.todo) === JSON.stringify([
+				{ action: 'reword', hash: hash(4), message: 'Reworded commit 3' },
+				{ action: 'drop', hash: hash(2), message: null },
+				{ action: 'pick', hash: hash(5), message: null },
+				{ action: 'fixup', hash: hash(3), message: null }
+			]) && request.base === hash(6) && document.getElementById('rebaseEditor') === null, 'Unexpected rebase: ' + JSON.stringify(request));
+
+			// An operation in progress is shown, and can be continued or aborted (after confirming)
+			await waitFor('the dialog to close', () => document.querySelector('.dialog') === null || document.querySelector('.dialog.actionRunning') === null);
+			if (document.querySelector('.dialog') !== null) key(document.body, 'Escape');
+			operationFixture = 'rebase';
+			try {
+				mouse(document.getElementById('refreshBtn'), 'click');
+				const bar = await waitFor('the operation bar', () => document.querySelector('#operationBar.active'));
+				const buttons = Array.from(bar.querySelectorAll('.operationBarBtn')).map((button) => button.textContent);
+				assert(bar.textContent.includes('A rebase is in progress') && JSON.stringify(buttons) === JSON.stringify(['Open Source Control', 'Continue', 'Skip Commit', 'Abort']), 'Unexpected operation bar: ' + bar.textContent);
+				mouse(bar.querySelector('[data-action="continue"]'), 'click');
+				const continued = await waitFor('the rebase to be continued', () => requestsOf('controlOperation').slice(-1)[0]);
+				assert(continued.operation === 'rebase' && continued.action === 'continue', 'Unexpected request: ' + JSON.stringify(continued));
+				await waitFor('the dialog to close', () => document.querySelector('.dialog') === null || document.querySelector('.dialog.actionRunning') === null);
+				mouse(document.querySelector('#operationBar [data-action="abort"]'), 'click');
+				const confirmElem = await waitFor('the confirmation', () => document.querySelector('.dialog'));
+				assert(confirmElem.textContent.includes('abort the rebase'), 'Unexpected confirmation: ' + confirmElem.textContent);
+				mouse(document.getElementById('dialogAction'), 'click');
+				await waitFor('the rebase to be aborted', () => requestsOf('controlOperation').slice(-1)[0].action === 'abort');
+			} finally {
+				operationFixture = null;
+				mouse(document.getElementById('refreshBtn'), 'click');
+				await waitFor('the operation bar to be hidden', () => document.querySelector('#operationBar.active') === null);
+			}
+			return 'Todo: ' + request.todo.map((item) => item.action + ' ' + item.hash.substring(32)).join(', ') + '; operation bar: continued & aborted';
 		});
 
 		await check('ui-find-filter', '[Redesign] The search box adds conditions as chips, can only show the matching commits (keeping the graph connected), and searches the files changed by the commits (file:)', async () => {

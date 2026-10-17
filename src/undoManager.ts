@@ -1,8 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { DataSource } from './dataSource';
 import { t } from './l10n';
-import { ErrorInfo, UndoInfo } from './types';
+import { ErrorInfo, GitOperation, UndoInfo } from './types';
 
 /**
  * The commit & branch that HEAD refers to.
@@ -273,12 +271,22 @@ export class UndoManager {
 	 * @returns A description of the operation, or NULL if no operation is in progress.
 	 */
 	private async getOperationInProgress(repo: string) {
-		const operations: [string, string][] = [['MERGE_HEAD', t('a merge')], ['CHERRY_PICK_HEAD', t('a cherry pick')], ['REVERT_HEAD', t('a revert')], ['rebase-merge', t('a rebase')], ['rebase-apply', t('a rebase')]];
-		for (const [file, description] of operations) {
-			const gitPath = await this.git(repo, ['rev-parse', '--git-path', file]);
-			if (gitPath !== null && gitPath.trim() !== '' && fs.existsSync(path.resolve(repo, gitPath.trim()))) return description;
+		let operation: GitOperation | null = null;
+		try {
+			operation = await this.dataSource.getOperationInProgress(repo);
+		} catch (_) { }
+		switch (operation) {
+			case 'merge':
+				return t('a merge');
+			case 'cherry-pick':
+				return t('a cherry pick');
+			case 'revert':
+				return t('a revert');
+			case 'rebase':
+				return t('a rebase');
+			default:
+				return null;
 		}
-		return null;
 	}
 
 	/**

@@ -39,6 +39,18 @@ function observeResponseMessages(gitGraph: GitGraphView, imageResizer: ImageResi
 			case 'undo':
 				refreshOrDisplayError(msg.error, t('Unable to Undo'));
 				break;
+			case 'loadRebaseCommits':
+				gitGraph.rebaseEditor.processLoadRebaseCommitsResponse(msg);
+				break;
+			case 'rebaseInteractive':
+				refreshOrDisplayError(msg.error, t('Unable to Rebase'));
+				break;
+			case 'loadOperationInProgress':
+				gitGraph.processLoadOperationInProgressResponse(msg);
+				break;
+			case 'controlOperation':
+				refreshOrDisplayError(msg.error, msg.action === 'continue' ? t('Unable to Continue') : msg.action === 'skip' ? t('Unable to Skip the Commit') : t('Unable to Abort'));
+				break;
 			case 'loadWorktrees':
 				gitGraph.worktreeList.processLoadWorktreesResponse(msg);
 				break;
