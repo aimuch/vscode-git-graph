@@ -353,7 +353,7 @@ describe('RepoManager', () => {
 			// Run
 			vscode.mockExtensionSettingReturnValue('maxDepthOfRepoSearch', 0);
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.maxDepthOfRepoSearch'
+				affectsConfiguration: (section) => section === 'git-map.maxDepthOfRepoSearch'
 			});
 
 			// Assert
@@ -372,7 +372,7 @@ describe('RepoManager', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.date.type'
+				affectsConfiguration: (section) => section === 'git-map.date.type'
 			});
 
 			// Assert
@@ -1311,7 +1311,7 @@ describe('RepoManager', () => {
 			// Run
 			vscode.mockExtensionSettingReturnValue('maxDepthOfRepoSearch', 1);
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.maxDepthOfRepoSearch'
+				affectsConfiguration: (section) => section === 'git-map.maxDepthOfRepoSearch'
 			});
 			await waitForExpect(() => expect(spyOnLog).toHaveBeenCalledWith('Added new repo: /path/to/workspace-folder1/repo'));
 
@@ -1352,7 +1352,7 @@ describe('RepoManager', () => {
 			// Run
 			vscode.mockExtensionSettingReturnValue('maxDepthOfRepoSearch', 1);
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.maxDepthOfRepoSearch'
+				affectsConfiguration: (section) => section === 'git-map.maxDepthOfRepoSearch'
 			});
 			await waitForExpect(() => expect(spyOnLog).toHaveBeenCalledWith('Completed searching workspace for new repos'));
 
@@ -1383,7 +1383,7 @@ describe('RepoManager', () => {
 			// Run
 			vscode.mockExtensionSettingReturnValue('maxDepthOfRepoSearch', 1);
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.maxDepthOfRepoSearch'
+				affectsConfiguration: (section) => section === 'git-map.maxDepthOfRepoSearch'
 			});
 			await waitForExpect(() => expect(spyOnLog).toHaveBeenCalledWith('Completed searching workspace for new repos'));
 
@@ -1413,7 +1413,7 @@ describe('RepoManager', () => {
 			// Run
 			vscode.mockExtensionSettingReturnValue('maxDepthOfRepoSearch', 1);
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.maxDepthOfRepoSearch'
+				affectsConfiguration: (section) => section === 'git-map.maxDepthOfRepoSearch'
 			});
 			await waitForExpect(() => expect(spyOnLog).toHaveBeenCalledWith('Completed searching workspace for new repos'));
 

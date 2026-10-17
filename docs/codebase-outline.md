@@ -16,7 +16,8 @@ Git Map has two parts that communicate with messages: the extension (`src/`, run
 | `avatarManager.ts` | Fetches & caches the avatars of commit authors (when enabled). |
 | `diffDocProvider.ts` | Provides the contents of files at a revision to the Visual Studio Code Diff View. |
 | `statusBarItem.ts` | The Git Map Status Bar Item. |
-| `config.ts` | Typed access to the `git-graph.*` Extension Settings. |
+| `config.ts` | Typed access to the `git-map.*` Extension Settings. |
+| `settingsMigration.ts` | Copies the Extension Settings named `git-graph.*` (before version 2.1.0, and by the original Git Graph extension) to `git-map.*` when Git Map starts. |
 | `l10n.ts` | Translation of messages (see [Localisation](#localisation)). |
 | `askpass/` | Git Map's integrated Askpass, which prompts for credentials needed by Git. |
 | `utils.ts`, `utils/` | Shared helpers (Visual Studio Code APIs, Git executable discovery, events, disposables, queues). |

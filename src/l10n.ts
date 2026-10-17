@@ -10,7 +10,7 @@ const L10N_DIRECTORY = path.join(__dirname, '..', 'l10n');
 const loadedBundles: { [language: string]: L10nBundle | null } = {};
 
 /**
- * Get the language that Git Map displays messages in, according to the `git-graph.language` Extension Setting, and the display language of Visual Studio Code.
+ * Get the language that Git Map displays messages in, according to the `git-map.language` Extension Setting, and the display language of Visual Studio Code.
  * @returns The language.
  */
 export function getLanguage(): Language {

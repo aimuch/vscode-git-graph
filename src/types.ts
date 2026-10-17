@@ -361,7 +361,7 @@ export interface AppearanceConfig {
 	readonly colourPreset: string;
 	readonly colourPresets: ReadonlyArray<{ readonly name: string, readonly colours: ReadonlyArray<string> }>;
 	readonly displayLanguage: string; // The display language of Visual Studio Code
-	readonly language: string; // The value of the git-graph.language Extension Setting
+	readonly language: string; // The value of the git-map.language Extension Setting
 	readonly statusBarItemDisplay: StatusBarItemDisplay;
 }
 

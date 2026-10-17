@@ -363,18 +363,18 @@ const UPDATABLE_EXTENSION_SETTINGS: { readonly [key: string]: ReadonlyArray<stri
 
 /**
  * Update one of the Extension Settings that can be changed from the Repository Settings Widget (globally, for all repositories).
- * @param key The key of the Extension Setting (without the `git-graph.` prefix).
+ * @param key The key of the Extension Setting (without the `git-map.` prefix).
  * @param value The new value of the Extension Setting.
  * @returns A promise resolving to the ErrorInfo of the executed command.
  */
 export function updateExtensionSetting(key: string, value: string | boolean): Thenable<ErrorInfo> {
 	const values = UPDATABLE_EXTENSION_SETTINGS[key];
 	if (typeof values === 'undefined' || !values.includes(value)) {
-		return Promise.resolve(t('The Extension Setting "{0}" can\'t be set to "{1}".', 'git-graph.' + key, String(value)));
+		return Promise.resolve(t('The Extension Setting "{0}" can\'t be set to "{1}".', 'git-map.' + key, String(value)));
 	}
-	return vscode.workspace.getConfiguration('git-graph').update(key, value, vscode.ConfigurationTarget.Global).then(
+	return vscode.workspace.getConfiguration('git-map').update(key, value, vscode.ConfigurationTarget.Global).then(
 		() => null,
-		() => t('Visual Studio Code was unable to update the Extension Setting "{0}".', 'git-graph.' + key)
+		() => t('Visual Studio Code was unable to update the Extension Setting "{0}".', 'git-map.' + key)
 	);
 }
 

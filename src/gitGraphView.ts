@@ -91,7 +91,7 @@ export class GitGraphView extends Disposable {
 		this.undoManager = getUndoManager(dataSource);
 
 		const config = getConfig();
-		this.panel = vscode.window.createWebviewPanel('git-graph', 'Git Map', column || vscode.ViewColumn.One, {
+		this.panel = vscode.window.createWebviewPanel('git-map', 'Git Map', column || vscode.ViewColumn.One, {
 			enableScripts: true,
 			localResourceRoots: this.getLocalResourceRoots(extensionPath),
 			retainContextWhenHidden: config.retainContextWhenHidden
@@ -129,7 +129,7 @@ export class GitGraphView extends Disposable {
 
 			// Re-render the view when the appearance of the graph, or the language, is changed
 			vscode.workspace.onDidChangeConfiguration((event) => {
-				if (this.panel.visible && (event.affectsConfiguration('git-graph.graph.colourPreset') || event.affectsConfiguration('git-graph.graph.colours') || event.affectsConfiguration('git-graph.graph.minimap') || event.affectsConfiguration('git-graph.graph.style') || event.affectsConfiguration('git-graph.graph.density') || event.affectsConfiguration('git-graph.graph.freezeColumnHeaders') || event.affectsConfiguration('git-graph.graph.freezeFooter') || event.affectsConfiguration('git-graph.graph.nodeStyle') || event.affectsConfiguration('git-graph.language'))) {
+				if (this.panel.visible && (event.affectsConfiguration('git-map.graph.colourPreset') || event.affectsConfiguration('git-map.graph.colours') || event.affectsConfiguration('git-map.graph.minimap') || event.affectsConfiguration('git-map.graph.style') || event.affectsConfiguration('git-map.graph.density') || event.affectsConfiguration('git-map.graph.freezeColumnHeaders') || event.affectsConfiguration('git-map.graph.freezeFooter') || event.affectsConfiguration('git-map.graph.nodeStyle') || event.affectsConfiguration('git-map.language'))) {
 					this.update();
 				} else if (this.panel.visible && this.isGraphViewLoaded && event.affectsConfiguration('workbench.iconTheme')) {
 					this.sendMessage({ command: 'loadFileIconTheme', theme: this.getFileIconTheme() });
@@ -884,7 +884,7 @@ export class GitGraphView extends Disposable {
 			body = `<body class="unableToLoad">
 			<h2>${t('Unable to load Git Map')}</h2>
 			<p class="unableToLoadMessage">${t('No Git repositories were found in the current workspace when it was last scanned by Git Map.')}</p>
-			<p>${t('If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting "git-graph.maxDepthOfRepoSearch" appropriately (read the {0} for more information).', '<a href="https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#max-depth-of-repo-search" target="_blank">' + t('documentation') + '</a>')}</p>
+			<p>${t('If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting "git-map.maxDepthOfRepoSearch" appropriately (read the {0} for more information).', '<a href="https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#max-depth-of-repo-search" target="_blank">' + t('documentation') + '</a>')}</p>
 			<p><div id="rescanForReposBtn" class="roundedBtn">${t('Re-scan the current workspace for repositories')}</div></p>
 			<script nonce="${nonce}">(function(){ var api = acquireVsCodeApi(); document.getElementById('rescanForReposBtn').addEventListener('click', function(){ api.postMessage({command: 'rescanForRepos'}); }); })();</script>
 			</body>`;

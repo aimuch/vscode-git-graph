@@ -2,7 +2,7 @@
 
 View a graph of your repository's Git history, and easily perform Git actions from the graph. Configurable to look the way you want!
 
-> This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-map`: uninstall the original Git Graph extension (`mhutchie.git-graph`) before installing it, as both register the same commands and settings. The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
+> This is a fork of Git Graph by Michael Hutchison, continuing from its 1.30.0 release: it's adapted to recent versions of Visual Studio Code, fixes a number of reported issues, and adds new features such as a Simplified Chinese interface (see the [Release Notes](CHANGELOG.md) and the [issue triage](docs/upstream-issue-triage.md)). Its extension identifier is `aimdev.git-map`, and its commands & settings are named `git-map.*`, so it can be installed alongside the original Git Graph extension (`mhutchie.git-graph`). The projects it's based on are listed in the [Acknowledgements](#acknowledgements).
 
 **Git Map and the Source Control Graph of Visual Studio Code:** Visual Studio Code has a built-in Source Control Graph (in the Source Control View), which shows the history of the current branch (and the branches you choose) alongside your changes: it's ideal for seeing your incoming & outgoing commits at a glance. Git Map is a full view in the editor area for working with the whole history of a repository: all of its branches, remote branches, tags, stashes & worktrees on one graph, the actions of Git from the context menus of the graph (with an undo of the last one), the details & comparisons of commits (with code reviews), the history of files & lines, the blame of the current line, and interactive rebasing in an editor. It stays fast with tens of thousands of commits. Both can be used side by side.
 
@@ -50,7 +50,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
     * Filter the branches shown in Git Map using the 'Branches' dropdown menu. The options for filtering the branches are:
         * Show All branches
         * Select one or more branches to be viewed
-        * Select from a user predefined array of custom glob patterns (by setting `git-graph.customBranchGlobPatterns`)
+        * Select from a user predefined array of custom glob patterns (by setting `git-map.customBranchGlobPatterns`)
     * Fetch from Remote(s) _(available on the top control bar)_
     * Find Widget allows you to quickly find one or more commits containing a specific phrase (in the commit message / date / author / hash, branch or tag names).
     * Repository Settings Widget:
@@ -58,7 +58,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * Configure "Issue Linking" - Converts issue numbers in commit messages into hyperlinks, that open the issue in your issue tracking system.
         * Configure "Pull Request Creation" - Automates the opening and pre-filling of a Pull Request form, directly from a branches context menu.
             * Support for the publicly hosted Bitbucket, GitHub and GitLab Pull Request providers is built-in.
-            * Custom Pull Request providers can be configured using the Extension Setting `git-graph.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#custom-pull-request-providers).
+            * Custom Pull Request providers can be configured using the Extension Setting `git-map.customPullRequestProviders` (e.g. for use with privately hosted Pull Request providers). Information on how to configure custom providers is available [here](https://github.com/aimuch/vscode-git-map/blob/main/docs/extension-settings.md#custom-pull-request-providers).
         * Export your Git Map Repository Configuration to a file that can be committed in the repository. It allows others working in the same repository to automatically use the same Git Map configuration.
     * Keyboard Shortcuts (available in the Git Map View):
         * `CTRL/CMD + F`: Open the Find Widget.
@@ -73,7 +73,7 @@ View a graph of your repository's Git history, and easily perform Git actions fr
         * `Enter`: If a dialog is open, pressing enter submits the dialog, taking the primary (left) action.
         * `Escape`: Closes the active dialog, context menu or the Commit Details View.
     * Resize the width of each column, and show/hide the Date, Author & Commit columns.
-    * Common Emoji Shortcodes are automatically replaced with the corresponding emoji in commit messages (including all [gitmoji](https://gitmoji.carloscuesta.me/)). Custom Emoji Shortcode mappings can be defined in `git-graph.customEmojiShortcodeMappings`.
+    * Common Emoji Shortcodes are automatically replaced with the corresponding emoji in commit messages (including all [gitmoji](https://gitmoji.carloscuesta.me/)). Custom Emoji Shortcode mappings can be defined in `git-map.customEmojiShortcodeMappings`.
 * File & Line History: "View File History in Git Map" (in the context menus of files in the Explorer & editor tabs) and "View Line History in Git Map" (in the context menu of editors) show only the commits that change a file (following it through renames) or the selected lines, and how each commit changes them.
 * Current Line Blame: the line the cursor is on shows who last changed it, and when & why, at its end. Hovering over it shows the commit, with a link that opens it in the Git Map View.
 * A broad range of configurable settings (e.g. graph style, branch colours, and more...). See the 'Extension Settings' section below for more information.
@@ -169,19 +169,19 @@ This extension consumes the following settings:
 
 This extension contributes the following commands:
 
-* `git-graph.view`: Git Map: View Git Map
-* `git-graph.addGitRepository`: Git Map: Add Git Repository... _(used to add sub-repos to Git Map)_
-* `git-graph.clearAvatarCache`: Git Map: Clear Avatar Cache
-* `git-graph.endAllWorkspaceCodeReviews`: Git Map: End All Code Reviews in Workspace
-* `git-graph.endSpecificWorkspaceCodeReview`: Git Map: End a specific Code Review in Workspace... _(used to end a specific Code Review without having to first open it in the Git Map View)_
-* `git-graph.fetch`: Git Map: Fetch from Remote(s) _(used to open the Git Map View and immediately run "Fetch from Remote(s)")_
-* `git-graph.removeGitRepository`: Git Map: Remove Git Repository... _(used to remove repositories from Git Map)_
-* `git-graph.resumeWorkspaceCodeReview`: Git Map: Resume a specific Code Review in Workspace... _(used to open the Git Map View to a Code Review that is already in progress)_
-* `git-graph.selectGraphColourPreset`: Git Map: Select Graph Colour Preset...
-* `git-graph.toggleLineBlame`: Git Map: Toggle Current Line Blame
-* `git-graph.version`: Git Map: Get Version Information
-* `git-graph.viewFileHistory`: Git Map: View File History in Git Map
-* `git-graph.viewLineHistory`: Git Map: View Line History in Git Map
+* `git-map.view`: Git Map: View Git Map
+* `git-map.addGitRepository`: Git Map: Add Git Repository... _(used to add sub-repos to Git Map)_
+* `git-map.clearAvatarCache`: Git Map: Clear Avatar Cache
+* `git-map.endAllWorkspaceCodeReviews`: Git Map: End All Code Reviews in Workspace
+* `git-map.endSpecificWorkspaceCodeReview`: Git Map: End a specific Code Review in Workspace... _(used to end a specific Code Review without having to first open it in the Git Map View)_
+* `git-map.fetch`: Git Map: Fetch from Remote(s) _(used to open the Git Map View and immediately run "Fetch from Remote(s)")_
+* `git-map.removeGitRepository`: Git Map: Remove Git Repository... _(used to remove repositories from Git Map)_
+* `git-map.resumeWorkspaceCodeReview`: Git Map: Resume a specific Code Review in Workspace... _(used to open the Git Map View to a Code Review that is already in progress)_
+* `git-map.selectGraphColourPreset`: Git Map: Select Graph Colour Preset...
+* `git-map.toggleLineBlame`: Git Map: Toggle Current Line Blame
+* `git-map.version`: Git Map: Get Version Information
+* `git-map.viewFileHistory`: Git Map: View File History in Git Map
+* `git-map.viewLineHistory`: Git Map: View Line History in Git Map
 
 ## Release Notes
 
@@ -195,7 +195,7 @@ This fork isn't published on the Visual Studio Marketplace. Get the VSIX (offlin
 
 Install the VSIX, either with `code --install-extension git-map-<version>.vsix --force`, or from the Extensions View in Visual Studio Code (`...` > Install from VSIX...).
 
-Uninstall the original Git Graph extension (`mhutchie.git-graph`) first if it's installed, as both extensions register the same commands and settings. Settings in `settings.json` (`git-graph.*`) are kept, however Git Graph's per-repository state (e.g. column widths, hidden remotes, Issue Linking & Pull Request configuration) is stored per extension, and starts empty. Use "Export Repository Configuration" in the original extension's Repository Settings to keep a repository's configuration.
+The original Git Graph extension (`mhutchie.git-graph`) can stay installed, as Git Map's commands & settings are named `git-map.*`. When Git Map starts, it copies the settings named `git-graph.*` in `settings.json` (used by Git Graph, and by Git Map before version 2.1.0) to their new names, once for the user settings and once for each workspace (a setting that's already set under its new name is kept). It then offers to remove the `git-graph.*` settings, unless Git Graph is installed (which still uses them). Keybindings of the `git-graph.*` commands in `keybindings.json` need to be changed to the `git-map.*` commands by hand. Git Graph's per-repository state (e.g. column widths, hidden remotes, Issue Linking & Pull Request configuration) is stored per extension, and starts empty. Use "Export Repository Configuration" in the original extension's Repository Settings to keep a repository's configuration.
 
 ## Acknowledgements
 

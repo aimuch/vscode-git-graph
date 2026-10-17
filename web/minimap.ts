@@ -116,7 +116,7 @@ class Minimap {
 	 * @param commitHead The hash of the commit referenced by HEAD.
 	 * @param vertexColours The colour index of each commit's vertex on the graph.
 	 * @param colours The colours of the graph.
-	 * @param enabled Is the minimap enabled (the `git-graph.graph.minimap` Extension Setting).
+	 * @param enabled Is the minimap enabled (the `git-map.graph.minimap` Extension Setting).
 	 */
 	public render(commits: ReadonlyArray<GG.GitCommit>, commitHead: string | null, vertexColours: ReadonlyArray<number>, colours: ReadonlyArray<string>, enabled: boolean) {
 		this.commitDays = commits.map((commit) => Minimap.getLocalDay(commit.date));

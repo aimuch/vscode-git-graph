@@ -4,12 +4,12 @@ Every Git Map setting is described in the Visual Studio Code Settings Editor (se
 
 ## Context Menu Actions Visibility
 
-`git-graph.contextMenuActionsVisibility` customises which actions are displayed on Git Map's context menus. It's an object keyed by context menu, each containing the actions to show (`true`) or hide (`false`). Actions that aren't specified are visible.
+`git-map.contextMenuActionsVisibility` customises which actions are displayed on Git Map's context menus. It's an object keyed by context menu, each containing the actions to show (`true`) or hide (`false`). Actions that aren't specified are visible.
 
 For example, to hide "Rebase current branch on Branch..." from the branch context menu, and "Drop..." from the commit context menu:
 
 ```json
-"git-graph.contextMenuActionsVisibility": {
+"git-map.contextMenuActionsVisibility": {
 	"branch": {
 		"rebase": false
 	},
@@ -84,7 +84,7 @@ The context menus, and the key of each of their actions:
 
 ## Max Depth of Repo Search
 
-`git-graph.maxDepthOfRepoSearch` (default: `0`) is how many levels of subfolders Git Map searches when it discovers the repositories in the workspace:
+`git-map.maxDepthOfRepoSearch` (default: `0`) is how many levels of subfolders Git Map searches when it discovers the repositories in the workspace:
 
 * `0`: Only the workspace folders themselves (and the repository that contains each of them).
 * `1`: The workspace folders, and their immediate subfolders.
@@ -94,7 +94,7 @@ Searching stops at the first repository found on each path, so repositories nest
 
 ## Custom Pull Request Providers
 
-The "Pull Request Creation" integration (configured in the Repository Settings of the Git Map View) opens a pre-filled Pull Request form from a branch's context menu. Bitbucket, GitHub & GitLab are built-in. Other providers (e.g. a self-hosted Gitea or Azure DevOps Server) are added with `git-graph.customPullRequestProviders`, an array of providers, each with:
+The "Pull Request Creation" integration (configured in the Repository Settings of the Git Map View) opens a pre-filled Pull Request form from a branch's context menu. Bitbucket, GitHub & GitLab are built-in. Other providers (e.g. a self-hosted Gitea or Azure DevOps Server) are added with `git-map.customPullRequestProviders`, an array of providers, each with:
 
 * `name`: A unique display name, which is listed as a provider in the Repository Settings.
 * `templateUrl`: The URL that creates a Pull Request, containing the variables below.
@@ -115,7 +115,7 @@ The values are prefilled from the repository's remotes when the integration is c
 For example, a self-hosted Gitea server (which uses the same compare URL as GitHub):
 
 ```json
-"git-graph.customPullRequestProviders": [
+"git-map.customPullRequestProviders": [
 	{
 		"name": "Gitea",
 		"templateUrl": "$1/$5/$6/compare/$8...$2:$4"

@@ -1398,7 +1398,7 @@ class GitGraphView {
 	}
 
 	/**
-	 * Get the height of the rows of the commits (as rendered, or the row height of the git-graph.graph.density Extension Setting).
+	 * Get the height of the rows of the commits (as rendered, or the row height of the git-map.graph.density Extension Setting).
 	 * @returns The height (in pixels).
 	 */
 	private getRowHeight() {

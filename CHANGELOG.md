@@ -1,7 +1,12 @@
 # Change Log
 
 ## 2.1.0 - Unreleased
-This release completes the redesign of the Git Map View (its control bar, commits, Commit Details View, Repository Settings, dialogs, menus & minimap), and adds the history of files & lines, the blame of the current line, lists of the stashes & worktrees, selecting several commits, undoing the last action, a Rebase Editor, and the icons of files from the Visual Studio Code file icon theme. The Git Map View stays fast with tens of thousands of commits. All changes are covered by the end-to-end test suite (`npm run test-e2e`, 70 checks, verified with Visual Studio Code 1.142.0).
+This release completes the redesign of the Git Map View (its control bar, commits, Commit Details View, Repository Settings, dialogs, menus & minimap), and adds the history of files & lines, the blame of the current line, lists of the stashes & worktrees, selecting several commits, undoing the last action, a Rebase Editor, and the icons of files from the Visual Studio Code file icon theme. The Git Map View stays fast with tens of thousands of commits. All changes are covered by the end-to-end test suite (`npm run test-e2e`, 71 checks, verified with Visual Studio Code 1.142.0).
+* Git Map's commands & settings are named `git-map.*` instead of `git-graph.*` (as are its context key, the URI scheme of its diffs & its Status Bar icon), so that it can be installed alongside the original Git Graph extension:
+    * When Git Map starts, the settings named `git-graph.*` (including their legacy names, e.g. `git-graph.dateFormat`) are copied to their new names in the same scope, once for the user settings and once for each workspace. Settings that are already set under their new names are kept.
+    * A notification says how many settings were copied, and offers to remove the `git-graph.*` settings (unless Git Graph is installed, which still uses them).
+    * Keybindings in `keybindings.json` that run `git-graph.*` commands need to be changed to the `git-map.*` commands by hand.
+    * The Repository Configuration file (`.vscode/vscode-git-graph.json`) keeps its name, so it's shared with Git Graph.
 * Control bar:
     * The Repo (also shown when there's only one repository), Branches & Authors dropdowns show icons. Dropdowns that allow multiple selections show a checkbox for each option, and the Authors dropdown shows each author's initial and the number of loaded commits by them.
     * The search box is part of the control bar. Conditions are added to it as chips (press Enter), and a bar below it shows the number of matching commits, the previous / next match, whether the matches are highlighted or only the matching commits are shown (keeping the graph connected), buttons that insert the search operators, and "Clear Search".

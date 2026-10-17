@@ -47,21 +47,21 @@ export class CommandManager extends Disposable {
 		this.gitExecutable = gitExecutable;
 
 		// Register Extension Commands
-		this.registerCommand('git-graph.view', (arg) => this.view(arg));
-		this.registerCommand('git-graph.addGitRepository', () => this.addGitRepository());
-		this.registerCommand('git-graph.removeGitRepository', () => this.removeGitRepository());
-		this.registerCommand('git-graph.clearAvatarCache', () => this.clearAvatarCache());
-		this.registerCommand('git-graph.fetch', () => this.fetch());
-		this.registerCommand('git-graph.endAllWorkspaceCodeReviews', () => this.endAllWorkspaceCodeReviews());
-		this.registerCommand('git-graph.endSpecificWorkspaceCodeReview', () => this.endSpecificWorkspaceCodeReview());
-		this.registerCommand('git-graph.resumeWorkspaceCodeReview', () => this.resumeWorkspaceCodeReview());
-		this.registerCommand('git-graph.version', () => this.version());
-		this.registerCommand('git-graph.selectGraphColourPreset', () => this.selectGraphColourPreset());
-		this.registerCommand('git-graph.openFile', (arg) => this.openFile(arg));
-		this.registerCommand('git-graph.viewFileHistory', (arg) => this.viewFileHistory(arg));
-		this.registerCommand('git-graph.viewLineHistory', () => this.viewLineHistory());
-		this.registerCommand('git-graph.viewCommitInGitMap', (repo, hash) => this.viewCommitInGitMap(repo, hash));
-		this.registerCommand('git-graph.toggleLineBlame', () => this.toggleLineBlame());
+		this.registerCommand('git-map.view', (arg) => this.view(arg));
+		this.registerCommand('git-map.addGitRepository', () => this.addGitRepository());
+		this.registerCommand('git-map.removeGitRepository', () => this.removeGitRepository());
+		this.registerCommand('git-map.clearAvatarCache', () => this.clearAvatarCache());
+		this.registerCommand('git-map.fetch', () => this.fetch());
+		this.registerCommand('git-map.endAllWorkspaceCodeReviews', () => this.endAllWorkspaceCodeReviews());
+		this.registerCommand('git-map.endSpecificWorkspaceCodeReview', () => this.endSpecificWorkspaceCodeReview());
+		this.registerCommand('git-map.resumeWorkspaceCodeReview', () => this.resumeWorkspaceCodeReview());
+		this.registerCommand('git-map.version', () => this.version());
+		this.registerCommand('git-map.selectGraphColourPreset', () => this.selectGraphColourPreset());
+		this.registerCommand('git-map.openFile', (arg) => this.openFile(arg));
+		this.registerCommand('git-map.viewFileHistory', (arg) => this.viewFileHistory(arg));
+		this.registerCommand('git-map.viewLineHistory', () => this.viewLineHistory());
+		this.registerCommand('git-map.viewCommitInGitMap', (repo, hash) => this.viewCommitInGitMap(repo, hash));
+		this.registerCommand('git-map.toggleLineBlame', () => this.toggleLineBlame());
 
 		this.registerDisposable(
 			onDidChangeGitExecutable((gitExecutable) => {
@@ -71,9 +71,9 @@ export class CommandManager extends Disposable {
 
 		// Register Extension Contexts
 		try {
-			this.registerContext('git-graph:codiconsSupported', doesVersionMeetRequirement(vscode.version, VsCodeVersionRequirement.Codicons));
+			this.registerContext('git-map:codiconsSupported', doesVersionMeetRequirement(vscode.version, VsCodeVersionRequirement.Codicons));
 		} catch (_) {
-			this.logger.logError('Unable to set Visual Studio Code Context "git-graph:codiconsSupported"');
+			this.logger.logError('Unable to set Visual Studio Code Context "git-map:codiconsSupported"');
 		}
 	}
 
@@ -107,7 +107,7 @@ export class CommandManager extends Disposable {
 	/* Commands */
 
 	/**
-	 * The method run when the `git-graph.view` command is invoked.
+	 * The method run when the `git-map.view` command is invoked.
 	 * @param arg An optional argument passed to the command (when invoked from the Visual Studio Code Git Extension).
 	 */
 	private async view(arg: any) {
@@ -130,7 +130,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.viewFileHistory` command is invoked: open the Git Map View showing the history of a file.
+	 * The method run when the `git-map.viewFileHistory` command is invoked: open the Git Map View showing the history of a file.
 	 * @param arg The URI of the file (when invoked from the Explorer or an editor's title), otherwise the file in the active text editor is used.
 	 */
 	private async viewFileHistory(arg: any) {
@@ -148,7 +148,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.viewLineHistory` command is invoked: open the Git Map View showing the history of the selected
+	 * The method run when the `git-map.viewLineHistory` command is invoked: open the Git Map View showing the history of the selected
 	 * lines (or the line the cursor is on) in the active text editor.
 	 */
 	private async viewLineHistory() {
@@ -169,7 +169,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.viewCommitInGitMap` command is invoked (by the link in the hover of the blame of a line): open the
+	 * The method run when the `git-map.viewCommitInGitMap` command is invoked (by the link in the hover of the blame of a line): open the
 	 * Git Map View showing the details of a commit.
 	 * @param repo The repository containing the commit.
 	 * @param hash The hash of the commit.
@@ -180,10 +180,10 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.toggleLineBlame` command is invoked: show or hide the blame of the current line (for all workspaces).
+	 * The method run when the `git-map.toggleLineBlame` command is invoked: show or hide the blame of the current line (for all workspaces).
 	 */
 	private toggleLineBlame() {
-		return vscode.workspace.getConfiguration('git-graph').update('blame.currentLine', !getConfig().blameCurrentLine, vscode.ConfigurationTarget.Global);
+		return vscode.workspace.getConfiguration('git-map').update('blame.currentLine', !getConfig().blameCurrentLine, vscode.ConfigurationTarget.Global);
 	}
 
 	/**
@@ -202,7 +202,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.addGitRepository` command is invoked.
+	 * The method run when the `git-map.addGitRepository` command is invoked.
 	 */
 	private addGitRepository() {
 		if (this.gitExecutable === null) {
@@ -229,7 +229,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.removeGitRepository` command is invoked.
+	 * The method run when the `git-map.removeGitRepository` command is invoked.
 	 */
 	private removeGitRepository() {
 		if (this.gitExecutable === null) {
@@ -258,7 +258,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.clearAvatarCache` command is invoked.
+	 * The method run when the `git-map.clearAvatarCache` command is invoked.
 	 */
 	private clearAvatarCache() {
 		this.avatarManager.clearCache().then((errorInfo) => {
@@ -273,7 +273,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.fetch` command is invoked.
+	 * The method run when the `git-map.fetch` command is invoked.
 	 */
 	private fetch() {
 		const repos = this.repoManager.getRepos();
@@ -318,7 +318,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.endAllWorkspaceCodeReviews` command is invoked.
+	 * The method run when the `git-map.endAllWorkspaceCodeReviews` command is invoked.
 	 */
 	private endAllWorkspaceCodeReviews() {
 		this.extensionState.endAllWorkspaceCodeReviews();
@@ -326,7 +326,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.endSpecificWorkspaceCodeReview` command is invoked.
+	 * The method run when the `git-map.endSpecificWorkspaceCodeReview` command is invoked.
 	 */
 	private endSpecificWorkspaceCodeReview() {
 		const codeReviews = this.extensionState.getCodeReviews();
@@ -354,7 +354,7 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.resumeWorkspaceCodeReview` command is invoked.
+	 * The method run when the `git-map.resumeWorkspaceCodeReview` command is invoked.
 	 */
 	private resumeWorkspaceCodeReview() {
 		const codeReviews = this.extensionState.getCodeReviews();
@@ -383,23 +383,23 @@ export class CommandManager extends Disposable {
 	}
 
 	/**
-	 * The method run when the `git-graph.version` command is invoked.
+	 * The method run when the `git-map.version` command is invoked.
 	 */
 	/**
-	 * The method run when the `git-graph.selectGraphColourPreset` command is invoked.
+	 * The method run when the `git-map.selectGraphColourPreset` command is invoked.
 	 */
 	private async selectGraphColourPreset() {
 		const current = getConfig().graphColourPreset;
 		const items: (vscode.QuickPickItem & { preset: string })[] = GRAPH_COLOUR_PRESET_NAMES.map((preset) => ({
 			label: t(preset),
 			description: preset === current ? t('Current') : undefined,
-			detail: preset === 'Default' ? t('The colours specified by "git-graph.graph.colours"') : GRAPH_COLOUR_PRESETS[preset].join('  '),
+			detail: preset === 'Default' ? t('The colours specified by "git-map.graph.colours"') : GRAPH_COLOUR_PRESETS[preset].join('  '),
 			preset: preset
 		}));
 		const selected = await vscode.window.showQuickPick(items, { placeHolder: t('Select the preset of colours used on the graph'), ignoreFocusOut: true });
 		if (selected) {
 			try {
-				await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', selected.preset, vscode.ConfigurationTarget.Global);
+				await vscode.workspace.getConfiguration('git-map').update('graph.colourPreset', selected.preset, vscode.ConfigurationTarget.Global);
 			} catch (_) {
 				showErrorMessage(t('Unable to save the Graph Colour Preset.'));
 			}
@@ -426,7 +426,7 @@ export class CommandManager extends Disposable {
 
 	/**
 	 * Opens a file in Visual Studio Code, based on a Git Map URI (from the Diff View).
-	 * The method run when the `git-graph.openFile` command is invoked.
+	 * The method run when the `git-map.openFile` command is invoked.
 	 * @param arg The Git Map URI.
 	 */
 	private openFile(arg?: vscode.Uri) {

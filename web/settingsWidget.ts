@@ -756,7 +756,7 @@ class SettingsWidget {
 			{
 				type: DialogInputType.Select, name: t('Provider'),
 				options: providerOptions, default: defaultProvider,
-				info: t('In addition to the built-in publicly hosted Pull Request providers, custom providers can be configured using the Extension Setting "git-graph.customPullRequestProviders" (e.g. for use with privately hosted Pull Request providers).')
+				info: t('In addition to the built-in publicly hosted Pull Request providers, custom providers can be configured using the Extension Setting "git-map.customPullRequestProviders" (e.g. for use with privately hosted Pull Request providers).')
 			},
 			{
 				type: DialogInputType.Select, name: t('Source Remote'),

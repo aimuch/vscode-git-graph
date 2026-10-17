@@ -764,7 +764,7 @@ class Graph {
 	/* Avatars */
 
 	/**
-	 * Set how the avatars of the authors are found (they are drawn on the commits when the git-graph.graph.nodeStyle Extension Setting is "Avatar").
+	 * Set how the avatars of the authors are found (they are drawn on the commits when the git-map.graph.nodeStyle Extension Setting is "Avatar").
 	 * @param getAvatar Returns the data URI of the avatar of an email address, or NULL if it isn't available.
 	 */
 	public setAvatarSource(getAvatar: (email: string) => string | null) {

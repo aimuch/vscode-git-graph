@@ -223,7 +223,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['reflog', '--format=%HXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%PXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%gDXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%anXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%aeXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%atXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%s', 'refs/stash', '--'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the repository info (using git-graph.date.type)', async () => {
+		it('Should return the repository info (using git-map.date.type)', async () => {
 			// Setup
 			mockGitSuccessOnce(
 				'* develop\n' +
@@ -238,7 +238,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.date.type'
+				affectsConfiguration: (section) => section === 'git-map.date.type'
 			});
 			const result = await dataSource.getRepoInfo('/path/to/repo', false, true, []);
 
@@ -256,7 +256,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['reflog', '--format=%HXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%PXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%gDXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%anXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%aeXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%ctXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%s', 'refs/stash', '--'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the repository info (using git-graph.dateType)', async () => {
+		it('Should return the repository info (using git-map.dateType)', async () => {
 			// Setup
 			mockGitSuccessOnce(
 				'* develop\n' +
@@ -271,7 +271,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.dateType'
+				affectsConfiguration: (section) => section === 'git-map.dateType'
 			});
 			const result = await dataSource.getRepoInfo('/path/to/repo', false, true, []);
 
@@ -289,7 +289,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['reflog', '--format=%HXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%PXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%gDXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%anXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%aeXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%ctXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%s', 'refs/stash', '--'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the repository info (using git-graph.repository.useMailmap)', async () => {
+		it('Should return the repository info (using git-map.repository.useMailmap)', async () => {
 			// Setup
 			mockGitSuccessOnce(
 				'* develop\n' +
@@ -304,7 +304,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.repository.useMailmap'
+				affectsConfiguration: (section) => section === 'git-map.repository.useMailmap'
 			});
 			const result = await dataSource.getRepoInfo('/path/to/repo', false, true, []);
 
@@ -322,7 +322,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['reflog', '--format=%HXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%PXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%gDXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%aNXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%aEXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%atXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb%s', 'refs/stash', '--'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the repository info (using git-graph.useMailmap)', async () => {
+		it('Should return the repository info (using git-map.useMailmap)', async () => {
 			// Setup
 			mockGitSuccessOnce(
 				'* develop\n' +
@@ -337,7 +337,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.useMailmap'
+				affectsConfiguration: (section) => section === 'git-map.useMailmap'
 			});
 			const result = await dataSource.getRepoInfo('/path/to/repo', false, true, []);
 
@@ -2795,7 +2795,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['diff-tree', '--numstat', '-r', '--root', '--find-renames', '--diff-filter=AMDR', '-z', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the commit details (using git-graph.repository.commits.showSignatureStatus)', async () => {
+		it('Should return the commit details (using git-map.repository.commits.showSignatureStatus)', async () => {
 			// Setup
 			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2bXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPba1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest AuthorXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-author@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559258XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest CommitterXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-committer@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559259XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbGXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest Signer <test-signer@mhutchie.com> XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb0123456789ABCDEFXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbCommit Message.\r\nSecond Line.');
 			mockGitSuccessOnce(['D', 'dir/deleted.txt', 'M', 'dir/modified.txt', 'R100', 'dir/renamed-old.txt', 'dir/renamed-new.txt', ''].join('\0'));
@@ -2807,7 +2807,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.repository.commits.showSignatureStatus'
+				affectsConfiguration: (section) => section === 'git-map.repository.commits.showSignatureStatus'
 			});
 			const result = await dataSource.getCommitDetails('/path/to/repo', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', true);
 
@@ -2859,7 +2859,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['diff', '--numstat', '--find-renames', '--diff-filter=AMDR', '-z', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b^', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the commit details (using git-graph.showSignatureStatus)', async () => {
+		it('Should return the commit details (using git-map.showSignatureStatus)', async () => {
 			// Setup
 			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2bXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPba1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest AuthorXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-author@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559258XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest CommitterXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-committer@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559259XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbGXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest Signer <test-signer@mhutchie.com> XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb0123456789ABCDEFXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbCommit Message.\r\nSecond Line.');
 			mockGitSuccessOnce(['D', 'dir/deleted.txt', 'M', 'dir/modified.txt', 'R100', 'dir/renamed-old.txt', 'dir/renamed-new.txt', ''].join('\0'));
@@ -2871,7 +2871,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.showSignatureStatus'
+				affectsConfiguration: (section) => section === 'git-map.showSignatureStatus'
 			});
 			const result = await dataSource.getCommitDetails('/path/to/repo', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', true);
 
@@ -2980,7 +2980,7 @@ describe('DataSource', () => {
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['diff', '--numstat', '--find-renames', '--diff-filter=AMDR', '-z', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b^', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b'], expect.objectContaining({ cwd: '/path/to/repo' }));
 		});
 
-		it('Should return the commit details (using git-graph.repository.useMailmap)', async () => {
+		it('Should return the commit details (using git-map.repository.useMailmap)', async () => {
 			// Setup
 			mockGitSuccessOnce('1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2bXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPba1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest AuthorXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-author@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559258XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbTest CommitterXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbtest-committer@mhutchie.comXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPb1587559259XX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbXX7Nal-YARtTpjCikii9nJxER19D6diSyk-AWkPbCommit Message.\r\nSecond Line.');
 			mockGitSuccessOnce(['D', 'dir/deleted.txt', 'M', 'dir/modified.txt', 'R100', 'dir/renamed-old.txt', 'dir/renamed-new.txt', ''].join('\0'));
@@ -2991,7 +2991,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.repository.useMailmap'
+				affectsConfiguration: (section) => section === 'git-map.repository.useMailmap'
 			});
 			const result = await dataSource.getCommitDetails('/path/to/repo', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b', true);
 
@@ -3778,7 +3778,7 @@ describe('DataSource', () => {
 			// Assert
 			expect(result.toString()).toBe('File contents.\n');
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['show', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b:subdirectory/file.txt'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git-graph', {
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git-map', {
 				scheme: 'file',
 				authority: '',
 				path: '/path/to/repo',
@@ -3800,7 +3800,7 @@ describe('DataSource', () => {
 			// Assert
 			expect(result.toString()).toBe('File contents.\n');
 			expect(spyOnSpawn).toHaveBeenCalledWith('/path/to/git', ['show', '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b:subdirectory/file.txt'], expect.objectContaining({ cwd: '/path/to/repo' }));
-			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git-graph', {
+			expect(vscode.workspace.getConfiguration).toHaveBeenCalledWith('git-map', {
 				scheme: 'file',
 				authority: '',
 				path: '/path/to/repo',
@@ -6803,7 +6803,7 @@ describe('DataSource', () => {
 
 			// Run
 			onDidChangeConfiguration.emit({
-				affectsConfiguration: (section) => section === 'git-graph.commitDetailsView.autoCenter'
+				affectsConfiguration: (section) => section === 'git-map.commitDetailsView.autoCenter'
 			});
 
 			// Assert

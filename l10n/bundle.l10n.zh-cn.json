@@ -69,7 +69,7 @@
 	"Select the Code Review you want to resume:": "选择要继续的代码审查：",
 	"Resume a specific Code Review in Workspace...": "继续工作区中的特定代码审查...",
 	"Current": "当前",
-	"The colours specified by \"git-graph.graph.colours\"": "\"git-graph.graph.colours\" 中指定的颜色",
+	"The colours specified by \"git-map.graph.colours\"": "\"git-map.graph.colours\" 中指定的颜色",
 	"Select the preset of colours used on the graph": "选择图形使用的配色预设",
 	"Unable to save the Graph Colour Preset.": "无法保存图形配色预设。",
 	"Copy": "复制",
@@ -96,7 +96,7 @@
 	"Open a Terminal for this Repository": "为此仓库打开终端",
 	"Repository Settings": "仓库设置",
 	"No Git repositories were found in the current workspace when it was last scanned by Git Map.": "Git Map 上次扫描当前工作区时，没有找到 Git 仓库。",
-	"If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting \"git-graph.maxDepthOfRepoSearch\" appropriately (read the {0} for more information).": "如果你的仓库位于所打开工作区文件夹的子文件夹中，请确保已正确设置 Git Map 设置 \"git-graph.maxDepthOfRepoSearch\"（详情请阅读{0}）。",
+	"If your repositories are in subfolders of the open workspace folder(s), make sure you have set the Git Map Setting \"git-map.maxDepthOfRepoSearch\" appropriately (read the {0} for more information).": "如果你的仓库位于所打开工作区文件夹的子文件夹中，请确保已正确设置 Git Map 设置 \"git-map.maxDepthOfRepoSearch\"（详情请阅读{0}）。",
 	"documentation": "文档",
 	"Re-scan the current workspace for repositories": "重新扫描当前工作区中的仓库",
 	"The folder \"{0}\" is not a Git repository.": "文件夹 \"{0}\" 不是 Git 仓库。",
@@ -580,7 +580,7 @@
 	"Not a remote": "不是远程仓库",
 	"Configure \"Pull Request Creation\" Integration (Step&nbsp;1/2)": "配置“拉取请求创建”集成（第&nbsp;1/2&nbsp;步）",
 	"Provider": "提供方",
-	"In addition to the built-in publicly hosted Pull Request providers, custom providers can be configured using the Extension Setting \"git-graph.customPullRequestProviders\" (e.g. for use with privately hosted Pull Request providers).": "除了内置的公共托管拉取请求提供方，还可以通过扩展设置 \"git-graph.customPullRequestProviders\" 配置自定义提供方（例如用于私有托管的拉取请求提供方）。",
+	"In addition to the built-in publicly hosted Pull Request providers, custom providers can be configured using the Extension Setting \"git-map.customPullRequestProviders\" (e.g. for use with privately hosted Pull Request providers).": "除了内置的公共托管拉取请求提供方，还可以通过扩展设置 \"git-map.customPullRequestProviders\" 配置自定义提供方（例如用于私有托管的拉取请求提供方）。",
 	"Source Remote": "源远程仓库",
 	"The remote that corresponds to the source of the Pull Request.": "对应拉取请求来源的远程仓库。",
 	"Destination Remote": "目标远程仓库",
@@ -910,5 +910,10 @@
 	"Unable to Continue": "无法继续",
 	"Unable to Skip the Commit": "无法跳过此提交",
 	"Unable to Abort": "无法中止",
-	"Choose how each commit is rebased (reorder, reword, squash or drop commits) in the Rebase Editor.": "在变基编辑器中选择每个提交的变基方式（调整顺序、改写说明、压缩或丢弃提交）。"
+	"Choose how each commit is rebased (reorder, reword, squash or drop commits) in the Rebase Editor.": "在变基编辑器中选择每个提交的变基方式（调整顺序、改写说明、压缩或丢弃提交）。",
+	"Unable to copy some of your \"git-graph.*\" Extension Settings to their new names (\"git-map.*\"): {0}": "无法将部分 \"git-graph.*\" 扩展设置复制到新名称（\"git-map.*\"）：{0}",
+	"Git Map's Extension Settings are now named \"git-map.*\" instead of \"git-graph.*\". Your settings were copied to their new names ({0}).": "Git Map 的扩展设置现在命名为 \"git-map.*\"（原为 \"git-graph.*\"）。你的设置已复制到新名称（{0} 项）。",
+	"The \"git-graph.*\" settings are kept, as the Git Graph extension uses them.": "\"git-graph.*\" 设置已保留，因为 Git Graph 扩展仍在使用它们。",
+	"Remove the \"git-graph.*\" Settings": "删除 \"git-graph.*\" 设置",
+	"Unable to remove some of the \"git-graph.*\" Extension Settings: {0}": "无法删除部分 \"git-graph.*\" 扩展设置：{0}"
 }

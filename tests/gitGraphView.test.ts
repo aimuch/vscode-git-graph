@@ -98,7 +98,7 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.Two, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-map', 'Git Map', vscode.ViewColumn.Two, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
@@ -175,7 +175,7 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-map', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
@@ -191,7 +191,7 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-map', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: true
@@ -207,7 +207,7 @@ describe('GitGraphView', () => {
 			GitGraphView.createOrShow('/path/to/extension', dataSource, extensionState, avatarManager, repoManager, logger, null);
 
 			// Assert
-			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-graph', 'Git Map', vscode.ViewColumn.One, {
+			expect(vscode.window.createWebviewPanel).toHaveBeenCalledWith('git-map', 'Git Map', vscode.ViewColumn.One, {
 				enableScripts: true,
 				localResourceRoots: [vscode.Uri.file(path.join('/path/to/extension', 'media'))],
 				retainContextWhenHidden: false

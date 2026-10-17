@@ -46,8 +46,8 @@
 	"main": "./out/extension.js",
 	"contributes": {
 		"icons": {
-			"git-graph-logo": {
-				"description": "%icon.git-graph-logo.description%",
+			"git-map-logo": {
+				"description": "%icon.git-map-logo.description%",
 				"default": {
 					"fontPath": "resources/git-graph-icons.woff",
 					"fontCharacter": "\\E000"
@@ -57,7 +57,7 @@
 		"commands": [
 			{
 				"category": "Git Map",
-				"command": "git-graph.view",
+				"command": "git-map.view",
 				"title": "%command.view.title%",
 				"icon": {
 					"light": "resources/cmd-icon-light.svg",
@@ -66,76 +66,76 @@
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.addGitRepository",
+				"command": "git-map.addGitRepository",
 				"title": "%command.addGitRepository.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.clearAvatarCache",
+				"command": "git-map.clearAvatarCache",
 				"title": "%command.clearAvatarCache.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.endAllWorkspaceCodeReviews",
+				"command": "git-map.endAllWorkspaceCodeReviews",
 				"title": "%command.endAllWorkspaceCodeReviews.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.endSpecificWorkspaceCodeReview",
+				"command": "git-map.endSpecificWorkspaceCodeReview",
 				"title": "%command.endSpecificWorkspaceCodeReview.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.fetch",
+				"command": "git-map.fetch",
 				"title": "%command.fetch.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.removeGitRepository",
+				"command": "git-map.removeGitRepository",
 				"title": "%command.removeGitRepository.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.resumeWorkspaceCodeReview",
+				"command": "git-map.resumeWorkspaceCodeReview",
 				"title": "%command.resumeWorkspaceCodeReview.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.version",
+				"command": "git-map.version",
 				"title": "%command.version.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.selectGraphColourPreset",
+				"command": "git-map.selectGraphColourPreset",
 				"title": "%command.selectGraphColourPreset.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.openFile",
+				"command": "git-map.openFile",
 				"title": "%command.openFile.title%",
 				"icon": "$(go-to-file)",
-				"enablement": "isInDiffEditor && resourceScheme == git-graph && git-graph:codiconsSupported"
+				"enablement": "isInDiffEditor && resourceScheme == git-map && git-map:codiconsSupported"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.viewFileHistory",
+				"command": "git-map.viewFileHistory",
 				"title": "%command.viewFileHistory.title%",
 				"icon": "$(history)"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.viewLineHistory",
+				"command": "git-map.viewLineHistory",
 				"title": "%command.viewLineHistory.title%",
 				"icon": "$(history)"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.viewCommitInGitMap",
+				"command": "git-map.viewCommitInGitMap",
 				"title": "%command.viewCommitInGitMap.title%"
 			},
 			{
 				"category": "Git Map",
-				"command": "git-graph.toggleLineBlame",
+				"command": "git-map.toggleLineBlame",
 				"title": "%command.toggleLineBlame.title%"
 			}
 		],
@@ -143,22 +143,22 @@
 			"type": "object",
 			"title": "Git Map",
 			"properties": {
-				"git-graph.blame.currentLine": {
+				"git-map.blame.currentLine": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.blame.currentLine.description%"
 				},
-				"git-graph.commitDetailsView.autoCenter": {
+				"git-map.commitDetailsView.autoCenter": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.commitDetailsView.autoCenter.description%"
 				},
-				"git-graph.commitDetailsView.fileView.fileTree.compactFolders": {
+				"git-map.commitDetailsView.fileView.fileTree.compactFolders": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.commitDetailsView.fileView.fileTree.compactFolders.description%"
 				},
-				"git-graph.commitDetailsView.fileView.type": {
+				"git-map.commitDetailsView.fileView.type": {
 					"type": "string",
 					"enum": [
 						"File Tree",
@@ -171,7 +171,7 @@
 					"default": "File Tree",
 					"description": "%config.commitDetailsView.fileView.type.description%"
 				},
-				"git-graph.commitDetailsView.location": {
+				"git-map.commitDetailsView.location": {
 					"type": "string",
 					"enum": [
 						"Inline",
@@ -186,7 +186,7 @@
 					"default": "Docked to Right",
 					"description": "%config.commitDetailsView.location.description%"
 				},
-				"git-graph.contextMenuActionsVisibility": {
+				"git-map.contextMenuActionsVisibility": {
 					"type": "object",
 					"default": {},
 					"properties": {
@@ -468,7 +468,7 @@
 					},
 					"markdownDescription": "%config.contextMenuActionsVisibility.markdownDescription%"
 				},
-				"git-graph.customBranchGlobPatterns": {
+				"git-map.customBranchGlobPatterns": {
 					"type": "array",
 					"items": {
 						"type": "object",
@@ -493,7 +493,7 @@
 					"default": [],
 					"description": "%config.customBranchGlobPatterns.description%"
 				},
-				"git-graph.customEmojiShortcodeMappings": {
+				"git-map.customEmojiShortcodeMappings": {
 					"type": "array",
 					"items": {
 						"type": "object",
@@ -518,7 +518,7 @@
 					"default": [],
 					"description": "%config.customEmojiShortcodeMappings.description%"
 				},
-				"git-graph.customPullRequestProviders": {
+				"git-map.customPullRequestProviders": {
 					"type": "array",
 					"items": {
 						"type": "object",
@@ -543,7 +543,7 @@
 					"default": [],
 					"markdownDescription": "%config.customPullRequestProviders.markdownDescription%"
 				},
-				"git-graph.date.format": {
+				"git-map.date.format": {
 					"type": "string",
 					"enum": [
 						"Date & Time",
@@ -562,7 +562,7 @@
 					"default": "Date & Time",
 					"description": "%config.date.format.description%"
 				},
-				"git-graph.date.type": {
+				"git-map.date.type": {
 					"type": "string",
 					"enum": [
 						"Author Date",
@@ -575,7 +575,7 @@
 					"default": "Author Date",
 					"description": "%config.date.type.description%"
 				},
-				"git-graph.defaultColumnVisibility": {
+				"git-map.defaultColumnVisibility": {
 					"type": "object",
 					"properties": {
 						"Date": {
@@ -598,12 +598,12 @@
 					},
 					"description": "%config.defaultColumnVisibility.description%"
 				},
-				"git-graph.dialog.addTag.pushToRemote": {
+				"git-map.dialog.addTag.pushToRemote": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.addTag.pushToRemote.description%"
 				},
-				"git-graph.dialog.addTag.type": {
+				"git-map.dialog.addTag.type": {
 					"type": "string",
 					"enum": [
 						"Annotated",
@@ -612,47 +612,47 @@
 					"default": "Annotated",
 					"description": "%config.dialog.addTag.type.description%"
 				},
-				"git-graph.dialog.applyStash.reinstateIndex": {
+				"git-map.dialog.applyStash.reinstateIndex": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.applyStash.reinstateIndex.description%"
 				},
-				"git-graph.dialog.cherryPick.noCommit": {
+				"git-map.dialog.cherryPick.noCommit": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.cherryPick.noCommit.description%"
 				},
-				"git-graph.dialog.cherryPick.recordOrigin": {
+				"git-map.dialog.cherryPick.recordOrigin": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.cherryPick.recordOrigin.description%"
 				},
-				"git-graph.dialog.createBranch.checkOut": {
+				"git-map.dialog.createBranch.checkOut": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.createBranch.checkOut.description%"
 				},
-				"git-graph.dialog.deleteBranch.forceDelete": {
+				"git-map.dialog.deleteBranch.forceDelete": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.deleteBranch.forceDelete.description%"
 				},
-				"git-graph.dialog.fetchIntoLocalBranch.forceFetch": {
+				"git-map.dialog.fetchIntoLocalBranch.forceFetch": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.fetchIntoLocalBranch.forceFetch.description%"
 				},
-				"git-graph.dialog.fetchRemote.prune": {
+				"git-map.dialog.fetchRemote.prune": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.fetchRemote.prune.description%"
 				},
-				"git-graph.dialog.fetchRemote.pruneTags": {
+				"git-map.dialog.fetchRemote.pruneTags": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.fetchRemote.pruneTags.description%"
 				},
-				"git-graph.dialog.general.referenceInputSpaceSubstitution": {
+				"git-map.dialog.general.referenceInputSpaceSubstitution": {
 					"type": "string",
 					"enum": [
 						"None",
@@ -667,22 +667,22 @@
 					"default": "None",
 					"description": "%config.dialog.general.referenceInputSpaceSubstitution.description%"
 				},
-				"git-graph.dialog.merge.noCommit": {
+				"git-map.dialog.merge.noCommit": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.merge.noCommit.description%"
 				},
-				"git-graph.dialog.merge.noFastForward": {
+				"git-map.dialog.merge.noFastForward": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.dialog.merge.noFastForward.description%"
 				},
-				"git-graph.dialog.merge.squashCommits": {
+				"git-map.dialog.merge.squashCommits": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.merge.squashCommits.description%"
 				},
-				"git-graph.dialog.merge.squashMessageFormat": {
+				"git-map.dialog.merge.squashMessageFormat": {
 					"type": "string",
 					"enum": [
 						"Default",
@@ -695,22 +695,22 @@
 					"default": "Default",
 					"description": "%config.dialog.merge.squashMessageFormat.description%"
 				},
-				"git-graph.dialog.popStash.reinstateIndex": {
+				"git-map.dialog.popStash.reinstateIndex": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.popStash.reinstateIndex.description%"
 				},
-				"git-graph.dialog.pullBranch.noFastForward": {
+				"git-map.dialog.pullBranch.noFastForward": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.pullBranch.noFastForward.description%"
 				},
-				"git-graph.dialog.pullBranch.squashCommits": {
+				"git-map.dialog.pullBranch.squashCommits": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.pullBranch.squashCommits.description%"
 				},
-				"git-graph.dialog.pullBranch.squashMessageFormat": {
+				"git-map.dialog.pullBranch.squashMessageFormat": {
 					"type": "string",
 					"enum": [
 						"Default",
@@ -723,17 +723,17 @@
 					"default": "Default",
 					"description": "%config.dialog.pullBranch.squashMessageFormat.description%"
 				},
-				"git-graph.dialog.rebase.ignoreDate": {
+				"git-map.dialog.rebase.ignoreDate": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.dialog.rebase.ignoreDate.description%"
 				},
-				"git-graph.dialog.rebase.launchInteractiveRebase": {
+				"git-map.dialog.rebase.launchInteractiveRebase": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.dialog.rebase.launchInteractiveRebase.description%"
 				},
-				"git-graph.dialog.resetCurrentBranchToCommit.mode": {
+				"git-map.dialog.resetCurrentBranchToCommit.mode": {
 					"type": "string",
 					"enum": [
 						"Soft",
@@ -748,7 +748,7 @@
 					"default": "Mixed",
 					"description": "%config.dialog.resetCurrentBranchToCommit.mode.description%"
 				},
-				"git-graph.dialog.resetUncommittedChanges.mode": {
+				"git-map.dialog.resetUncommittedChanges.mode": {
 					"type": "string",
 					"enum": [
 						"Mixed",
@@ -761,23 +761,23 @@
 					"default": "Mixed",
 					"description": "%config.dialog.resetUncommittedChanges.mode.description%"
 				},
-				"git-graph.dialog.stashUncommittedChanges.includeUntracked": {
+				"git-map.dialog.stashUncommittedChanges.includeUntracked": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.dialog.stashUncommittedChanges.includeUntracked.description%"
 				},
-				"git-graph.enhancedAccessibility": {
+				"git-map.enhancedAccessibility": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.enhancedAccessibility.description%"
 				},
-				"git-graph.fileEncoding": {
+				"git-map.fileEncoding": {
 					"type": "string",
 					"default": "utf8",
 					"markdownDescription": "%config.fileEncoding.markdownDescription%",
 					"scope": "resource"
 				},
-				"git-graph.graph.colourPreset": {
+				"git-map.graph.colourPreset": {
 					"type": "string",
 					"enum": [
 						"Default",
@@ -798,7 +798,7 @@
 					"default": "Default",
 					"description": "%config.graph.colourPreset.description%"
 				},
-				"git-graph.graph.colours": {
+				"git-map.graph.colours": {
 					"type": "array",
 					"items": {
 						"type": "string",
@@ -821,22 +821,22 @@
 					],
 					"description": "%config.graph.colours.description%"
 				},
-				"git-graph.graph.minimap": {
+				"git-map.graph.minimap": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.graph.minimap.description%"
 				},
-				"git-graph.graph.freezeColumnHeaders": {
+				"git-map.graph.freezeColumnHeaders": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.graph.freezeColumnHeaders.description%"
 				},
-				"git-graph.graph.freezeFooter": {
+				"git-map.graph.freezeFooter": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.graph.freezeFooter.description%"
 				},
-				"git-graph.graph.density": {
+				"git-map.graph.density": {
 					"type": "string",
 					"enum": [
 						"Comfortable",
@@ -849,7 +849,7 @@
 					"default": "Comfortable",
 					"description": "%config.graph.density.description%"
 				},
-				"git-graph.graph.nodeStyle": {
+				"git-map.graph.nodeStyle": {
 					"type": "string",
 					"enum": [
 						"Dot",
@@ -862,7 +862,7 @@
 					"default": "Dot",
 					"description": "%config.graph.nodeStyle.description%"
 				},
-				"git-graph.graph.style": {
+				"git-map.graph.style": {
 					"type": "string",
 					"enum": [
 						"rounded",
@@ -875,7 +875,7 @@
 					"default": "rounded",
 					"description": "%config.graph.style.description%"
 				},
-				"git-graph.graph.uncommittedChanges": {
+				"git-map.graph.uncommittedChanges": {
 					"type": "string",
 					"enum": [
 						"Open Circle at the Uncommitted Changes",
@@ -888,13 +888,13 @@
 					"default": "Open Circle at the Uncommitted Changes",
 					"description": "%config.graph.uncommittedChanges.description%"
 				},
-				"git-graph.integratedTerminalShell": {
+				"git-map.integratedTerminalShell": {
 					"type": "string",
 					"default": "",
 					"description": "%config.integratedTerminalShell.description%",
 					"scope": "machine"
 				},
-				"git-graph.keyboardShortcut.find": {
+				"git-map.keyboardShortcut.find": {
 					"type": "string",
 					"enum": [
 						"UNASSIGNED",
@@ -928,7 +928,7 @@
 					"default": "CTRL/CMD + F",
 					"description": "%config.keyboardShortcut.find.description%"
 				},
-				"git-graph.keyboardShortcut.refresh": {
+				"git-map.keyboardShortcut.refresh": {
 					"type": "string",
 					"enum": [
 						"UNASSIGNED",
@@ -962,7 +962,7 @@
 					"default": "CTRL/CMD + R",
 					"description": "%config.keyboardShortcut.refresh.description%"
 				},
-				"git-graph.keyboardShortcut.scrollToHead": {
+				"git-map.keyboardShortcut.scrollToHead": {
 					"type": "string",
 					"enum": [
 						"UNASSIGNED",
@@ -996,7 +996,7 @@
 					"default": "CTRL/CMD + H",
 					"description": "%config.keyboardShortcut.scrollToHead.description%"
 				},
-				"git-graph.keyboardShortcut.scrollToStash": {
+				"git-map.keyboardShortcut.scrollToStash": {
 					"type": "string",
 					"enum": [
 						"UNASSIGNED",
@@ -1030,7 +1030,7 @@
 					"default": "CTRL/CMD + S",
 					"description": "%config.keyboardShortcut.scrollToStash.description%"
 				},
-				"git-graph.language": {
+				"git-map.language": {
 					"type": "string",
 					"enum": [
 						"Auto",
@@ -1045,17 +1045,17 @@
 					"default": "Auto",
 					"description": "%config.language.description%"
 				},
-				"git-graph.markdown": {
+				"git-map.markdown": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.markdown.description%"
 				},
-				"git-graph.maxDepthOfRepoSearch": {
+				"git-map.maxDepthOfRepoSearch": {
 					"type": "number",
 					"default": 0,
 					"description": "%config.maxDepthOfRepoSearch.description%"
 				},
-				"git-graph.openNewTabEditorGroup": {
+				"git-map.openNewTabEditorGroup": {
 					"type": "string",
 					"enum": [
 						"Active",
@@ -1086,12 +1086,12 @@
 					"default": "Active",
 					"description": "%config.openNewTabEditorGroup.description%"
 				},
-				"git-graph.openToTheRepoOfTheActiveTextEditorDocument": {
+				"git-map.openToTheRepoOfTheActiveTextEditorDocument": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.openToTheRepoOfTheActiveTextEditorDocument.description%"
 				},
-				"git-graph.referenceLabels.alignment": {
+				"git-map.referenceLabels.alignment": {
 					"type": "string",
 					"enum": [
 						"Normal",
@@ -1108,42 +1108,42 @@
 					"default": "Branches & Tags (in a separate column)",
 					"description": "%config.referenceLabels.alignment.description%"
 				},
-				"git-graph.referenceLabels.combineLocalAndRemoteBranchLabels": {
+				"git-map.referenceLabels.combineLocalAndRemoteBranchLabels": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.referenceLabels.combineLocalAndRemoteBranchLabels.description%"
 				},
-				"git-graph.repository.commits.fetchAvatars": {
+				"git-map.repository.commits.fetchAvatars": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.commits.fetchAvatars.description%"
 				},
-				"git-graph.repository.commits.initialLoad": {
+				"git-map.repository.commits.initialLoad": {
 					"type": "number",
 					"default": 300,
 					"description": "%config.repository.commits.initialLoad.description%"
 				},
-				"git-graph.repository.commits.loadMore": {
+				"git-map.repository.commits.loadMore": {
 					"type": "number",
 					"default": 100,
 					"description": "%config.repository.commits.loadMore.description%"
 				},
-				"git-graph.repository.commits.loadMoreAutomatically": {
+				"git-map.repository.commits.loadMoreAutomatically": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.commits.loadMoreAutomatically.description%"
 				},
-				"git-graph.repository.commits.mute.commitsThatAreNotAncestorsOfHead": {
+				"git-map.repository.commits.mute.commitsThatAreNotAncestorsOfHead": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.commits.mute.commitsThatAreNotAncestorsOfHead.description%"
 				},
-				"git-graph.repository.commits.mute.mergeCommits": {
+				"git-map.repository.commits.mute.mergeCommits": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.commits.mute.mergeCommits.description%"
 				},
-				"git-graph.repository.commits.order": {
+				"git-map.repository.commits.order": {
 					"type": "string",
 					"enum": [
 						"date",
@@ -1158,37 +1158,37 @@
 					"default": "date",
 					"markdownDescription": "%config.repository.commits.order.markdownDescription%"
 				},
-				"git-graph.repository.commits.showSignatureStatus": {
+				"git-map.repository.commits.showSignatureStatus": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.commits.showSignatureStatus.description%"
 				},
-				"git-graph.repository.fetchAndPrune": {
+				"git-map.repository.fetchAndPrune": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.fetchAndPrune.description%"
 				},
-				"git-graph.repository.fetchAndPruneTags": {
+				"git-map.repository.fetchAndPruneTags": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.fetchAndPruneTags.description%"
 				},
-				"git-graph.repository.includeCommitsMentionedByReflogs": {
+				"git-map.repository.includeCommitsMentionedByReflogs": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.includeCommitsMentionedByReflogs.description%"
 				},
-				"git-graph.repository.onLoad.scrollToHead": {
+				"git-map.repository.onLoad.scrollToHead": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.onLoad.scrollToHead.description%"
 				},
-				"git-graph.repository.onLoad.showCheckedOutBranch": {
+				"git-map.repository.onLoad.showCheckedOutBranch": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.onLoad.showCheckedOutBranch.description%"
 				},
-				"git-graph.repository.onLoad.showSpecificBranches": {
+				"git-map.repository.onLoad.showSpecificBranches": {
 					"type": "array",
 					"items": {
 						"type": "string",
@@ -1197,62 +1197,62 @@
 					"default": [],
 					"markdownDescription": "%config.repository.onLoad.showSpecificBranches.markdownDescription%"
 				},
-				"git-graph.repository.onlyFollowFirstParent": {
+				"git-map.repository.onlyFollowFirstParent": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "%config.repository.onlyFollowFirstParent.markdownDescription%"
 				},
-				"git-graph.repository.showCommitsOnlyReferencedByTags": {
+				"git-map.repository.showCommitsOnlyReferencedByTags": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showCommitsOnlyReferencedByTags.description%"
 				},
-				"git-graph.repository.showRemoteBranches": {
+				"git-map.repository.showRemoteBranches": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showRemoteBranches.description%"
 				},
-				"git-graph.repository.showRemoteHeads": {
+				"git-map.repository.showRemoteHeads": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showRemoteHeads.description%"
 				},
-				"git-graph.repository.showStashes": {
+				"git-map.repository.showStashes": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showStashes.description%"
 				},
-				"git-graph.repository.showTags": {
+				"git-map.repository.showTags": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showTags.description%"
 				},
-				"git-graph.repository.showUncommittedChanges": {
+				"git-map.repository.showUncommittedChanges": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showUncommittedChanges.description%"
 				},
-				"git-graph.repository.showUntrackedFiles": {
+				"git-map.repository.showUntrackedFiles": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.repository.showUntrackedFiles.description%"
 				},
-				"git-graph.repository.sign.commits": {
+				"git-map.repository.sign.commits": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.sign.commits.description%"
 				},
-				"git-graph.repository.sign.tags": {
+				"git-map.repository.sign.tags": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.repository.sign.tags.description%"
 				},
-				"git-graph.repository.useMailmap": {
+				"git-map.repository.useMailmap": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "%config.repository.useMailmap.markdownDescription%"
 				},
-				"git-graph.repositoryDropdownOrder": {
+				"git-map.repositoryDropdownOrder": {
 					"type": "string",
 					"enum": [
 						"Full Path",
@@ -1267,17 +1267,17 @@
 					"default": "Workspace Full Path",
 					"description": "%config.repositoryDropdownOrder.description%"
 				},
-				"git-graph.retainContextWhenHidden": {
+				"git-map.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.retainContextWhenHidden.description%"
 				},
-				"git-graph.showStatusBarItem": {
+				"git-map.showStatusBarItem": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.showStatusBarItem.description%"
 				},
-				"git-graph.sourceCodeProviderIntegrationLocation": {
+				"git-map.sourceCodeProviderIntegrationLocation": {
 					"type": "string",
 					"enum": [
 						"Inline",
@@ -1290,7 +1290,7 @@
 					"default": "Inline",
 					"description": "%config.sourceCodeProviderIntegrationLocation.description%"
 				},
-				"git-graph.statusBarItemDisplay": {
+				"git-map.statusBarItemDisplay": {
 					"type": "string",
 					"enum": [
 						"Icon & Text",
@@ -1305,7 +1305,7 @@
 					"default": "Icon & Text",
 					"description": "%config.statusBarItemDisplay.description%"
 				},
-				"git-graph.tabIconColourTheme": {
+				"git-map.tabIconColourTheme": {
 					"type": "string",
 					"enum": [
 						"colour",
@@ -1318,28 +1318,28 @@
 					"default": "colour",
 					"description": "%config.tabIconColourTheme.description%"
 				},
-				"git-graph.autoCenterCommitDetailsView": {
+				"git-map.autoCenterCommitDetailsView": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.autoCenterCommitDetailsView.description%",
 					"deprecationMessage": "%config.autoCenterCommitDetailsView.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.autoCenterCommitDetailsView.markdownDeprecationMessage%"
 				},
-				"git-graph.combineLocalAndRemoteBranchLabels": {
+				"git-map.combineLocalAndRemoteBranchLabels": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.combineLocalAndRemoteBranchLabels.description%",
 					"deprecationMessage": "%config.combineLocalAndRemoteBranchLabels.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.combineLocalAndRemoteBranchLabels.markdownDeprecationMessage%"
 				},
-				"git-graph.commitDetailsViewFileTreeCompactFolders": {
+				"git-map.commitDetailsViewFileTreeCompactFolders": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.commitDetailsViewFileTreeCompactFolders.description%",
 					"deprecationMessage": "%config.commitDetailsViewFileTreeCompactFolders.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.commitDetailsViewFileTreeCompactFolders.markdownDeprecationMessage%"
 				},
-				"git-graph.commitDetailsViewLocation": {
+				"git-map.commitDetailsViewLocation": {
 					"type": "string",
 					"enum": [
 						"Inline",
@@ -1354,7 +1354,7 @@
 					"deprecationMessage": "%config.commitDetailsViewLocation.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.commitDetailsViewLocation.markdownDeprecationMessage%"
 				},
-				"git-graph.commitOrdering": {
+				"git-map.commitOrdering": {
 					"type": "string",
 					"enum": [
 						"date",
@@ -1371,7 +1371,7 @@
 					"deprecationMessage": "%config.commitOrdering.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.commitOrdering.markdownDeprecationMessage%"
 				},
-				"git-graph.dateFormat": {
+				"git-map.dateFormat": {
 					"type": "string",
 					"enum": [
 						"Date & Time",
@@ -1392,7 +1392,7 @@
 					"deprecationMessage": "%config.dateFormat.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.dateFormat.markdownDeprecationMessage%"
 				},
-				"git-graph.dateType": {
+				"git-map.dateType": {
 					"type": "string",
 					"enum": [
 						"Author Date",
@@ -1407,7 +1407,7 @@
 					"deprecationMessage": "%config.dateType.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.dateType.markdownDeprecationMessage%"
 				},
-				"git-graph.defaultFileViewType": {
+				"git-map.defaultFileViewType": {
 					"type": "string",
 					"enum": [
 						"File Tree",
@@ -1422,21 +1422,21 @@
 					"deprecationMessage": "%config.defaultFileViewType.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.defaultFileViewType.markdownDeprecationMessage%"
 				},
-				"git-graph.fetchAndPrune": {
+				"git-map.fetchAndPrune": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.fetchAndPrune.description%",
 					"deprecationMessage": "%config.fetchAndPrune.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.fetchAndPrune.markdownDeprecationMessage%"
 				},
-				"git-graph.fetchAvatars": {
+				"git-map.fetchAvatars": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.fetchAvatars.description%",
 					"deprecationMessage": "%config.fetchAvatars.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.fetchAvatars.markdownDeprecationMessage%"
 				},
-				"git-graph.graphColours": {
+				"git-map.graphColours": {
 					"type": "array",
 					"items": {
 						"type": "string",
@@ -1461,7 +1461,7 @@
 					"deprecationMessage": "%config.graphColours.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.graphColours.markdownDeprecationMessage%"
 				},
-				"git-graph.graphStyle": {
+				"git-map.graphStyle": {
 					"type": "string",
 					"enum": [
 						"rounded",
@@ -1476,56 +1476,56 @@
 					"deprecationMessage": "%config.graphStyle.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.graphStyle.markdownDeprecationMessage%"
 				},
-				"git-graph.includeCommitsMentionedByReflogs": {
+				"git-map.includeCommitsMentionedByReflogs": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.includeCommitsMentionedByReflogs.description%",
 					"deprecationMessage": "%config.includeCommitsMentionedByReflogs.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.includeCommitsMentionedByReflogs.markdownDeprecationMessage%"
 				},
-				"git-graph.initialLoadCommits": {
+				"git-map.initialLoadCommits": {
 					"type": "number",
 					"default": 300,
 					"description": "%config.initialLoadCommits.description%",
 					"deprecationMessage": "%config.initialLoadCommits.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.initialLoadCommits.markdownDeprecationMessage%"
 				},
-				"git-graph.loadMoreCommits": {
+				"git-map.loadMoreCommits": {
 					"type": "number",
 					"default": 100,
 					"description": "%config.loadMoreCommits.description%",
 					"deprecationMessage": "%config.loadMoreCommits.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.loadMoreCommits.markdownDeprecationMessage%"
 				},
-				"git-graph.loadMoreCommitsAutomatically": {
+				"git-map.loadMoreCommitsAutomatically": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.loadMoreCommitsAutomatically.description%",
 					"deprecationMessage": "%config.loadMoreCommitsAutomatically.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.loadMoreCommitsAutomatically.markdownDeprecationMessage%"
 				},
-				"git-graph.muteCommitsThatAreNotAncestorsOfHead": {
+				"git-map.muteCommitsThatAreNotAncestorsOfHead": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.muteCommitsThatAreNotAncestorsOfHead.description%",
 					"deprecationMessage": "%config.muteCommitsThatAreNotAncestorsOfHead.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.muteCommitsThatAreNotAncestorsOfHead.markdownDeprecationMessage%"
 				},
-				"git-graph.muteMergeCommits": {
+				"git-map.muteMergeCommits": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.muteMergeCommits.description%",
 					"deprecationMessage": "%config.muteMergeCommits.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.muteMergeCommits.markdownDeprecationMessage%"
 				},
-				"git-graph.onlyFollowFirstParent": {
+				"git-map.onlyFollowFirstParent": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "%config.onlyFollowFirstParent.markdownDescription%",
 					"deprecationMessage": "%config.onlyFollowFirstParent.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.onlyFollowFirstParent.markdownDeprecationMessage%"
 				},
-				"git-graph.openDiffTabLocation": {
+				"git-map.openDiffTabLocation": {
 					"type": "string",
 					"enum": [
 						"Active",
@@ -1558,14 +1558,14 @@
 					"deprecationMessage": "%config.openDiffTabLocation.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.openDiffTabLocation.markdownDeprecationMessage%"
 				},
-				"git-graph.openRepoToHead": {
+				"git-map.openRepoToHead": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.openRepoToHead.description%",
 					"deprecationMessage": "%config.openRepoToHead.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.openRepoToHead.markdownDeprecationMessage%"
 				},
-				"git-graph.referenceLabelAlignment": {
+				"git-map.referenceLabelAlignment": {
 					"type": "string",
 					"enum": [
 						"Normal",
@@ -1582,49 +1582,49 @@
 					"deprecationMessage": "%config.referenceLabelAlignment.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.referenceLabelAlignment.markdownDeprecationMessage%"
 				},
-				"git-graph.showCommitsOnlyReferencedByTags": {
+				"git-map.showCommitsOnlyReferencedByTags": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.showCommitsOnlyReferencedByTags.description%",
 					"deprecationMessage": "%config.showCommitsOnlyReferencedByTags.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showCommitsOnlyReferencedByTags.markdownDeprecationMessage%"
 				},
-				"git-graph.showCurrentBranchByDefault": {
+				"git-map.showCurrentBranchByDefault": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.showCurrentBranchByDefault.description%",
 					"deprecationMessage": "%config.showCurrentBranchByDefault.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showCurrentBranchByDefault.markdownDeprecationMessage%"
 				},
-				"git-graph.showSignatureStatus": {
+				"git-map.showSignatureStatus": {
 					"type": "boolean",
 					"default": false,
 					"description": "%config.showSignatureStatus.description%",
 					"deprecationMessage": "%config.showSignatureStatus.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showSignatureStatus.markdownDeprecationMessage%"
 				},
-				"git-graph.showTags": {
+				"git-map.showTags": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.showTags.description%",
 					"deprecationMessage": "%config.showTags.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showTags.markdownDeprecationMessage%"
 				},
-				"git-graph.showUncommittedChanges": {
+				"git-map.showUncommittedChanges": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.showUncommittedChanges.description%",
 					"deprecationMessage": "%config.showUncommittedChanges.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showUncommittedChanges.markdownDeprecationMessage%"
 				},
-				"git-graph.showUntrackedFiles": {
+				"git-map.showUntrackedFiles": {
 					"type": "boolean",
 					"default": true,
 					"description": "%config.showUntrackedFiles.description%",
 					"deprecationMessage": "%config.showUntrackedFiles.deprecationMessage%",
 					"markdownDeprecationMessage": "%config.showUntrackedFiles.markdownDeprecationMessage%"
 				},
-				"git-graph.useMailmap": {
+				"git-map.useMailmap": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "%config.useMailmap.markdownDescription%",
@@ -1636,71 +1636,71 @@
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "git-graph.openFile",
-					"when": "isInDiffEditor && resourceScheme == git-graph && git-graph:codiconsSupported"
+					"command": "git-map.openFile",
+					"when": "isInDiffEditor && resourceScheme == git-map && git-map:codiconsSupported"
 				},
 				{
-					"command": "git-graph.viewFileHistory",
+					"command": "git-map.viewFileHistory",
 					"when": "resourceScheme == file"
 				},
 				{
-					"command": "git-graph.viewLineHistory",
+					"command": "git-map.viewLineHistory",
 					"when": "editorIsOpen && resourceScheme == file"
 				},
 				{
-					"command": "git-graph.viewCommitInGitMap",
+					"command": "git-map.viewCommitInGitMap",
 					"when": "false"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "git-graph.viewLineHistory",
+					"command": "git-map.viewLineHistory",
 					"group": "gitMap@1",
 					"when": "resourceScheme == file"
 				}
 			],
 			"explorer/context": [
 				{
-					"command": "git-graph.viewFileHistory",
+					"command": "git-map.viewFileHistory",
 					"group": "gitMap@1",
 					"when": "resourceScheme == file && !explorerResourceIsFolder"
 				}
 			],
 			"editor/title/context": [
 				{
-					"command": "git-graph.viewFileHistory",
+					"command": "git-map.viewFileHistory",
 					"group": "gitMap@1",
 					"when": "resourceScheme == file"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "git-graph.openFile",
+					"command": "git-map.openFile",
 					"group": "navigation",
-					"when": "isInDiffEditor && resourceScheme == git-graph && git-graph:codiconsSupported"
+					"when": "isInDiffEditor && resourceScheme == git-map && git-map:codiconsSupported"
 				}
 			],
 			"scm/title": [
 				{
-					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'Inline'",
-					"command": "git-graph.view",
+					"when": "scmProvider == git && config.git-map.sourceCodeProviderIntegrationLocation == 'Inline'",
+					"command": "git-map.view",
 					"group": "navigation"
 				},
 				{
-					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'More Actions'",
-					"command": "git-graph.view",
+					"when": "scmProvider == git && config.git-map.sourceCodeProviderIntegrationLocation == 'More Actions'",
+					"command": "git-map.view",
 					"group": "inline"
 				}
 			],
 			"scm/repository": [
 				{
-					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'Inline'",
-					"command": "git-graph.view",
+					"when": "scmProvider == git && config.git-map.sourceCodeProviderIntegrationLocation == 'Inline'",
+					"command": "git-map.view",
 					"group": "inline"
 				},
 				{
-					"when": "scmProvider == git && config.git-graph.sourceCodeProviderIntegrationLocation == 'More Actions'",
-					"command": "git-graph.view",
+					"when": "scmProvider == git && config.git-map.sourceCodeProviderIntegrationLocation == 'More Actions'",
+					"command": "git-map.view",
 					"group": "navigation"
 				}
 			]

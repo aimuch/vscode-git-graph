@@ -151,7 +151,7 @@ async function run() {
 
 	// Get the open Git Map View (opening it if a previous check failed to), so that each check is independent of the others
 	const getView = async () => {
-		if (!GitGraphView.currentPanel) await vscode.commands.executeCommand('git-graph.view');
+		if (!GitGraphView.currentPanel) await vscode.commands.executeCommand('git-map.view');
 		return waitFor('the Git Map View to open', () => GitGraphView.currentPanel);
 	};
 
@@ -165,14 +165,14 @@ async function run() {
 	await check('#903', '"View Git Map" is contributed to the scm/repository menu (Source Control Repositories view)', async () => {
 		const menus = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8')).contributes.menus;
 		const repositoryMenu = menus['scm/repository'] || [];
-		assert(repositoryMenu.some((item) => item.command === 'git-graph.view' && item.group === 'inline' && item.when.includes('\'Inline\'')), 'No inline scm/repository menu item');
-		assert(repositoryMenu.some((item) => item.command === 'git-graph.view' && item.group !== 'inline' && item.when.includes('\'More Actions\'')), 'No "More Actions" scm/repository menu item');
+		assert(repositoryMenu.some((item) => item.command === 'git-map.view' && item.group === 'inline' && item.when.includes('\'Inline\'')), 'No inline scm/repository menu item');
+		assert(repositoryMenu.some((item) => item.command === 'git-map.view' && item.group !== 'inline' && item.when.includes('\'More Actions\'')), 'No "More Actions" scm/repository menu item');
 	});
 
-	await check('status-bar', 'The Status Bar Item displays the Git Map icon and / or text, as configured by git-graph.statusBarItemDisplay', async () => {
+	await check('status-bar', 'The Status Bar Item displays the Git Map icon and / or text, as configured by git-map.statusBarItemDisplay', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
-		const icon = packageJson.contributes.icons['git-graph-logo'];
-		assert(icon && fs.statSync(path.join(extension.extensionPath, icon.default.fontPath)).size > 0, 'The git-graph-logo icon font is missing');
+		const icon = packageJson.contributes.icons['git-map-logo'];
+		assert(icon && fs.statSync(path.join(extension.extensionPath, icon.default.fontPath)).size > 0, 'The git-map-logo icon font is missing');
 
 		const { StatusBarItem } = require(path.join(extension.extensionPath, 'out', 'statusBarItem.js'));
 		const { EventEmitter } = require(path.join(extension.extensionPath, 'out', 'utils', 'event.js'));
@@ -182,22 +182,22 @@ async function run() {
 		const texts = {};
 		try {
 			for (const display of ['Icon', 'Text', 'Icon & Text']) {
-				await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', display, vscode.ConfigurationTarget.Global);
-				onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-graph' || section === 'git-graph.statusBarItemDisplay' });
+				await vscode.workspace.getConfiguration('git-map').update('statusBarItemDisplay', display, vscode.ConfigurationTarget.Global);
+				onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-map' || section === 'git-map.statusBarItemDisplay' });
 				texts[display] = statusBarItem.statusBarItem.text;
 			}
 		} finally {
-			await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.workspace.getConfiguration('git-map').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
 			statusBarItem.dispose();
 			logger.dispose();
 		}
-		assert(texts['Icon'] === '$(git-graph-logo)' && texts['Text'] === 'Git Map' && texts['Icon & Text'] === '$(git-graph-logo) Git Map', 'Unexpected texts: ' + JSON.stringify(texts));
+		assert(texts['Icon'] === '$(git-map-logo)' && texts['Text'] === 'Git Map' && texts['Icon & Text'] === '$(git-map-logo) Git Map', 'Unexpected texts: ' + JSON.stringify(texts));
 		return JSON.stringify(texts);
 	});
 
 	await check('#794', 'The "View Git Map" command opens the view when invoked with a null argument', async () => {
 		const since = marker(record);
-		await vscode.commands.executeCommand('git-graph.view', null);
+		await vscode.commands.executeCommand('git-map.view', null);
 		await waitFor('the Git Map View to open', () => GitGraphView.currentPanel && getGitGraphTabs().length === 1, 10000);
 		// The Webview's script runs & requests the repositories, i.e. the Webview's resources load in this version of Visual Studio Code
 		await waitFor('the Webview to request data', () => record.requests.slice(since.requests).some((msg) => msg.command === 'loadRepoInfo'));
@@ -242,8 +242,58 @@ async function run() {
 		return 'Repositories: ' + repos.map((repo) => path.relative(realpath(fixtures.workspace), repo)).join(', ');
 	});
 
+	// Migrating the Extension Settings from git-graph.* to git-map.* (run.js sets them under their old names). The ways it could go wrong,
+	// which this check asserts don't happen: a value isn't copied (losing the user's setting), a value already set under the new name is
+	// overwritten, a value is copied to a different scope (user / workspace), legacy names & values that are arrays aren't copied, the
+	// settings are read before they're copied (#668 relies on git-map.maxDepthOfRepoSearch being copied before the repositories are
+	// discovered), the old settings are removed without asking, the migration runs again (copying a value the user has reset since), and
+	// removing the old settings fails (as they're no longer registered) or also removes the new ones.
+	await check('settings-migration', '[Rename] The git-graph.* Extension Settings are copied to git-map.* when Git Map starts (once for the user & the workspace), and can then be removed', async () => {
+		const { migrateSettings, removeOldSettings } = require(path.join(extension.extensionPath, 'out', 'settingsMigration.js'));
+		const { Logger } = require(path.join(extension.extensionPath, 'out', 'logger.js'));
+		const user = (section, name) => vscode.workspace.getConfiguration(section).inspect(name).globalValue;
+		const workspace = (section, name) => vscode.workspace.getConfiguration(section).inspect(name).workspaceValue;
+		const memento = (migrated) => {
+			const values = { settingsMigratedToGitMap: migrated };
+			return { get: (key, defaultValue) => key in values ? values[key] : defaultValue, update: async (key, value) => { values[key] = value; }, keys: () => Object.keys(values), values: values };
+		};
+
+		// Copied when Git Map started
+		assert(user('git-map', 'maxDepthOfRepoSearch') === 2 && user('git-map', 'integratedTerminalShell') === '/bin/sh', 'The user settings weren\'t copied');
+		assert(user('git-map', 'repository.commits.mute.mergeCommits') === true && JSON.stringify(user('git-map', 'customEmojiShortcodeMappings')) === JSON.stringify([{ shortcode: ':e2e-migrated:', emoji: '✅' }]), 'The legacy name or the array wasn\'t copied');
+		assert(user('git-map', 'muteMergeCommits') === undefined && workspace('git-map', 'commitOrdering') === undefined, 'A deprecated (legacy) name was set');
+		assert(user('git-map', 'tabIconColourTheme') === 'colour', 'The setting already set under its new name was overwritten');
+		assert(workspace('git-map', 'fileEncoding') === 'utf8' && workspace('git-map', 'repository.commits.order') === 'date' && user('git-map', 'fileEncoding') === undefined && user('git-map', 'repository.commits.order') === undefined, 'The workspace settings weren\'t copied to the workspace');
+		assert(user('git-graph', 'maxDepthOfRepoSearch') === 2 && workspace('git-graph', 'fileEncoding') === 'utf8', 'The old settings were removed without asking');
+
+		const logger = new Logger();
+		try {
+			// Once migrated, a setting the user resets isn't copied again
+			await vscode.workspace.getConfiguration('git-map').update('tabIconColourTheme', undefined, vscode.ConfigurationTarget.Global);
+			const again = await migrateSettings(memento(true), memento(true), extension.packageJSON, logger);
+			assert(again.copied.length === 0 && user('git-map', 'tabIconColourTheme') === undefined, 'The settings were migrated again: ' + JSON.stringify(again.copied));
+
+			// Migrating (as when Git Map starts for the first time) only copies the settings that aren't set under their new names
+			const globalState = memento(false), workspaceState = memento(false);
+			const result = await migrateSettings(globalState, workspaceState, extension.packageJSON, logger);
+			assert(JSON.stringify(result.copied) === JSON.stringify(['git-map.tabIconColourTheme (User)']) && user('git-map', 'tabIconColourTheme') === 'grey' && result.errors.length === 0, 'Unexpected migration: ' + JSON.stringify(result));
+			assert(globalState.values.settingsMigratedToGitMap === true && workspaceState.values.settingsMigratedToGitMap === true, 'The migration wasn\'t recorded');
+			const oldNames = result.oldValues.map((value) => value.name + (value.target === vscode.ConfigurationTarget.Global ? ' (User)' : ' (Workspace)')).sort();
+
+			// Removing the old settings (from the notification) removes them from the settings files, keeping the new settings
+			const errors = await removeOldSettings(result.oldValues, logger);
+			const userSettings = fs.readFileSync(path.join(path.dirname(fixtures.workspace), 'user-data', 'User', 'settings.json'), 'utf8');
+			const workspaceSettings = fs.readFileSync(path.join(fixtures.workspace, '.vscode', 'settings.json'), 'utf8');
+			assert(errors.length === 0 && !userSettings.includes('"git-graph.') && !workspaceSettings.includes('"git-graph.'), 'The old settings weren\'t removed: ' + errors.join(', ') + '\n' + userSettings + '\n' + workspaceSettings);
+			assert(user('git-map', 'maxDepthOfRepoSearch') === 2 && workspace('git-map', 'fileEncoding') === 'utf8' && user('git-map', 'repository.commits.mute.mergeCommits') === true, 'The new settings were removed');
+			return 'Copied at startup (user: maxDepthOfRepoSearch, integratedTerminalShell, muteMergeCommits → repository.commits.mute.mergeCommits, customEmojiShortcodeMappings; workspace: fileEncoding, commitOrdering → repository.commits.order; tabIconColourTheme kept); not migrated again; removed ' + oldNames.join(', ');
+		} finally {
+			await vscode.workspace.getConfiguration('git-map').update('tabIconColourTheme', 'colour', vscode.ConfigurationTarget.Global);
+		}
+	});
+
 	await check('#935', 'Commits after a commit whose subject contains a raw CR character are loaded (from the Webview)', async () => {
-		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) }); // As invoked from the Source Control View
+		await vscode.commands.executeCommand('git-map.view', { rootUri: vscode.Uri.file(main) }); // As invoked from the Source Control View
 		const response = await waitForCommitsLoaded(record, main, { requests: 0, responses: 0 }); // The repository may already have been loaded when the view was opened
 		const hashes = response.commits.map((commit) => commit.hash);
 		const crCommit = response.commits.find((commit) => commit.hash === fixtures.crCommit);
@@ -356,7 +406,7 @@ async function run() {
 	await check('ui-file-history', '[Redesign] The history of a file follows it through renames, with the parents of its commits rewritten (so the graph is connected), the changes to the file in each commit, and its diff', async () => {
 		const dataSource = (await getView()).dataSource;
 		const commands = await vscode.commands.getCommands(true);
-		assert(commands.includes('git-graph.viewFileHistory'), 'The View File History command isn\'t registered');
+		assert(commands.includes('git-map.viewFileHistory'), 'The View File History command isn\'t registered');
 		const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'git-map-e2e-history-')); // Outside of the workspace, so it isn't discovered
 		try {
 			git(repo, 'init', '-q', '-b', 'main');
@@ -399,7 +449,7 @@ async function run() {
 	await check('ui-file-history-command', '[Redesign] The "View File History in Git Map" command opens the view showing the history of the file (relative to its repository)', async () => {
 		const view = await getView();
 		const since = { requests: record.requests.length, responses: record.responses.length };
-		await vscode.commands.executeCommand('git-graph.viewFileHistory', vscode.Uri.file(path.join(main, 'file.txt')));
+		await vscode.commands.executeCommand('git-map.viewFileHistory', vscode.Uri.file(path.join(main, 'file.txt')));
 		const request = await waitFor('the history of file.txt to be requested', () => record.requests.slice(since.requests).find((msg) => msg.command === 'loadCommits' && msg.repo === main && msg.filePath === 'file.txt'));
 		const response = await waitFor('the history to be loaded', () => record.responses.slice(since.responses).find((msg) => msg.command === 'loadCommits' && msg.refreshId === request.refreshId));
 		const hashes = response.commits.map((commit) => commit.hash);
@@ -682,7 +732,7 @@ async function run() {
 		const editor = await vscode.window.showTextDocument(document);
 		editor.selection = new vscode.Selection(0, 0, 0, 2);
 		const since = record.requests.length;
-		await vscode.commands.executeCommand('git-graph.viewLineHistory');
+		await vscode.commands.executeCommand('git-map.viewLineHistory');
 		const request = await waitFor('the Webview to request the line history', () => record.requests.slice(since).find((msg) => msg.command === 'loadCommits' && msg.filePath === 'file.txt' && msg.lineRange))
 			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.command === 'loadCommits' ? ' ' + msg.repo + ' ' + msg.filePath + ' ' + JSON.stringify(msg.lineRange) : '')).join(', ') + '; HTML loadViewTo: ' + (record.html.length > 0 ? (record.html[record.html.length - 1].match(/"loadViewTo":(\{[^}]*\}[^,]*)/) || [])[1] : '') + ')'); });
 		assert(request.repo === main && request.lineRange.start === 1 && request.lineRange.end === 1, 'Unexpected request: ' + JSON.stringify(request));
@@ -709,7 +759,7 @@ async function run() {
 
 		// The link opens the commit in the Git Map View (as soon as the view, which was just shown again, has loaded)
 		const since = record.requests.length;
-		await vscode.commands.executeCommand('git-graph.viewCommitInGitMap', main, fixtures.firstCommit);
+		await vscode.commands.executeCommand('git-map.viewCommitInGitMap', main, fixtures.firstCommit);
 		const details = await waitFor('the details of the commit to be requested', () => record.requests.slice(since).find((msg) => msg.command === 'commitDetails' && msg.commitHash === fixtures.firstCommit))
 			.catch((err) => { throw new Error(err.message + ' (requests: ' + record.requests.slice(since).map((msg) => msg.command + (msg.repo ? ' ' + msg.repo : '')).join(', ') + ')'); });
 		return 'Blame: ' + text + '; the link requested the details of ' + details.commitHash.substring(0, 8);
@@ -784,7 +834,7 @@ async function run() {
 	]) {
 		await check(id, title, async () => {
 			let since = marker(record);
-			await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(repo) });
+			await vscode.commands.executeCommand('git-map.view', { rootUri: vscode.Uri.file(repo) });
 			await waitForCommitsLoaded(record, repo, since);
 			await sleep(2500); // File events are muted for 1.5 seconds after the Git Map View has run Git commands
 
@@ -800,18 +850,18 @@ async function run() {
 
 	await check('#775', 'Selecting a graph colour preset re-renders the open Git Map View with the preset\'s colours', async () => {
 		const commands = await vscode.commands.getCommands(true);
-		assert(commands.includes('git-graph.selectGraphColourPreset'), 'The "Select Graph Colour Preset" command is not registered');
-		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
+		assert(commands.includes('git-map.selectGraphColourPreset'), 'The "Select Graph Colour Preset" command is not registered');
+		await vscode.commands.executeCommand('git-map.view', { rootUri: vscode.Uri.file(main) });
 		await waitFor('the Git Map View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
 		const colourOf = (html) => (html.match(/--git-graph-color0:([^;]+);/) || [])[1];
 		try {
 			const renders = record.html.length;
-			await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', 'Tokyo Subway', vscode.ConfigurationTarget.Global);
+			await vscode.workspace.getConfiguration('git-map').update('graph.colourPreset', 'Tokyo Subway', vscode.ConfigurationTarget.Global);
 			const html = await waitFor('the view to be re-rendered', () => record.html.slice(renders).find((html) => html.includes('id="view"')));
 			assert(colourOf(html) === '#f62e36', 'Unexpected first graph colour: ' + colourOf(html));
 		} finally {
 			const renders = record.html.length;
-			await vscode.workspace.getConfiguration('git-graph').update('graph.colourPreset', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.workspace.getConfiguration('git-map').update('graph.colourPreset', undefined, vscode.ConfigurationTarget.Global);
 			await waitFor('the view to be re-rendered with the default colours', () => record.html.slice(renders).some((html) => colourOf(html) === '#0085d9'));
 		}
 		return 'Tokyo Subway → --git-graph-color0: #f62e36, Default → #0085d9';
@@ -844,7 +894,7 @@ async function run() {
 	await getView();
 	await runWebviewHarness(await waitFor('the Webview HTML', () => record.html.slice().reverse().find((html) => html.includes('id="view"'))), '[Webview UI] ');
 
-	// Display the Git Map View, Status Bar Item & Webview UI in Simplified Chinese (git-graph.language), as a user who has set it would see them
+	// Display the Git Map View, Status Bar Item & Webview UI in Simplified Chinese (git-map.language), as a user who has set it would see them
 	let chineseHtml = null;
 	await check('ui-settings-update', '[Redesign] The Repository Settings panel can only update its whitelisted Extension Settings, for all repositories', async () => {
 		const view = await getView();
@@ -856,27 +906,27 @@ async function run() {
 		};
 		try {
 			const valid = await send('statusBarItemDisplay', 'Text');
-			assert(valid.error === null && vscode.workspace.getConfiguration('git-graph').inspect('statusBarItemDisplay').globalValue === 'Text', 'The valid setting wasn\'t updated: ' + valid.error);
+			assert(valid.error === null && vscode.workspace.getConfiguration('git-map').inspect('statusBarItemDisplay').globalValue === 'Text', 'The valid setting wasn\'t updated: ' + valid.error);
 			const invalidValue = await send('statusBarItemDisplay', 'Huge');
 			const invalidKey = await send('repository.commits.initialLoad', '1');
-			assert(invalidValue.error !== null && invalidKey.error !== null && vscode.workspace.getConfiguration('git-graph').inspect('repository.commits.initialLoad').globalValue === undefined, 'An invalid setting was updated');
+			assert(invalidValue.error !== null && invalidKey.error !== null && vscode.workspace.getConfiguration('git-map').inspect('repository.commits.initialLoad').globalValue === undefined, 'An invalid setting was updated');
 			// The settings that freeze the column headers & footer are booleans (a string isn't accepted)
 			const freeze = await send('graph.freezeFooter', false);
 			const freezeString = await send('graph.freezeColumnHeaders', 'false');
-			const config = vscode.workspace.getConfiguration('git-graph');
+			const config = vscode.workspace.getConfiguration('git-map');
 			assert(freeze.error === null && config.inspect('graph.freezeFooter').globalValue === false && freezeString.error !== null && config.inspect('graph.freezeColumnHeaders').globalValue === undefined, 'Unexpected boolean settings: ' + freeze.error + ' / ' + freezeString.error);
 			return 'Valid: updated; invalid value: "' + invalidValue.error + '"; other setting: "' + invalidKey.error + '"; boolean: updated, as a string: "' + freezeString.error + '"';
 		} finally {
-			await vscode.workspace.getConfiguration('git-graph').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.workspace.getConfiguration('git-map').update('statusBarItemDisplay', undefined, vscode.ConfigurationTarget.Global);
 			// Changing the setting re-renders the open view, which must happen before the next check waits for the view to be re-rendered
 			const renders = record.html.length;
-			await vscode.workspace.getConfiguration('git-graph').update('graph.freezeFooter', undefined, vscode.ConfigurationTarget.Global);
+			await vscode.workspace.getConfiguration('git-map').update('graph.freezeFooter', undefined, vscode.ConfigurationTarget.Global);
 			await waitFor('the view to be re-rendered', () => record.html.length > renders, 5000).catch(() => null);
 			await new Promise((resolve) => setTimeout(resolve, 500));
 		}
 	});
 
-	await check('l10n', 'Setting git-graph.language to Simplified Chinese re-renders the open Git Map View & Status Bar Item in Simplified Chinese', async () => {
+	await check('l10n', 'Setting git-map.language to Simplified Chinese re-renders the open Git Map View & Status Bar Item in Simplified Chinese', async () => {
 		const packageJson = JSON.parse(fs.readFileSync(path.join(extension.extensionPath, 'package.json'), 'utf8'));
 		const nlsKeys = (file) => Object.keys(JSON.parse(fs.readFileSync(path.join(extension.extensionPath, file), 'utf8')));
 		const placeholders = Array.from(new Set(JSON.stringify(packageJson.contributes).match(/"%[^"%]+%"/g).map((key) => key.slice(2, -2))));
@@ -888,13 +938,13 @@ async function run() {
 		const { Logger } = require(path.join(extension.extensionPath, 'out', 'logger.js'));
 		const onDidChangeRepos = new EventEmitter(), onDidChangeConfiguration = new EventEmitter(), logger = new Logger();
 		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
-		await vscode.commands.executeCommand('git-graph.view', { rootUri: vscode.Uri.file(main) });
+		await vscode.commands.executeCommand('git-map.view', { rootUri: vscode.Uri.file(main) });
 		await waitFor('the Git Map View to be visible', () => GitGraphView.currentPanel && GitGraphView.currentPanel.panel.visible);
 		try {
 			const tooltipBefore = statusBarItem.statusBarItem.tooltip;
 			const renders = record.html.length;
-			await vscode.workspace.getConfiguration('git-graph').update('language', 'Simplified Chinese', vscode.ConfigurationTarget.Global);
-			onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-graph' || section === 'git-graph.language' });
+			await vscode.workspace.getConfiguration('git-map').update('language', 'Simplified Chinese', vscode.ConfigurationTarget.Global);
+			onDidChangeConfiguration.emit({ affectsConfiguration: (section) => section === 'git-map' || section === 'git-map.language' });
 			chineseHtml = await waitFor('the view to be re-rendered', () => record.html.slice(renders).find((html) => html.includes('id="view"')));
 			assert(tooltipBefore === 'View Git Map' && statusBarItem.statusBarItem.tooltip === '查看 Git Map', 'Unexpected Status Bar Item tooltips: ' + tooltipBefore + ' → ' + statusBarItem.statusBarItem.tooltip);
 			assert(chineseHtml.includes('<html lang="zh-CN">'), 'The view isn\'t marked as Simplified Chinese');
@@ -908,10 +958,10 @@ async function run() {
 	if (chineseHtml !== null) {
 		await runWebviewHarness(chineseHtml, '[Webview UI, 简体中文] ');
 	}
-	await check('l10n-reset', 'Resetting git-graph.language re-renders the open Git Map View in the display language of Visual Studio Code (English)', async () => {
+	await check('l10n-reset', 'Resetting git-map.language re-renders the open Git Map View in the display language of Visual Studio Code (English)', async () => {
 		await getView();
 		const renders = record.html.length;
-		await vscode.workspace.getConfiguration('git-graph').update('language', undefined, vscode.ConfigurationTarget.Global);
+		await vscode.workspace.getConfiguration('git-map').update('language', undefined, vscode.ConfigurationTarget.Global);
 		// The view can also be re-rendered (in the previous language) when it becomes visible again after the harness' Webview is closed
 		const html = await waitFor('the view to be re-rendered in English', () => record.html.slice(renders).find((html) => html.includes('<html lang="en">'))).catch((err) => {
 			throw new Error(err.message + '. Rendered: ' + record.html.slice(renders).map((html) => (html.match(/<html lang="([^"]+)">/) || [])[1]).join(', '));

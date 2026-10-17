@@ -223,7 +223,7 @@
 
 	/* Checks */
 
-	// Run when the Git Map View is displayed in Simplified Chinese (git-graph.language)
+	// Run when the Git Map View is displayed in Simplified Chinese (git-map.language)
 	const runL10n = async () => {
 		await waitFor('the commits to be rendered', () => document.querySelectorAll('#commitTable tr.commit').length === 10, 10000);
 

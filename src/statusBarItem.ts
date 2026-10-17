@@ -29,7 +29,7 @@ export class StatusBarItem extends Disposable {
 		statusBarItem.name = 'Git Map';
 		statusBarItem.text = getStatusBarItemText();
 		statusBarItem.tooltip = t('View Git Map');
-		statusBarItem.command = 'git-graph.view';
+		statusBarItem.command = 'git-map.view';
 		this.statusBarItem = statusBarItem;
 
 		this.registerDisposables(
@@ -37,13 +37,13 @@ export class StatusBarItem extends Disposable {
 				this.setNumRepos(event.numRepos);
 			}),
 			onDidChangeConfiguration((event) => {
-				if (event.affectsConfiguration('git-graph.showStatusBarItem')) {
+				if (event.affectsConfiguration('git-map.showStatusBarItem')) {
 					this.refresh();
 				}
-				if (event.affectsConfiguration('git-graph.statusBarItemDisplay')) {
+				if (event.affectsConfiguration('git-map.statusBarItemDisplay')) {
 					this.statusBarItem.text = getStatusBarItemText();
 				}
-				if (event.affectsConfiguration('git-graph.language')) {
+				if (event.affectsConfiguration('git-map.language')) {
 					this.statusBarItem.tooltip = t('View Git Map');
 				}
 			}),
@@ -63,7 +63,7 @@ export class StatusBarItem extends Disposable {
 	}
 
 	/**
-	 * Show or hide the Status Bar Item according to the configured value of `git-graph.showStatusBarItem`, and the number of repositories known to Git Map.
+	 * Show or hide the Status Bar Item according to the configured value of `git-map.showStatusBarItem`, and the number of repositories known to Git Map.
 	 */
 	private refresh() {
 		const shouldBeVisible = getConfig().showStatusBarItem && this.numRepos > 0;
@@ -81,16 +81,16 @@ export class StatusBarItem extends Disposable {
 }
 
 /**
- * Get the text of the Status Bar Item, according to the configured value of `git-graph.statusBarItemDisplay`.
- * @returns The text, using the `git-graph-logo` icon contributed by Git Map.
+ * Get the text of the Status Bar Item, according to the configured value of `git-map.statusBarItemDisplay`.
+ * @returns The text, using the `git-map-logo` icon contributed by Git Map.
  */
 function getStatusBarItemText() {
 	switch (getConfig().statusBarItemDisplay) {
 		case StatusBarItemDisplay.Icon:
-			return '$(git-graph-logo)';
+			return '$(git-map-logo)';
 		case StatusBarItemDisplay.Text:
 			return 'Git Map';
 		default:
-			return '$(git-graph-logo) Git Map';
+			return '$(git-map-logo) Git Map';
 	}
 }

@@ -32,9 +32,9 @@ describe('StatusBarItem', () => {
 		const statusBarItem = new StatusBarItem(1, onDidChangeRepos.subscribe, onDidChangeConfiguration.subscribe, logger);
 
 		// Assert
-		expect(vscodeStatusBarItem.text).toBe('$(git-graph-logo) Git Map');
+		expect(vscodeStatusBarItem.text).toBe('$(git-map-logo) Git Map');
 		expect(vscodeStatusBarItem.tooltip).toBe('View Git Map');
-		expect(vscodeStatusBarItem.command).toBe('git-graph.view');
+		expect(vscodeStatusBarItem.command).toBe('git-map.view');
 		expect(vscodeStatusBarItem.show).toHaveBeenCalledTimes(1);
 		expect(vscodeStatusBarItem.hide).toHaveBeenCalledTimes(0);
 
@@ -99,7 +99,7 @@ describe('StatusBarItem', () => {
 		statusBarItem.dispose();
 	});
 
-	it('Should hide the Status Bar Item the extension setting git-graph.showStatusBarItem becomes disabled', () => {
+	it('Should hide the Status Bar Item the extension setting git-map.showStatusBarItem becomes disabled', () => {
 		// Setup
 		vscode.mockExtensionSettingReturnValue('showStatusBarItem', true);
 
@@ -124,7 +124,7 @@ describe('StatusBarItem', () => {
 		statusBarItem.dispose();
 	});
 
-	it('Should ignore extension setting changes unrelated to git-graph.showStatusBarItem', () => {
+	it('Should ignore extension setting changes unrelated to git-map.showStatusBarItem', () => {
 		// Setup
 		vscode.mockExtensionSettingReturnValue('showStatusBarItem', true);
 

@@ -56,6 +56,10 @@ function createFixtures(httpPort) {
 	fs.mkdirSync(WORKSPACE, { recursive: true });
 	const fixtures = { workspace: WORKSPACE };
 
+	// Workspace settings under their names before version 2.1.0 (a resource setting, and a legacy name), copied to git-map.* in the workspace
+	fs.mkdirSync(path.join(WORKSPACE, '.vscode'));
+	fs.writeFileSync(path.join(WORKSPACE, '.vscode', 'settings.json'), JSON.stringify({ 'git-graph.fileEncoding': 'utf8', 'git-graph.commitOrdering': 'date' }, null, '\t'));
+
 	// A bare repository used as a remote
 	const remote = path.join(ARTIFACTS, 'remote.git');
 	git(ARTIFACTS, 'init', '--bare', '-q', '-b', 'main', remote);
@@ -137,8 +141,14 @@ function writeUserSettings(userDataDir) {
 	const settingsDir = path.join(userDataDir, 'User');
 	fs.mkdirSync(settingsDir, { recursive: true });
 	fs.writeFileSync(path.join(settingsDir, 'settings.json'), JSON.stringify({
+		// Git Map's settings under their names before version 2.1.0 (git-graph.*), which are copied to git-map.* when it starts (the
+		// settings-migration check): a legacy name, an array, and a setting that's already set under its new name (which is kept)
 		'git-graph.integratedTerminalShell': '/bin/sh',
 		'git-graph.maxDepthOfRepoSearch': 2,
+		'git-graph.muteMergeCommits': true,
+		'git-graph.customEmojiShortcodeMappings': [{ shortcode: ':e2e-migrated:', emoji: '✅' }],
+		'git-graph.tabIconColourTheme': 'grey',
+		'git-map.tabIconColourTheme': 'colour',
 		'git.autofetch': false,
 		'git.openRepositoryInParentFolders': 'never',
 		'security.workspace.trust.enabled': false,

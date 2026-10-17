@@ -16,7 +16,7 @@ const BLAME_DELAY = 150;
 
 /**
  * Shows who last changed the line the cursor is on, and when & why (the author, date & subject of the commit), at the end of the line
- * in the editor (the `git-graph.blame.currentLine` Extension Setting). Hovering over it shows the commit, with a link that opens it in the
+ * in the editor (the `git-map.blame.currentLine` Extension Setting). Hovering over it shows the commit, with a link that opens it in the
  * Git Map View.
  */
 export class LineBlame extends Disposable {
@@ -63,7 +63,7 @@ export class LineBlame extends Disposable {
 				if (this.decoratedEditor !== null && this.decoratedEditor.document === event.document) this.schedule(this.decoratedEditor);
 			}),
 			onDidChangeConfiguration((event) => {
-				if (event.affectsConfiguration('git-graph.blame.currentLine')) {
+				if (event.affectsConfiguration('git-map.blame.currentLine')) {
 					this.enabled = getConfig().blameCurrentLine;
 					this.clear();
 					if (this.enabled && vscode.window.activeTextEditor) this.schedule(vscode.window.activeTextEditor);
@@ -164,11 +164,11 @@ function getBlameHover(repo: string, blame: GitLineBlame) {
 		return hover;
 	}
 	const args = encodeURIComponent(JSON.stringify([repo, blame.hash]));
-	hover.isTrusted = { enabledCommands: ['git-graph.viewCommitInGitMap'] };
+	hover.isTrusted = { enabledCommands: ['git-map.viewCommitInGitMap'] };
 	hover.appendMarkdown('$(git-commit) **' + abbrevCommit(blame.hash) + '** · ');
 	hover.appendText(blame.author + ' <' + blame.authorEmail + '> · ' + new Date(blame.authorDate * 1000).toLocaleString(getLanguage() === 'zh-cn' ? 'zh-CN' : 'en'));
 	hover.appendMarkdown('\n\n');
 	hover.appendText(blame.summary);
-	hover.appendMarkdown('\n\n[$(git-merge) ' + t('View Commit in Git Map') + '](command:git-graph.viewCommitInGitMap?' + args + ')');
+	hover.appendMarkdown('\n\n[$(git-merge) ' + t('View Commit in Git Map') + '](command:git-map.viewCommitInGitMap?' + args + ')');
 	return hover;
 }

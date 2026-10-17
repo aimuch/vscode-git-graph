@@ -8,6 +8,7 @@ import { ExtensionState } from './extensionState';
 import { LineBlame } from './lineBlame';
 import { Logger } from './logger';
 import { RepoManager } from './repoManager';
+import { migrateSettings, showSettingsMigrationMessage } from './settingsMigration';
 import { StatusBarItem } from './statusBarItem';
 import { GitExecutable, UNABLE_TO_FIND_GIT_MSG, findGit, getGitExecutableFromPaths, showErrorMessage, showInformationMessage } from './utils';
 import { EventEmitter } from './utils/event';
@@ -25,6 +26,9 @@ export async function activate(context: vscode.ExtensionContext) {
 	const onDidChangeGitExecutable = gitExecutableEmitter.subscribe;
 
 	const extensionState = new ExtensionState(context, onDidChangeGitExecutable);
+
+	// The Extension Settings are copied from git-graph.* to git-map.* before anything reads them
+	const settingsMigration = await migrateSettings(context.globalState, context.workspaceState, context.extension.packageJSON, logger);
 
 	let gitExecutable: GitExecutable | null;
 	try {
@@ -51,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.workspace.registerTextDocumentContentProvider(DiffDocProvider.scheme, diffDocProvider),
 		vscode.workspace.onDidChangeConfiguration((event) => {
-			if (event.affectsConfiguration('git-graph')) {
+			if (event.affectsConfiguration('git-map')) {
 				configurationEmitter.emit(event);
 			} else if (event.affectsConfiguration('git.path')) {
 				const paths = getConfig().gitPaths;
@@ -84,6 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		logger
 	);
 	logger.log('Started Git Map - Ready to use!');
+	showSettingsMigrationMessage(settingsMigration, logger);
 
 	extensionState.expireOldCodeReviews();
 }
